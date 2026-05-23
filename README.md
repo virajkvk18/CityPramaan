@@ -9,6 +9,21 @@ It helps citizens, contractors, municipal authorities, and the public track whet
 > CityPramaan turns civic complaints into tamper-proof public proof of repair.
 
 ---
+## Project Status
+
+This repository contains the working MVP / hackathon prototype of CityPramaan.
+
+The MVP demonstrates the core product flow:
+
+- Citizen civic issue reporting
+- AI-assisted issue verification
+- Public civic issue dashboard
+- Proof-of-repair timeline
+- Contractor repair proof concept
+- Warranty / repeat failure tracking concept
+- Web3 proof-record architecture
+
+The complete product vision includes real municipal integrations, production-grade blockchain deployment, real AI vision verification, GPS-based evidence validation, IPFS storage, contractor dashboards, and public repair audit systems.
 
 ## Problem Statement
 
