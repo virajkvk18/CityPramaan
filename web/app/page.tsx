@@ -187,9 +187,14 @@ export default function Home() {
           <div className="relative z-10 flex h-full min-h-[calc(100vh-5rem)] flex-col">
             <div className="mb-6 flex flex-col gap-5 2xl:flex-row 2xl:items-end 2xl:justify-between">
               <div>
-                <p className="font-mono text-xs font-bold uppercase tracking-[0.24em] text-[#00dbe9]">
-                  Command Center | Multi-city Proof Network
-                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="font-mono text-xs font-bold uppercase tracking-[0.24em] text-[#00dbe9]">
+                    Command Center | Multi-city Proof Network
+                  </p>
+                  <span className="rounded-full border border-[#00eb88]/35 bg-[#00eb88]/10 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#5bffa1] shadow-[0_0_18px_rgba(0,235,136,0.12)]">
+                    Live Git Sync Test
+                  </span>
+                </div>
                 <h2 className="mt-2 max-w-xl text-4xl font-black leading-tight tracking-tight text-white">
                   {selectedCity.name} Civic Repair Map
                 </h2>
