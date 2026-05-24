@@ -68,8 +68,15 @@ export default function Home() {
     [localReportsSnapshot]
   );
   const cityReports = useMemo(() => getReportsForCity(citySnapshot), [citySnapshot]);
-  const dashboardReports = useMemo(() => [...localReports, ...cityReports], [localReports, cityReports]);
-  const selected = localReports[0] ?? cityReports[3];
+  const localCityReports = useMemo(
+    () => localReports.filter((report) => !report.cityKey || report.cityKey === selectedCity.key),
+    [localReports, selectedCity.key]
+  );
+  const dashboardReports = useMemo(
+    () => [...localCityReports, ...cityReports],
+    [localCityReports, cityReports]
+  );
+  const selected = localCityReports[0] ?? cityReports[3];
   const isNewLocalReport = selected.status === "PENDING_PROOF";
   const timelineEvents = isNewLocalReport
     ? ["Citizen report created", "AI verified road damage", "Mock proof prepared", "Awaiting contractor assignment"]
@@ -138,10 +145,10 @@ export default function Home() {
               Public Audit
             </p>
             <div className="space-y-4 px-3">
-              <AuditMetric label="Active Reports" value={`${128 + localReports.length}`} tone="text-[#ffc08d]" />
+              <AuditMetric label="Active Reports" value={`${128 + localCityReports.length}`} tone="text-[#ffc08d]" />
               <AuditMetric label="Verified Repairs" value="76" tone="text-[#00eb88]" />
               <AuditMetric label="Repeat Failures" value="09" tone="text-[#ffb4ab]" />
-              <AuditMetric label="On-chain Proofs" value={`${214 + localReports.length}`} tone="text-[#00dbe9]" />
+              <AuditMetric label="On-chain Proofs" value={`${214 + localCityReports.length}`} tone="text-[#00dbe9]" />
             </div>
           </div>
 
@@ -163,13 +170,13 @@ export default function Home() {
             </div>
           )}
 
-          {localReports.length > 0 && (
+          {localCityReports.length > 0 && (
             <div className="mt-5 rounded-md border border-[#00dbe9]/30 bg-[linear-gradient(135deg,rgba(0,219,233,0.12),rgba(0,0,0,0.18))] p-5">
               <p className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-[#7df4ff]">
                 Latest Citizen Report
               </p>
-              <p className="mt-3 text-sm text-[#e5e2e3]">{localReports[0].title}</p>
-              <p className="mt-1 text-xs text-[#dbc2b0]">{localReports[0].location}</p>
+              <p className="mt-3 text-sm text-[#e5e2e3]">{localCityReports[0].title}</p>
+              <p className="mt-1 text-xs text-[#dbc2b0]">{localCityReports[0].location}</p>
               <button
                 onClick={clearLocalReports}
                 className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-sm border border-[#00dbe9]/40 bg-black/30 px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#7df4ff] hover:bg-black/60"
@@ -204,7 +211,7 @@ export default function Home() {
                 <CommandLink href="/contractor" label="Contractor View" icon={<Building2 size={16} />} tone="cyan" />
                 <CommandLink href="/warranty" label="Warranty Scanner" icon={<ScanSearch size={16} />} tone="gold" />
                 <CommandLink
-                  href={`/proof/CP-004?city=${selectedCity.key}`}
+                  href={`/proof/${selected.id}`}
                   label="Public Proof"
                   icon={<Blocks size={16} />}
                   tone="glass"
@@ -223,7 +230,7 @@ export default function Home() {
               <PulseStat
                 icon={<Gauge size={17} />}
                 label="Civic Signal"
-                value={`${128 + localReports.length}`}
+                value={`${128 + localCityReports.length}`}
                 detail="+18 reports today"
                 tone="amber"
               />
@@ -244,7 +251,7 @@ export default function Home() {
               <PulseStat
                 icon={<Blocks size={17} />}
                 label="Chain Status"
-                value={`${214 + localReports.length}`}
+                value={`${214 + localCityReports.length}`}
                 detail="Proof events indexed"
                 tone="violet"
               />
@@ -383,6 +390,12 @@ export default function Home() {
             <div className="rounded-xl border border-[#00eb88]/20 bg-[#00eb88]/5 p-1 shadow-[0_0_28px_rgba(0,235,136,0.08)]">
               <ChainProofCard compact />
             </div>
+            <Link
+              href={`/proof/${selected.id}`}
+              className="mt-4 inline-flex w-full items-center justify-center rounded-sm border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-4 py-3 font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#7df4ff] transition hover:bg-[#00dbe9]/15"
+            >
+              Open Public Proof
+            </Link>
           </div>
         </aside>
       </section>

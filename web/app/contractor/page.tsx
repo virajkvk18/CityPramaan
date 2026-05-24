@@ -1,8 +1,9 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import {
   ArrowLeft,
   BadgeCheck,
@@ -14,7 +15,6 @@ import {
   CheckCircle2,
   Hammer,
   LayoutDashboard,
-  LocateFixed,
   MapPin,
   Router,
   Settings,
@@ -27,16 +27,64 @@ import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { demoCities, getCityByKey, type CityKey } from "@/src/lib/city-context";
 import { getCitySnapshot, setSelectedCityKey, subscribeCity } from "@/src/lib/city-storage";
+import { getReportsForCity, type CivicReport } from "@/src/lib/mock-data";
+import {
+  appendReportEvent,
+  getLocalReportsSnapshot,
+  readFileAsDataUrl,
+  subscribeLocalReports,
+  upsertLocalReport,
+} from "@/src/lib/report-storage";
+
+const activeStatuses: CivicReport["status"][] = [
+  "OPEN",
+  "PENDING_PROOF",
+  "REPAIR_SUBMITTED",
+  "UNDER_WARRANTY",
+];
 
 export default function ContractorPage() {
   const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => "bhopal");
+  const localReportsSnapshot = useSyncExternalStore(
+    subscribeLocalReports,
+    getLocalReportsSnapshot,
+    () => "[]"
+  );
   const selectedCity = getCityByKey(citySnapshot);
+  const localReports = useMemo(
+    () => JSON.parse(localReportsSnapshot) as CivicReport[],
+    [localReportsSnapshot]
+  );
+  const allReports = useMemo(() => {
+    const localForCity = localReports.filter((report) => !report.cityKey || report.cityKey === selectedCity.key);
+    const localIds = new Set(localForCity.map((report) => report.id));
+    return [...localForCity, ...getReportsForCity(selectedCity.key).filter((report) => !localIds.has(report.id))];
+  }, [localReports, selectedCity.key]);
+  const repairQueue = allReports.filter((report) => activeStatuses.includes(report.status));
+  const [selectedReportId, setSelectedReportId] = useState(repairQueue[0]?.id ?? "");
+  const selectedReport = repairQueue.find((report) => report.id === selectedReportId) ?? repairQueue[0];
   const [repairImage, setRepairImage] = useState("");
+  const [repairImageDataUrl, setRepairImageDataUrl] = useState("");
   const [audited, setAudited] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [submittedId, setSubmittedId] = useState("");
   const [auditProcessing, setAuditProcessing] = useState(false);
 
+  async function handleRepairFile(file?: File) {
+    if (!file) {
+      return;
+    }
+
+    setRepairImage(file.name);
+    setRepairImageDataUrl(await readFileAsDataUrl(file));
+    setAudited(false);
+    setSubmittedId("");
+  }
+
   function runRepairAudit() {
+    if (!repairImage || !selectedReport) {
+      return;
+    }
+
     setAudited(false);
     setAuditProcessing(true);
 
@@ -44,6 +92,64 @@ export default function ContractorPage() {
       setAudited(true);
       setAuditProcessing(false);
     }, 900);
+  }
+
+  function submitRepairProof() {
+    if (!selectedReport || !audited) {
+      return;
+    }
+
+    const now = new Date();
+    const warrantyDays = 90;
+    const warrantyExpiresAt = new Date(now.getTime() + warrantyDays * 24 * 60 * 60 * 1000);
+    const tx = `0x93ac...${selectedReport.id.replace("CP-", "")}fd`;
+    const updated = appendReportEvent(
+      {
+        ...selectedReport,
+        cityKey: selectedCity.key,
+        contractor: selectedCity.contractor,
+        status: "UNDER_WARRANTY",
+        warrantyDaysLeft: warrantyDays,
+        warrantyPeriodDays: warrantyDays,
+        warrantyActivatedAt: now.toISOString(),
+        warrantyExpiresAt: warrantyExpiresAt.toISOString(),
+        repairProofAt: now.toISOString(),
+        repairImageName: repairImage || "contractor-after-repair.jpg",
+        repairImageDataUrl,
+        repairTxHash: tx,
+        txHash: selectedReport.txHash || tx,
+        repairAudit: {
+          materialMatch: "95.4%",
+          repairIntegrity: "High",
+          geoVariance: "+/-0.5 m",
+          recommendation: "Warranty activated after AI before/after repair audit.",
+        },
+      },
+      {
+        label: "Repair proof submitted",
+        detail: `${selectedCity.contractor} uploaded after-repair proof for ${selectedReport.location}.`,
+        time: now.toLocaleString(),
+        tx,
+      }
+    );
+
+    upsertLocalReport(
+      appendReportEvent(updated, {
+        label: "Warranty activated",
+        detail: `${warrantyDays}-day repair warranty activated and visible to the public.`,
+        time: now.toLocaleString(),
+        tx: `0xb928...${selectedReport.id.replace("CP-", "")}ce`,
+      })
+    );
+    setSubmittedId(selectedReport.id);
+  }
+
+  function chooseCity(cityKey: CityKey) {
+    setSelectedCityKey(cityKey);
+    setRepairImage("");
+    setRepairImageDataUrl("");
+    setAudited(false);
+    setSubmittedId("");
   }
 
   return (
@@ -84,12 +190,7 @@ export default function ContractorPage() {
 
         <nav className="mt-8 flex flex-1 flex-col gap-1">
           <NavItem href="/" icon={<LayoutDashboard size={18} />} label="Command Center" />
-          <NavItem
-            href="/contractor"
-            icon={<BadgeCheck size={18} />}
-            label="Verified Repairs"
-            active
-          />
+          <NavItem href="/contractor" icon={<BadgeCheck size={18} />} label="Verified Repairs" active />
           <NavItem href="/report" icon={<Camera size={18} />} label="Active Reports" />
           <NavItem href="/proof/CP-004" icon={<ShieldCheck size={18} />} label="Urban Ledger" />
           <NavItem href="/warranty" icon={<BarChart3 size={18} />} label="Warranty Scanner" />
@@ -117,34 +218,19 @@ export default function ContractorPage() {
                 Back to Command Center
               </Link>
               <p className="font-mono text-xs uppercase text-[#00dbe9]">
-                Job ID: RPR-8892-XT | Block Height: 849201
+                Connected repair queue | {selectedCity.name} node
               </p>
               <h1 className="mt-2 text-4xl font-semibold text-white sm:text-5xl">
-                Repair Execution
+                Contractor Repair Audit
               </h1>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="pulse-indicator h-2 w-2 rounded-full bg-[#00eb88]" />
-              <span className="font-mono text-xs text-[#00eb88]">
-                {submitted ? "Proof submitted" : "Awaiting proof"}
-              </span>
-            </div>
-          </div>
-
-          <div className="mb-6 flex flex-col gap-3 rounded-lg border border-[#00dbe9]/20 bg-[#00dbe9]/10 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="font-mono text-xs uppercase text-[#00dbe9]">Repair city node</p>
-              <p className="mt-1 text-sm text-[#dbc2b0]">
-                Contractor flow adapts to {selectedCity.name}, {selectedCity.state}.
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-[#dbc2b0]">
+                Select a raised civic issue, inspect citizen evidence, upload the after-repair photo,
+                run AI audit, and activate the warranty on the same public report record.
               </p>
             </div>
             <select
               value={selectedCity.key}
-              onChange={(event) => {
-                setSelectedCityKey(event.target.value as CityKey);
-                setAudited(false);
-                setSubmitted(false);
-              }}
+              onChange={(event) => chooseCity(event.target.value as CityKey)}
               className="input-recessed rounded px-4 py-3 font-mono text-sm text-white"
             >
               {demoCities.map((city) => (
@@ -157,6 +243,50 @@ export default function ContractorPage() {
 
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
             <aside className="flex flex-col gap-6 xl:col-span-4">
+              <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-5">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-mono text-xs uppercase text-[#00dbe9]">Raised issue queue</p>
+                    <p className="mt-1 text-xs text-[#dbc2b0]/70">{repairQueue.length} synced cases</p>
+                  </div>
+                  <span className="rounded border border-[#00eb88]/25 bg-[#00eb88]/10 px-2 py-1 font-mono text-[10px] text-[#00eb88]">
+                    Live
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {repairQueue.map((report) => (
+                    <button
+                      key={report.id}
+                      onClick={() => {
+                        setSelectedReportId(report.id);
+                        setRepairImage("");
+                        setRepairImageDataUrl("");
+                        setAudited(false);
+                        setSubmittedId("");
+                      }}
+                      className={`w-full rounded border p-4 text-left transition ${
+                        selectedReport?.id === report.id
+                          ? "border-[#ffc08d]/60 bg-[#ffc08d]/10"
+                          : "border-white/10 bg-black/25 hover:border-[#00dbe9]/35"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-mono text-xs text-[#00dbe9]">{report.id}</p>
+                          <p className="mt-1 font-semibold text-white">{report.title}</p>
+                        </div>
+                        <StatusBadge status={report.status} />
+                      </div>
+                      <p className="mt-2 flex items-center gap-1 text-xs text-[#dbc2b0]/70">
+                        <MapPin size={13} />
+                        {report.location}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
               <section className="cp-cyber-card cp-cyber-card-hover relative overflow-hidden rounded-lg p-6">
                 <div className="pointer-events-none absolute right-4 top-4 text-white/5">
                   <BadgeCheck size={82} />
@@ -174,194 +304,168 @@ export default function ContractorPage() {
                 <div className="relative mt-6 grid grid-cols-2 gap-3">
                   <Metric icon={<ShieldCheck size={15} />} label="Status" value="Verified Node" tone="emerald" />
                   <Metric icon={<Star size={15} />} label="Rating" value="4.92 / 5.0" tone="amber" />
-                  <Metric icon={<Hammer size={15} />} label="Open Cases" value="04" tone="cyan" />
+                  <Metric icon={<Hammer size={15} />} label="Open Cases" value={String(repairQueue.length).padStart(2, "0")} tone="cyan" />
                   <Metric icon={<BadgeCheck size={15} />} label="SLA" value="96%" tone="emerald" />
                 </div>
-              </section>
-
-              <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
-                <h4 className="mb-4 flex items-center gap-2 border-b border-white/10 pb-3 font-mono text-xs uppercase text-white">
-                  <MapPin size={16} />
-                  Job Coordinates
-                </h4>
-                <div className="relative h-36 overflow-hidden rounded-lg border border-white/10 bg-black/55">
-                  <div className="absolute inset-0 animated-city-grid opacity-55" />
-                  <div className="absolute left-1/2 top-1/2 grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-[#ffc08d]/40 bg-[#ffc08d]/10 text-[#ffc08d]">
-                    <LocateFixed size={20} />
-                  </div>
-                  <div className="absolute bottom-2 left-2 right-2 flex justify-between rounded bg-black/55 px-2 py-1 font-mono text-[10px] text-[#00dbe9]">
-                    <span>Lat: {selectedCity.lat.toFixed(4)} N</span>
-                    <span>Lng: {selectedCity.lng.toFixed(4)} E</span>
-                  </div>
-                </div>
-              </section>
-
-              <section className="cp-cyber-card cp-cyber-card-hover rounded-lg border-[#d946ef]/30 bg-[#d946ef]/10 p-6">
-                <p className="font-semibold text-[#f0abfc]">Priority Case</p>
-                <p className="mt-2 text-sm leading-6 text-[#dbc2b0]">
-                  CP-004 at {selectedCity.primaryArea} is a repeat failure inside an active warranty zone. The repair proof must
-                  pass AI visual audit before the ledger is updated.
-                </p>
               </section>
             </aside>
 
             <section className="flex flex-col gap-6 xl:col-span-8">
-              <div className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
-                <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                  <div>
-                    <p className="font-mono text-xs uppercase text-[#ffc08d]">
-                      Repair proof submission
-                    </p>
-                    <h2 className="mt-2 flex items-center gap-2 text-2xl font-semibold text-white">
-                      <Sparkles className="text-[#00dbe9]" size={22} />
-                      Visual Audit Interface
-                    </h2>
-                  </div>
-                  <button
-                    onClick={runRepairAudit}
-                    disabled={!repairImage || auditProcessing}
-                    className="rounded border border-[#00dbe9] bg-[#00dbe9]/10 px-4 py-3 font-mono text-xs text-[#00dbe9] transition hover:bg-[#00dbe9]/15 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {auditProcessing ? "Scanning..." : audited ? "Verified" : "Run AI Verification"}
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  <div className="relative min-h-72 overflow-hidden rounded-lg border border-white/10 bg-black/45">
-                    <div className="absolute left-2 top-2 z-20 flex items-center gap-1 rounded border border-[#ffb4ab]/30 bg-black/80 px-2 py-1 font-mono text-xs text-[#ffb4ab] backdrop-blur">
-                      <Camera size={14} />
-                      Citizen Report Before
-                    </div>
-                    <div className="absolute inset-0 evidence-asphalt opacity-75" />
-                    <div className="cp-road-crater absolute left-1/2 top-1/2 h-24 w-40 -translate-x-1/2 -translate-y-1/2 border border-[#ffb4ab]/40 bg-[#2a0d0d]" />
-                    <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,180,171,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,180,171,0.1)_1px,transparent_1px)] bg-[size:24px_24px] opacity-35" />
-                    <div className="absolute bottom-3 left-3 right-3 rounded border border-[#ffb4ab]/20 bg-black/65 p-3">
-                      <p className="font-semibold text-[#ffb4ab]">Road Damage Detected</p>
-                      <p className="mt-1 font-mono text-xs text-[#dbc2b0]/70">
-                        CP-004 | {selectedCity.primaryArea} | Critical
-                      </p>
-                    </div>
-                  </div>
-
-                  <label
-                    className={`relative min-h-72 cursor-pointer overflow-hidden rounded-lg border bg-black/45 transition hover:bg-[#00dbe9]/5 ${
-                      repairImage
-                        ? "border-[#00eb88]/50"
-                        : "border-dashed border-[#00dbe9]/45"
-                    } ${auditProcessing ? "scan-active" : ""}`}
-                  >
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(event) => {
-                        setRepairImage(event.target.files?.[0]?.name || "");
-                        setAudited(false);
-                        setSubmitted(false);
-                      }}
-                    />
-
-                    {repairImage && (
-                      <div className="absolute left-2 top-2 z-20 flex items-center gap-1 rounded border border-[#00eb88]/30 bg-black/80 px-2 py-1 font-mono text-xs text-[#00eb88] backdrop-blur">
-                        <CheckCircle2 size={14} />
-                        Contractor Proof After
+              {selectedReport ? (
+                <>
+                  <div className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
+                    <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+                      <div>
+                        <p className="font-mono text-xs uppercase text-[#ffc08d]">
+                          Selected Case | {selectedReport.id}
+                        </p>
+                        <h2 className="mt-2 flex items-center gap-2 text-2xl font-semibold text-white">
+                          <Sparkles className="text-[#00dbe9]" size={22} />
+                          {selectedReport.title}
+                        </h2>
+                        <p className="mt-2 flex items-center gap-2 text-sm text-[#dbc2b0]">
+                          <MapPin size={15} />
+                          {selectedReport.location}
+                        </p>
                       </div>
-                    )}
+                      <div className="grid grid-cols-2 gap-3 text-sm sm:min-w-72">
+                        <Info label="Severity" value={selectedReport.severity} />
+                        <Info label="AI Confidence" value={`${selectedReport.confidence}%`} />
+                        <Info label="Ward" value={selectedReport.ward} />
+                        <Info label="SLA" value={`${selectedReport.slaHours ?? 72} hrs`} />
+                      </div>
+                    </div>
 
-                    {repairImage ? (
-                      <>
-                        <div className="absolute inset-0 evidence-asphalt opacity-72" />
-                        <div className="cp-road-patch absolute left-1/2 top-1/2 h-24 w-44 -translate-x-1/2 -translate-y-1/2 border border-[#00eb88]/35 bg-[#042b18]/85" />
-                        <div className="scanner-line z-30" />
-                        <div className="absolute bottom-3 left-3 right-3 rounded border border-[#00eb88]/20 bg-black/65 p-3">
-                          <p className="font-semibold text-[#00eb88]">{repairImage}</p>
-                          <p className="mt-1 font-mono text-xs text-[#dbc2b0]/70">
-                            GPS EXIF and repair image attached
-                          </p>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="grid h-full min-h-72 place-items-center p-6 text-center">
-                        <div>
-                          <div className="mx-auto grid h-16 w-16 place-items-center rounded-full border border-[#00dbe9]/35 bg-[#00dbe9]/10 text-[#00dbe9]">
-                            <UploadCloud size={28} />
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                      <EvidenceBox
+                        label="Citizen Issue Evidence"
+                        image={selectedReport.issueImageDataUrl}
+                        imageName={selectedReport.issueImageName}
+                        fallback="pothole"
+                      />
+
+                      <label
+                        className={`relative min-h-72 cursor-pointer overflow-hidden rounded-lg border bg-black/45 transition hover:bg-[#00dbe9]/5 ${
+                          repairImage
+                            ? "border-[#00eb88]/50"
+                            : "border-dashed border-[#00dbe9]/45"
+                        } ${auditProcessing ? "scan-active" : ""}`}
+                      >
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(event) => void handleRepairFile(event.target.files?.[0])}
+                        />
+
+                        {repairImage ? (
+                          <>
+                            <img
+                              src={repairImageDataUrl}
+                              alt="Uploaded repair proof"
+                              className="absolute inset-0 h-full w-full object-cover opacity-75"
+                            />
+                            <div className="absolute inset-0 bg-black/35" />
+                            <div className="scanner-line z-30" />
+                            <div className="absolute bottom-3 left-3 right-3 rounded border border-[#00eb88]/20 bg-black/65 p-3">
+                              <p className="font-semibold text-[#00eb88]">{repairImage}</p>
+                              <p className="mt-1 font-mono text-xs text-[#dbc2b0]/70">
+                                After-repair proof attached to {selectedReport.id}
+                              </p>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="grid h-full min-h-72 place-items-center p-6 text-center">
+                            <div>
+                              <div className="mx-auto grid h-16 w-16 place-items-center rounded-full border border-[#00dbe9]/35 bg-[#00dbe9]/10 text-[#00dbe9]">
+                                <UploadCloud size={28} />
+                              </div>
+                              <p className="mt-4 font-mono text-sm text-[#00dbe9]">Upload After-Repair Evidence</p>
+                              <p className="mt-1 text-xs text-[#dbc2b0]/55">This image will be public on proof view</p>
+                            </div>
                           </div>
-                          <p className="mt-4 font-mono text-sm text-[#00dbe9]">
-                            Upload Repair Evidence
-                          </p>
-                          <p className="mt-1 text-xs text-[#dbc2b0]/55">Must include GPS context</p>
-                        </div>
-                      </div>
-                    )}
-                  </label>
-                </div>
-
-                {(auditProcessing || audited) && (
-                  <div className="mt-6 rounded-lg border border-[#00dbe9]/20 bg-[#00dbe9]/10 p-5">
-                    <div className="flex items-center gap-2 text-[#00dbe9]">
-                      <Sparkles size={18} className={auditProcessing ? "animate-spin" : ""} />
-                      <p className="font-semibold">AI Before/After Audit</p>
+                        )}
+                      </label>
                     </div>
 
-                    {auditProcessing ? (
-                      <div className="mt-4 space-y-3">
-                        <ProcessingStep label="Comparing before and after evidence" />
-                        <ProcessingStep label="Estimating surface quality and closure risk" />
-                        <ProcessingStep label="Preparing warranty recommendation" />
+                    <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                      <button
+                        onClick={runRepairAudit}
+                        disabled={!repairImage || auditProcessing}
+                        className="flex flex-1 items-center justify-center gap-2 rounded border border-[#00dbe9] bg-[#00dbe9]/10 px-4 py-3 font-mono text-xs text-[#00dbe9] transition hover:bg-[#00dbe9]/15 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <Sparkles size={16} className={auditProcessing ? "animate-spin" : ""} />
+                        {auditProcessing ? "Scanning..." : audited ? "Audit Passed" : "Run AI Repair Audit"}
+                      </button>
+                      <button
+                        onClick={submitRepairProof}
+                        disabled={!audited}
+                        className="btn-primary-shimmer flex flex-1 items-center justify-center gap-2 rounded bg-[#00eb88] px-4 py-3 font-mono text-xs font-semibold text-[#00210e] transition disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <ShieldCheck size={16} />
+                        Submit Proof & Activate Warranty
+                      </button>
+                    </div>
+                  </div>
+
+                  {(auditProcessing || audited || submittedId === selectedReport.id) && (
+                    <div className="cp-cyber-card rounded-lg border-[#00dbe9]/20 bg-[#00dbe9]/10 p-6">
+                      <div className="flex items-center gap-2 text-[#00dbe9]">
+                        <Sparkles size={18} className={auditProcessing ? "animate-spin" : ""} />
+                        <p className="font-semibold">AI Before/After Audit Result</p>
                       </div>
-                    ) : (
-                      <>
+
+                      {auditProcessing ? (
+                        <div className="mt-4 space-y-3">
+                          <ProcessingStep label="Comparing citizen issue evidence with contractor repair proof" />
+                          <ProcessingStep label="Checking location, material match, and closure risk" />
+                          <ProcessingStep label="Preparing warranty activation event" />
+                        </div>
+                      ) : (
                         <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
                           <Audit label="Material Match" value="95.4%" tone="emerald" />
                           <Audit label="Repair Integrity" value="High" tone="emerald" />
-                          <Audit label="Volume Est." value="1.2 m3" tone="amber" />
                           <Audit label="Geo-Variance" value="+/-0.5 m" tone="cyan" />
+                          <Audit label="Warranty" value="90 Days" tone="amber" />
                         </div>
+                      )}
 
-                        <p className="mt-4 rounded border border-[#00dbe9]/20 bg-black/35 p-3 text-sm leading-6 text-[#dbc2b0]">
-                          AI detects that the pothole appears patched and the uploaded image matches
-                          the repair location. The proof can be submitted to activate warranty
-                          monitoring.
-                        </p>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="cp-cyber-card rounded-lg border-t border-[#00eb88]/30 bg-gradient-to-r from-[#201f20]/75 to-black/25 p-6">
-                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                  <div>
-                    <h4 className="text-2xl font-semibold text-white">Finalize Ledger Entry</h4>
-                    <p className="mt-1 font-mono text-sm text-[#dbc2b0]/70">
-                      Transaction will be signed via the mock Web3 wallet.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setSubmitted(true)}
-                    disabled={!audited}
-                    className="btn-primary-shimmer flex items-center justify-center gap-2 rounded bg-[#00eb88] px-6 py-4 font-mono text-xs font-semibold text-[#00210e] shadow-[0_0_22px_rgba(0,235,136,0.28)] transition disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <ShieldCheck size={16} />
-                    Submit Proof
-                  </button>
-                </div>
-
-                {submitted && (
-                  <div className="mt-5 rounded border border-[#00eb88]/25 bg-[#00eb88]/10 p-4">
-                    <div className="flex items-center gap-2 text-[#00eb88]">
-                      <CheckCircle2 size={18} />
-                      <p className="font-semibold">Repair Proof Submitted</p>
+                      {submittedId === selectedReport.id && (
+                        <div className="mt-5 rounded border border-[#00eb88]/25 bg-[#00eb88]/10 p-4">
+                          <div className="flex items-center gap-2 text-[#00eb88]">
+                            <CheckCircle2 size={18} />
+                            <p className="font-semibold">Repair proof submitted and warranty activated</p>
+                          </div>
+                          <p className="mt-2 text-sm text-[#dbc2b0]">
+                            This case is now synced to Warranty Scanner and Public Proof.
+                          </p>
+                          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                            <Link
+                              href="/warranty"
+                              className="rounded border border-[#00eb88]/30 bg-[#00eb88]/10 px-4 py-2 text-center text-sm font-semibold text-[#00eb88]"
+                            >
+                              View Warranty
+                            </Link>
+                            <Link
+                              href={`/proof/${selectedReport.id}`}
+                              className="rounded border border-[#00dbe9]/30 bg-[#00dbe9]/10 px-4 py-2 text-center text-sm font-semibold text-[#00dbe9]"
+                            >
+                              View Public Proof
+                            </Link>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <p className="mt-2 text-sm text-[#dbc2b0]">
-                      The repair proof has been recorded and the case is now under warranty.
-                    </p>
-                    <p className="mt-3 rounded bg-black/45 p-3 font-mono text-xs text-[#00eb88]">
-                      Tx: 0x93ac...72fd
-                    </p>
-                  </div>
-                )}
-              </div>
+                  )}
+                </>
+              ) : (
+                <div className="cp-cyber-card rounded-lg p-8 text-center">
+                  <p className="text-xl font-semibold text-white">No raised issues in this city yet.</p>
+                  <Link href="/report" className="mt-4 inline-flex rounded bg-[#ffc08d] px-5 py-3 font-semibold text-[#4c2700]">
+                    Raise a citizen report
+                  </Link>
+                </div>
+              )}
             </section>
           </div>
         </div>
@@ -395,6 +499,78 @@ function NavItem({
       {icon}
       {label}
     </Link>
+  );
+}
+
+function EvidenceBox({
+  label,
+  image,
+  imageName,
+  fallback,
+}: {
+  label: string;
+  image?: string;
+  imageName?: string;
+  fallback: "pothole" | "patch";
+}) {
+  return (
+    <div className="relative min-h-72 overflow-hidden rounded-lg border border-white/10 bg-black/45">
+      <div className="absolute left-2 top-2 z-20 flex items-center gap-1 rounded border border-[#ffb4ab]/30 bg-black/80 px-2 py-1 font-mono text-xs text-[#ffb4ab] backdrop-blur">
+        <Camera size={14} />
+        {label}
+      </div>
+      {image ? (
+        <img src={image} alt={label} className="absolute inset-0 h-full w-full object-cover opacity-75" />
+      ) : (
+        <>
+          <div className="absolute inset-0 evidence-asphalt opacity-75" />
+          <div
+            className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border ${
+              fallback === "patch"
+                ? "cp-road-patch h-24 w-44 border-[#00eb88]/35 bg-[#042b18]/85"
+                : "cp-road-crater h-24 w-40 border-[#ffb4ab]/40 bg-[#2a0d0d]"
+            }`}
+          />
+        </>
+      )}
+      <div className="absolute inset-0 bg-black/25" />
+      <div className="absolute bottom-3 left-3 right-3 rounded border border-white/10 bg-black/65 p-3">
+        <p className="font-semibold text-white">{imageName || "Generated civic issue preview"}</p>
+        <p className="mt-1 font-mono text-xs text-[#dbc2b0]/70">Visible to contractor and public proof view</p>
+      </div>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: CivicReport["status"] }) {
+  const labels = {
+    OPEN: "Open",
+    PENDING_PROOF: "Needs Repair",
+    REPAIR_SUBMITTED: "Proof Pending",
+    UNDER_WARRANTY: "Warranty",
+    REPEAT_FAILURE: "Repeat",
+  };
+  const colors = {
+    OPEN: "border-[#ffb4ab]/30 bg-[#ffb4ab]/10 text-[#ffb4ab]",
+    PENDING_PROOF: "border-[#00dbe9]/30 bg-[#00dbe9]/10 text-[#7df4ff]",
+    REPAIR_SUBMITTED: "border-[#ffc08d]/30 bg-[#ffc08d]/10 text-[#ffc08d]",
+    UNDER_WARRANTY: "border-[#00eb88]/30 bg-[#00eb88]/10 text-[#00eb88]",
+    REPEAT_FAILURE: "border-[#d946ef]/30 bg-[#d946ef]/10 text-[#f0abfc]",
+  };
+
+  return (
+    <span className={`shrink-0 rounded border px-2 py-1 font-mono text-[10px] uppercase ${colors[status]}`}>
+      {labels[status]}
+    </span>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded border border-white/10 bg-black/35 p-3">
+      <p className="font-mono text-[10px] uppercase text-[#dbc2b0]/60">{label}</p>
+      <p className="mt-1 font-mono text-sm font-semibold text-white">{value}</p>
+    </div>
   );
 }
 

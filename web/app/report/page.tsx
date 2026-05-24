@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import type { ReactNode } from "react";
@@ -44,7 +45,11 @@ import {
   analyzeInfrastructureIssue,
   type InfrastructureAnalysis,
 } from "@/src/lib/infrastructure-analyzer";
-import { saveLocalReport } from "@/src/lib/report-storage";
+import {
+  createLocalReportId,
+  readFileAsDataUrl,
+  saveLocalReport,
+} from "@/src/lib/report-storage";
 import { MOCK_WALLET_ADDRESS } from "@/src/lib/wallet-storage";
 
 const issuePresets = [
@@ -84,6 +89,7 @@ export default function ReportIssuePage() {
   const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => "bhopal");
   const selectedCity = getCityByKey(citySnapshot);
   const [imageName, setImageName] = useState("");
+  const [imageDataUrl, setImageDataUrl] = useState("");
   const [location, setLocation] = useState(() => formatCityLocation(getCityByKey(getCitySnapshot())));
   const [description, setDescription] = useState(
     "Large pothole appeared again near the same repaired road segment."
@@ -113,6 +119,18 @@ export default function ReportIssuePage() {
     }, 900);
   }
 
+  async function handleIssueFile(file?: File) {
+    if (!file) {
+      return;
+    }
+
+    setImageName(file.name);
+    setImageDataUrl(await readFileAsDataUrl(file));
+    setVerified(false);
+    setAiResult(null);
+    setSubmitted(false);
+  }
+
   function createProof() {
     const result =
       aiResult ??
@@ -123,8 +141,12 @@ export default function ReportIssuePage() {
         cityName: selectedCity.name,
       });
 
+    const now = new Date().toISOString();
+    const reportId = createLocalReportId();
+
     saveLocalReport({
-      id: "CP-005",
+      id: reportId,
+      cityKey: selectedCity.key,
       title: `${result.issueType} awaiting repair in ${selectedCity.name}`,
       ward: selectedCity.repairWard,
       status: "PENDING_PROOF",
@@ -139,6 +161,28 @@ export default function ReportIssuePage() {
       aiSummary: result.publicSummary,
       recommendedAction: result.recommendedAction,
       slaHours: result.slaHours,
+      createdAt: now,
+      updatedAt: now,
+      issueImageName: imageName || "citizen-issue-evidence.jpg",
+      issueImageDataUrl: imageDataUrl,
+      evidenceHash: `0x${Array.from(`${reportId}-${now}`)
+        .map((char) => char.charCodeAt(0).toString(16))
+        .join("")
+        .slice(0, 12)}...${reportId.replace("CP-", "")}`,
+      history: [
+        {
+          label: "Citizen report created",
+          detail: `${result.issueType} submitted from ${location}.`,
+          time: new Date(now).toLocaleString(),
+          tx: "0x7bd9...42fa",
+        },
+        {
+          label: "AI verified civic issue",
+          detail: `${result.category} classified with ${result.confidence}% confidence and ${result.severity} severity.`,
+          time: new Date(now).toLocaleString(),
+          tx: "0x19bb...45aa",
+        },
+      ],
     });
 
     setSubmitted(true);
@@ -149,6 +193,8 @@ export default function ReportIssuePage() {
 
     setSelectedCityKey(city.key);
     setLocation(formatCityLocation(city));
+    setImageName("");
+    setImageDataUrl("");
     setDescription(`Large pothole appeared again near the repaired road segment at ${city.primaryArea}.`);
     setVerified(false);
     setAiResult(null);
@@ -277,15 +323,21 @@ export default function ReportIssuePage() {
                         type="file"
                         accept="image/*"
                         className="hidden"
-                        onChange={(event) => {
-                          setImageName(event.target.files?.[0]?.name || "");
-                          setVerified(false);
-                          setAiResult(null);
-                          setSubmitted(false);
-                        }}
+                        onChange={(event) => void handleIssueFile(event.target.files?.[0])}
                       />
-                  <div className="absolute inset-0 evidence-asphalt opacity-25" />
-                  <div className="absolute left-1/2 top-1/2 h-20 w-36 -translate-x-1/2 -translate-y-1/2 rounded-[48%] border border-[#ffb4ab]/25 bg-[#3a1515]/70 opacity-45 blur-[1px]" />
+                  {imageDataUrl ? (
+                    <img
+                      src={imageDataUrl}
+                      alt="Uploaded civic issue evidence"
+                      className="absolute inset-0 h-full w-full object-cover opacity-70"
+                    />
+                  ) : (
+                    <>
+                      <div className="absolute inset-0 evidence-asphalt opacity-25" />
+                      <div className="absolute left-1/2 top-1/2 h-20 w-36 -translate-x-1/2 -translate-y-1/2 rounded-[48%] border border-[#ffb4ab]/25 bg-[#3a1515]/70 opacity-45 blur-[1px]" />
+                    </>
+                  )}
+                  <div className="absolute inset-0 bg-black/35" />
 
                   <div className="relative">
                     <div className="mx-auto grid h-16 w-16 place-items-center rounded-full border border-[#00dbe9]/30 bg-[#00dbe9]/10 text-[#00dbe9] shadow-[0_0_28px_rgba(0,219,233,0.18)]">
@@ -507,7 +559,7 @@ export default function ReportIssuePage() {
                     <p className="font-semibold">Proof Created</p>
                   </div>
                   <p className="mt-3 text-sm text-[#dbc2b0]">
-                    Report CP-005 is now visible on the command center with a mock blockchain
+                    Your latest report is now visible on the command center with a mock blockchain
                     transaction.
                   </p>
                   {aiResult && (

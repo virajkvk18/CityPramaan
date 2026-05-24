@@ -9,6 +9,7 @@ export type ReportStatus =
 
 export type CivicReport = {
   id: string;
+  cityKey?: string;
   title: string;
   ward: string;
   status: ReportStatus;
@@ -23,6 +24,32 @@ export type CivicReport = {
   aiSummary?: string;
   recommendedAction?: string;
   slaHours?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  issueImageName?: string;
+  issueImageDataUrl?: string;
+  repairImageName?: string;
+  repairImageDataUrl?: string;
+  repairProofAt?: string;
+  warrantyActivatedAt?: string;
+  warrantyExpiresAt?: string;
+  warrantyPeriodDays?: number;
+  evidenceHash?: string;
+  repairTxHash?: string;
+  repairAudit?: {
+    materialMatch: string;
+    repairIntegrity: string;
+    geoVariance: string;
+    recommendation: string;
+  };
+  history?: CivicReportEvent[];
+};
+
+export type CivicReportEvent = {
+  label: string;
+  detail: string;
+  time: string;
+  tx?: string;
 };
 
 export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY): CivicReport[] {
@@ -31,6 +58,7 @@ export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY):
   return [
     {
       id: "CP-001",
+      cityKey: city.key,
       title: `Pothole near ${city.secondaryArea}`,
       ward: city.repairWard,
       status: "OPEN",
@@ -40,9 +68,16 @@ export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY):
       txHash: "0x82f4...91ac",
       warrantyDaysLeft: null,
       location: formatCityLocation(city, city.secondaryArea),
+      issueCategory: "ROAD_DAMAGE",
+      assetType: "City Road",
+      aiSummary: "Road damage requires contractor inspection and repair proof.",
+      recommendedAction: "Assign contractor and collect after-repair evidence.",
+      slaHours: 72,
+      createdAt: "2026-05-23T10:12:00.000Z",
     },
     {
       id: "CP-002",
+      cityKey: city.key,
       title: "Road patch repair submitted",
       ward: city.repairWard,
       status: "REPAIR_SUBMITTED",
@@ -52,9 +87,17 @@ export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY):
       txHash: "0xa91b...22fd",
       warrantyDaysLeft: null,
       location: formatCityLocation(city, city.secondaryArea),
+      issueCategory: "ROAD_DAMAGE",
+      assetType: "City Road",
+      aiSummary: "Contractor has submitted repair evidence. Warranty activation is pending.",
+      recommendedAction: "Verify repair proof and activate warranty if audit passes.",
+      slaHours: 24,
+      createdAt: "2026-05-22T12:20:00.000Z",
+      repairImageName: "contractor-road-patch-proof.jpg",
     },
     {
       id: "CP-003",
+      cityKey: city.key,
       title: "Resolved road damage under warranty",
       ward: city.repairWard,
       status: "UNDER_WARRANTY",
@@ -64,9 +107,21 @@ export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY):
       txHash: "0x44ce...73ab",
       warrantyDaysLeft: 24,
       location: formatCityLocation(city),
+      issueCategory: "ROAD_DAMAGE",
+      assetType: "City Road",
+      aiSummary: "Repair has passed audit and is under active warranty monitoring.",
+      recommendedAction: "Monitor for repeat failure during warranty window.",
+      slaHours: 0,
+      createdAt: "2026-05-19T10:00:00.000Z",
+      repairImageName: "verified-road-repair.jpg",
+      repairProofAt: "2026-05-20T16:40:00.000Z",
+      warrantyActivatedAt: "2026-05-20T16:45:00.000Z",
+      warrantyPeriodDays: 30,
+      repairTxHash: "0x93ac...72fd",
     },
     {
       id: "CP-004",
+      cityKey: city.key,
       title: "Repeat failure detected after repair",
       ward: city.repairWard,
       status: "REPEAT_FAILURE",
@@ -76,6 +131,17 @@ export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY):
       txHash: "0xf12d...8bb0",
       warrantyDaysLeft: 12,
       location: formatCityLocation(city),
+      issueCategory: "ROAD_DAMAGE",
+      assetType: "City Road",
+      aiSummary: "Repeat failure is detected inside the active warranty window.",
+      recommendedAction: "Reopen warranty claim and reduce contractor reputation score.",
+      slaHours: 24,
+      createdAt: "2026-05-21T09:41:00.000Z",
+      repairImageName: "failed-road-repair-before-after.jpg",
+      repairProofAt: "2026-05-21T16:40:00.000Z",
+      warrantyActivatedAt: "2026-05-21T16:45:00.000Z",
+      warrantyPeriodDays: 30,
+      repairTxHash: "0x93ac...72fd",
     },
   ];
 }

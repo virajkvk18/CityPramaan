@@ -1,8 +1,9 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -23,22 +24,37 @@ import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { demoCities, getCityByKey, type CityKey } from "@/src/lib/city-context";
 import { getCitySnapshot, setSelectedCityKey, subscribeCity } from "@/src/lib/city-storage";
-import { detectRepeatFailure } from "@/src/lib/warranty";
+import { getReportsForCity, type CivicReport } from "@/src/lib/mock-data";
+import { getLocalReportsSnapshot, subscribeLocalReports } from "@/src/lib/report-storage";
 
 export default function WarrantyScannerPage() {
   const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => "bhopal");
+  const localReportsSnapshot = useSyncExternalStore(
+    subscribeLocalReports,
+    getLocalReportsSnapshot,
+    () => "[]"
+  );
   const selectedCity = getCityByKey(citySnapshot);
-  const [result, setResult] = useState<ReturnType<typeof detectRepeatFailure> | null>(null);
+  const localReports = useMemo(
+    () => JSON.parse(localReportsSnapshot) as CivicReport[],
+    [localReportsSnapshot]
+  );
+  const allReports = useMemo(() => {
+    const localForCity = localReports.filter((report) => !report.cityKey || report.cityKey === selectedCity.key);
+    const localIds = new Set(localForCity.map((report) => report.id));
+    return [...localForCity, ...getReportsForCity(selectedCity.key).filter((report) => !localIds.has(report.id))];
+  }, [localReports, selectedCity.key]);
+  const warrantyReports = allReports.filter((report) =>
+    ["UNDER_WARRANTY", "REPEAT_FAILURE", "REPAIR_SUBMITTED", "PENDING_PROOF", "OPEN"].includes(report.status)
+  );
+  const [selectedReportId, setSelectedReportId] = useState(warrantyReports[0]?.id ?? "");
   const [scanning, setScanning] = useState(false);
+  const selectedReport =
+    warrantyReports.find((report) => report.id === selectedReportId) ?? warrantyReports[0];
 
   function scanForFailure() {
-    setResult(null);
     setScanning(true);
-
-    window.setTimeout(() => {
-      setResult(detectRepeatFailure(selectedCity.key));
-      setScanning(false);
-    }, 900);
+    window.setTimeout(() => setScanning(false), 900);
   }
 
   return (
@@ -66,9 +82,6 @@ export default function WarrantyScannerPage() {
             <Settings size={16} />
           </button>
           <ThemeToggle />
-          <button className="rounded border border-[#ffc08d]/50 bg-[#ffc08d]/10 px-4 py-2 font-mono text-xs text-[#ffc08d] transition hover:bg-[#ffc08d]/20">
-            Connect Wallet
-          </button>
         </div>
       </header>
 
@@ -81,12 +94,7 @@ export default function WarrantyScannerPage() {
           <NavItem href="/" icon={<LayoutDashboard size={18} />} label="Command Center" />
           <NavItem href="/proof/CP-004" icon={<BadgeCheck size={18} />} label="Verified Repairs" />
           <NavItem href="/report" icon={<AlertTriangle size={18} />} label="Active Reports" />
-          <NavItem
-            href="/warranty"
-            icon={<ShieldAlert size={18} />}
-            label="Warranty Scanner"
-            active
-          />
+          <NavItem href="/warranty" icon={<ShieldAlert size={18} />} label="Warranty Scanner" active />
           <NavItem href="/contractor" icon={<ShieldCheck size={18} />} label="Contractor Audit" />
         </nav>
 
@@ -111,32 +119,20 @@ export default function WarrantyScannerPage() {
                 <ArrowLeft size={16} />
                 Back to Command Center
               </Link>
-              <p className="font-mono text-xs uppercase text-[#00dbe9]">
-                Node Sector 7G | Protocol Alpha
-              </p>
+              <p className="font-mono text-xs uppercase text-[#00dbe9]">Synced warranty registry</p>
               <h1 className="mt-2 text-4xl font-semibold text-white sm:text-5xl">
                 Warranty Scanner <span className="text-[#dbc2b0]/35">|</span> Public Proof
               </h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[#dbc2b0]">
-                CityPramaan cross-checks new citizen reports in {selectedCity.name} against repaired road segments and
-                active warranty windows, then turns repeat failures into public accountability.
-              </p>
-            </div>
-          </div>
-
-          <div className="mb-6 flex flex-col gap-3 rounded-lg border border-[#00dbe9]/20 bg-[#00dbe9]/10 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="font-mono text-xs uppercase text-[#00dbe9]">Warranty city node</p>
-              <p className="mt-1 text-sm text-[#dbc2b0]">
-                Scanning {selectedCity.primaryArea}, {selectedCity.state}.
+                Every contractor proof that activates a warranty appears here. Unrepaired reports
+                stay visible as not active, so judges can see the full lifecycle.
               </p>
             </div>
             <select
               value={selectedCity.key}
               onChange={(event) => {
                 setSelectedCityKey(event.target.value as CityKey);
-                setResult(null);
-                setScanning(false);
+                setSelectedReportId("");
               }}
               className="input-recessed rounded px-4 py-3 font-mono text-sm text-white"
             >
@@ -151,61 +147,34 @@ export default function WarrantyScannerPage() {
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
             <div className="flex flex-col gap-6 lg:col-span-4">
               <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
-                <div className="relative z-10 mb-5 flex items-center justify-between">
-                  <h3 className="font-mono text-xs uppercase text-[#ffc08d]">
-                    Live Scan Protocol
-                  </h3>
-                  <span className="flex items-center gap-2 rounded border border-[#ffb4ab]/30 bg-[#93000a]/25 px-2 py-1 font-mono text-[10px] text-[#ffb4ab]">
-                    <span className="stitch-pin-rose h-1.5 w-1.5 rounded-full bg-[#ffb4ab]" />
-                    Alert active
+                <div className="mb-5 flex items-center justify-between">
+                  <h3 className="font-mono text-xs uppercase text-[#ffc08d]">Warranty Registry</h3>
+                  <span className="rounded border border-[#00dbe9]/25 bg-[#00dbe9]/10 px-2 py-1 font-mono text-[10px] text-[#00dbe9]">
+                    {warrantyReports.length} cases
                   </span>
                 </div>
-
-                <div
-                  className={`relative h-56 overflow-hidden rounded-lg border border-white/10 bg-black/65 shadow-[inset_0_0_34px_rgba(0,0,0,0.75)] ${
-                    scanning ? "scan-active" : ""
-                  }`}
-                >
-                  <div className="absolute inset-0 animated-city-grid opacity-35" />
-                  <div className="absolute inset-0 evidence-asphalt opacity-45" />
-                  <div className="cp-road-crater absolute left-1/2 top-1/2 h-24 w-40 -translate-x-1/2 -translate-y-1/2 border border-[#ffb4ab]/45 bg-[#2a0d0d]" />
-                  <div className="scanner-line z-20 bg-[#ffb4ab]" />
-                  <div className="absolute left-1/2 top-1/2 z-20 grid h-20 w-20 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-[#ffb4ab]/55">
-                    <div className="h-2.5 w-2.5 rounded-full bg-[#ffb4ab] shadow-[0_0_14px_rgba(255,180,171,1)]" />
-                  </div>
-                  <div className="absolute left-1/2 top-0 z-10 h-full w-px -translate-x-1/2 bg-[#ffb4ab]/15" />
-                  <div className="absolute left-0 top-1/2 z-10 h-px w-full -translate-y-1/2 bg-[#ffb4ab]/15" />
+                <div className="space-y-3">
+                  {warrantyReports.map((report) => (
+                    <button
+                      key={report.id}
+                      onClick={() => setSelectedReportId(report.id)}
+                      className={`w-full rounded border p-4 text-left transition ${
+                        selectedReport?.id === report.id
+                          ? "border-[#ffc08d]/60 bg-[#ffc08d]/10"
+                          : "border-white/10 bg-black/25 hover:border-[#00dbe9]/35"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-mono text-xs text-[#00dbe9]">{report.id}</p>
+                          <p className="mt-1 font-semibold text-white">{report.title}</p>
+                        </div>
+                        <WarrantyBadge report={report} />
+                      </div>
+                      <p className="mt-2 text-xs text-[#dbc2b0]/70">{report.location}</p>
+                    </button>
+                  ))}
                 </div>
-
-                <div className="mt-4 space-y-1 font-mono text-xs text-[#dbc2b0]/70">
-                  <p>Target: ID-RPR-88392</p>
-                  <p>
-                    Coordinates: {(selectedCity.lat + 0.0001).toFixed(4)} N,{" "}
-                    {(selectedCity.lng + 0.0001).toFixed(4)} E
-                  </p>
-                </div>
-
-                <button
-                  onClick={scanForFailure}
-                  disabled={scanning}
-                  className="btn-primary-shimmer mt-5 flex w-full items-center justify-center gap-2 rounded border border-[#ffb4ab] bg-[#93000a]/40 px-4 py-3 font-mono text-xs font-semibold text-[#ffb4ab] transition hover:bg-[#93000a]/55 disabled:cursor-wait disabled:opacity-70"
-                >
-                  <Radar size={16} className={scanning ? "animate-spin" : ""} />
-                  {scanning ? "Scanning ledger..." : "Scan For Repeat Failure"}
-                </button>
-
-                {result && (
-                  <div className="mt-5 rounded-r border-l-2 border-[#ffb4ab] bg-[#93000a]/28 p-4">
-                    <div className="flex items-center gap-2 text-[#ffb4ab]">
-                      <ShieldAlert size={18} />
-                      <p className="font-semibold">Repeat Failure Detected</p>
-                    </div>
-                    <p className="mt-2 text-sm leading-6 text-[#ffdad6]/85">
-                      {result.newReport.id} is {result.distance} meters from {result.repairedCase.id}
-                      , with {result.repairedCase.warrantyDaysLeft} warranty days left.
-                    </p>
-                  </div>
-                )}
               </section>
 
               <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
@@ -222,72 +191,104 @@ export default function WarrantyScannerPage() {
             </div>
 
             <div className="flex flex-col gap-6 lg:col-span-8">
-              <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
-                <div className="mb-5 flex flex-col justify-between gap-3 border-b border-white/5 pb-4 sm:flex-row sm:items-end">
-                  <h3 className="flex items-center gap-2 font-mono text-xs uppercase text-[#ffc08d]">
-                    <FileImage size={15} />
-                    Evidence Comparison
-                  </h3>
-                  <span className="w-max rounded border border-white/10 bg-black/40 px-2 py-1 font-mono text-xs text-[#dbc2b0]">
-                    Delta: -45.2% integrity
-                  </span>
-                </div>
+              {selectedReport ? (
+                <>
+                  <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
+                    <div className="mb-5 flex flex-col justify-between gap-3 border-b border-white/5 pb-4 sm:flex-row sm:items-start">
+                      <div>
+                        <p className="font-mono text-xs uppercase text-[#ffc08d]">
+                          Selected warranty case | {selectedReport.id}
+                        </p>
+                        <h2 className="mt-2 text-2xl font-semibold text-white">{selectedReport.title}</h2>
+                        <p className="mt-2 text-sm text-[#dbc2b0]">{selectedReport.location}</p>
+                      </div>
+                      <button
+                        onClick={scanForFailure}
+                        disabled={scanning}
+                        className="btn-primary-shimmer flex items-center justify-center gap-2 rounded border border-[#ffb4ab] bg-[#93000a]/40 px-4 py-3 font-mono text-xs font-semibold text-[#ffb4ab] transition hover:bg-[#93000a]/55 disabled:cursor-wait disabled:opacity-70"
+                      >
+                        <Radar size={16} className={scanning ? "animate-spin" : ""} />
+                        {scanning ? "Scanning..." : "Scan Repeat Failure"}
+                      </button>
+                    </div>
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <EvidencePanel
-                    label="Original Verification"
-                    meta="Block: #89201A"
-                    date="Oct 12, 2023"
-                    tone="emerald"
-                  />
-                  <EvidencePanel
-                    label="Current Failure"
-                    meta="Block: Pending..."
-                    date="Today, 09:41 UTC"
-                    tone="rose"
-                  />
-                </div>
-              </section>
+                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                      <Info label="Status" value={statusLabel(selectedReport)} />
+                      <Info label="Warranty" value={warrantyLabel(selectedReport)} />
+                      <Info label="Contractor" value={selectedReport.contractor} />
+                      <Info label="Public Hash" value={selectedReport.evidenceHash ?? selectedReport.txHash} />
+                    </div>
 
-              <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
-                <h3 className="mb-6 flex items-center gap-2 border-b border-white/5 pb-3 font-mono text-xs uppercase text-[#d3fbff]">
-                  <CalendarClock size={15} />
-                  Public Proof Ledger
-                </h3>
-                <div className="relative flex flex-col gap-7 border-l border-white/10 pl-6">
-                  <TimelineNode
-                    title="Initial Citizen Report"
-                    date="Sep 28, 2023"
-                    detail={`Pothole reported by verified citizen node near ${selectedCity.primaryArea}.`}
-                    tone="emerald"
-                  />
-                  <TimelineNode
-                    title="Smart Contract Execution"
-                    date="Oct 02, 2023"
-                    detail={`Repair funds released to ${selectedCity.contractor} after oracle validation.`}
-                    tone="amber"
-                  />
-                  <TimelineNode
-                    title="On-chain Verification and Warranty Lock"
-                    date="Oct 12, 2023"
-                    detail="Repair completed, verified, and locked under active warranty."
-                    tone="emerald"
-                  />
-                  <TimelineNode
-                    title="Warranty Breach Detected"
-                    date="Today, 09:41 UTC"
-                    detail="New report matches the same repaired segment during warranty window."
-                    tone="rose"
-                    active
-                  />
-                </div>
-              </section>
+                    {scanning && (
+                      <div className="mt-5 rounded border border-[#00dbe9]/20 bg-[#00dbe9]/10 p-4 text-sm text-[#dbc2b0]">
+                        Comparing latest reports with this repaired segment and warranty window...
+                      </div>
+                    )}
+                  </section>
 
-              <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <Impact label="Action" value={result ? "Case Reopened" : "Ready to scan"} />
-                <Impact label="Contractor" value={result ? "Score Reduced" : "Awaiting audit"} />
-                <Impact label="Proof" value={result ? "Event Created" : "No breach yet"} />
-              </section>
+                  <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
+                    <div className="mb-5 flex flex-col justify-between gap-3 border-b border-white/5 pb-4 sm:flex-row sm:items-end">
+                      <h3 className="flex items-center gap-2 font-mono text-xs uppercase text-[#ffc08d]">
+                        <FileImage size={15} />
+                        Public Evidence Comparison
+                      </h3>
+                      <Link
+                        href={`/proof/${selectedReport.id}`}
+                        className="rounded border border-[#00dbe9]/30 bg-[#00dbe9]/10 px-4 py-2 text-sm font-semibold text-[#00dbe9]"
+                      >
+                        Open Public Proof
+                      </Link>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <EvidencePanel
+                        label="Citizen Issue Before"
+                        image={selectedReport.issueImageDataUrl}
+                        status={selectedReport.issueImageName ?? selectedReport.aiSummary ?? "Reported civic issue"}
+                        tone="rose"
+                      />
+                      <EvidencePanel
+                        label="Contractor Repair After"
+                        image={selectedReport.repairImageDataUrl}
+                        status={
+                          selectedReport.repairImageName ??
+                          (selectedReport.status === "UNDER_WARRANTY"
+                            ? "Repair proof available"
+                            : "No repair proof submitted yet")
+                        }
+                        tone="emerald"
+                      />
+                    </div>
+                  </section>
+
+                  <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
+                    <h3 className="mb-6 flex items-center gap-2 border-b border-white/5 pb-3 font-mono text-xs uppercase text-[#d3fbff]">
+                      <CalendarClock size={15} />
+                      Synced Warranty Timeline
+                    </h3>
+                    <div className="relative flex flex-col gap-7 border-l border-white/10 pl-6">
+                      {(selectedReport.history?.length ? selectedReport.history : fallbackHistory(selectedReport)).map(
+                        (event, index) => (
+                          <TimelineNode
+                            key={`${event.label}-${index}`}
+                            title={event.label}
+                            date={event.time}
+                            detail={event.detail}
+                            active={index === (selectedReport.history?.length ?? 0) - 1}
+                          />
+                        )
+                      )}
+                    </div>
+                  </section>
+                </>
+              ) : (
+                <div className="cp-cyber-card rounded-lg p-8 text-center">
+                  <p className="text-xl font-semibold text-white">No warranty records yet.</p>
+                  <Link href="/contractor" className="mt-4 inline-flex rounded bg-[#ffc08d] px-5 py-3 font-semibold text-[#4c2700]">
+                    Submit contractor proof
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -324,6 +325,58 @@ function NavItem({
   );
 }
 
+function WarrantyBadge({ report }: { report: CivicReport }) {
+  const active = report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE";
+  const pending = report.status === "REPAIR_SUBMITTED";
+
+  return (
+    <span
+      className={`shrink-0 rounded border px-2 py-1 font-mono text-[10px] uppercase ${
+        active
+          ? "border-[#00eb88]/30 bg-[#00eb88]/10 text-[#00eb88]"
+          : pending
+            ? "border-[#ffc08d]/30 bg-[#ffc08d]/10 text-[#ffc08d]"
+            : "border-[#ffb4ab]/30 bg-[#ffb4ab]/10 text-[#ffb4ab]"
+      }`}
+    >
+      {active ? "Active" : pending ? "Pending" : "Not Active"}
+    </span>
+  );
+}
+
+function statusLabel(report: CivicReport) {
+  const labels = {
+    OPEN: "Open",
+    PENDING_PROOF: "Needs Repair",
+    REPAIR_SUBMITTED: "Proof Pending",
+    UNDER_WARRANTY: "Active",
+    REPEAT_FAILURE: "Breach",
+  };
+
+  return labels[report.status];
+}
+
+function warrantyLabel(report: CivicReport) {
+  if (report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE") {
+    return `${report.warrantyDaysLeft ?? report.warrantyPeriodDays ?? 90} days left`;
+  }
+
+  if (report.status === "REPAIR_SUBMITTED") {
+    return "Awaiting activation";
+  }
+
+  return "Not active";
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded border border-white/10 bg-black/35 p-3">
+      <p className="font-mono text-[10px] uppercase text-[#dbc2b0]/60">{label}</p>
+      <p className="mt-1 truncate font-mono text-sm font-semibold text-white">{value}</p>
+    </div>
+  );
+}
+
 function Diagnostic({
   label,
   value,
@@ -340,31 +393,30 @@ function Diagnostic({
     amber: "bg-[#ffc08d] w-[62%] text-[#ffc08d]",
     emerald: "bg-[#00eb88] w-[12%] text-[#00eb88]",
   };
+  const [bar, width, text] = bars[tone].split(" ");
 
   return (
     <div>
       <p className="font-mono text-[10px] uppercase text-[#dbc2b0]/55">{label}</p>
       <p className="mt-1 text-sm text-white">{value}</p>
       <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/10">
-        <div className={`h-full ${bars[tone].split(" ")[0]} ${bars[tone].split(" ")[1]}`} />
+        <div className={`h-full ${bar} ${width}`} />
       </div>
-      <p className={`mt-1 text-right font-mono text-[10px] ${bars[tone].split(" ")[2]}`}>
-        {score} confidence
-      </p>
+      <p className={`mt-1 text-right font-mono text-[10px] ${text}`}>{score} confidence</p>
     </div>
   );
 }
 
 function EvidencePanel({
   label,
-  meta,
-  date,
+  image,
+  status,
   tone,
 }: {
   label: string;
-  meta: string;
-  date: string;
-  tone: "emerald" | "rose";
+  image?: string;
+  status: string;
+  tone: "rose" | "emerald";
 }) {
   const isRose = tone === "rose";
 
@@ -378,73 +430,72 @@ function EvidencePanel({
         >
           {label}
         </span>
-        <div className="absolute inset-0 evidence-asphalt opacity-80" />
-        {isRose ? (
-          <>
-            <div className="cp-road-patch absolute left-1/2 top-1/2 h-20 w-40 -translate-x-1/2 -translate-y-1/2 border border-[#00eb88]/15 bg-[#042b18]/30" />
-            <div className="cp-road-crater absolute left-[48%] top-[52%] h-24 w-36 -translate-x-1/2 -translate-y-1/2 border border-[#ffb4ab]/45 bg-[#2a0d0d]" />
-            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,180,171,0.18)_1px,transparent_1px)] bg-[size:12px_12px] opacity-55" />
-          </>
+        {image ? (
+          <img src={image} alt={label} className="absolute inset-0 h-full w-full object-cover opacity-75" />
         ) : (
-          <div className="cp-road-patch absolute left-1/2 top-1/2 h-20 w-44 -translate-x-1/2 -translate-y-1/2 border border-[#00eb88]/35 bg-[#042b18]/85" />
+          <>
+            <div className="absolute inset-0 evidence-asphalt opacity-80" />
+            <div
+              className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border ${
+                isRose
+                  ? "cp-road-crater h-24 w-36 border-[#ffb4ab]/45 bg-[#2a0d0d]"
+                  : "cp-road-patch h-20 w-44 border-[#00eb88]/35 bg-[#042b18]/85"
+              }`}
+            />
+          </>
         )}
+        <div className="absolute inset-0 bg-black/30" />
       </div>
-      <div className="mt-2 flex items-center justify-between px-1 font-mono text-xs">
-        <span className="text-[#dbc2b0]/60">{meta}</span>
-        <span className={isRose ? "text-[#ffb4ab]" : "text-[#00eb88]"}>{date}</span>
-      </div>
+      <p className="mt-2 px-1 text-xs text-[#dbc2b0]/70">{status}</p>
     </div>
   );
+}
+
+function fallbackHistory(report: CivicReport) {
+  return [
+    {
+      label: "Citizen report created",
+      detail: `${report.title} submitted from ${report.location}.`,
+      time: "Demo timeline",
+    },
+    {
+      label: report.status === "UNDER_WARRANTY" ? "Warranty activated" : "Awaiting contractor repair",
+      detail:
+        report.status === "UNDER_WARRANTY"
+          ? "Contractor proof passed audit and warranty monitoring is active."
+          : "No repair warranty has been activated for this case yet.",
+      time: "Demo timeline",
+    },
+  ];
 }
 
 function TimelineNode({
   title,
   date,
   detail,
-  tone,
   active = false,
 }: {
   title: string;
   date: string;
   detail: string;
-  tone: "emerald" | "amber" | "rose";
   active?: boolean;
 }) {
-  const colors = {
-    emerald: "border-[#00eb88] bg-[#00eb88]",
-    amber: "border-[#ffc08d] bg-[#ffc08d]",
-    rose: "border-[#ffb4ab] bg-[#ffb4ab]",
-  };
-
   return (
     <div className="relative">
       <span
-        className={`absolute -left-[33px] top-1 grid h-4 w-4 place-items-center rounded-full border-2 bg-black ${
-          colors[tone].split(" ")[0]
-        } ${active ? "shadow-[0_0_12px_rgba(255,180,171,0.6)]" : ""}`}
+        className={`absolute -left-[33px] top-1 grid h-4 w-4 place-items-center rounded-full border-2 border-[#00eb88] bg-black ${
+          active ? "shadow-[0_0_12px_rgba(0,235,136,0.6)]" : ""
+        }`}
       >
-        <span className={`h-1.5 w-1.5 rounded-full ${colors[tone].split(" ")[1]}`} />
+        <span className="h-1.5 w-1.5 rounded-full bg-[#00eb88]" />
       </span>
       <div className="flex flex-col gap-1">
         <div className="flex items-center justify-between gap-4">
-          <h4 className={`text-sm font-semibold ${active ? "text-[#ffb4ab]" : "text-white"}`}>
-            {title}
-          </h4>
-          <span className={`font-mono text-xs ${active ? "text-[#ffb4ab]" : "text-[#dbc2b0]/55"}`}>
-            {date}
-          </span>
+          <h4 className="text-sm font-semibold text-white">{title}</h4>
+          <span className="font-mono text-xs text-[#dbc2b0]/55">{date}</span>
         </div>
         <p className="max-w-2xl text-xs leading-5 text-[#dbc2b0]/75">{detail}</p>
       </div>
-    </div>
-  );
-}
-
-function Impact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="cp-cyber-card rounded-lg p-4">
-      <p className="font-mono text-xs text-[#dbc2b0]/55">{label}</p>
-      <p className="mt-1 font-semibold text-white">{value}</p>
     </div>
   );
 }

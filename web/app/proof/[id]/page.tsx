@@ -1,4 +1,9 @@
-﻿import Link from "next/link";
+/* eslint-disable @next/next/no-img-element */
+"use client";
+
+import Link from "next/link";
+import { useMemo, useSyncExternalStore } from "react";
+import { useParams } from "next/navigation";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -17,50 +22,48 @@ import {
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { ChainProofCard } from "@/src/components/proof/ChainProofCard";
+import { getCitySnapshot, subscribeCity } from "@/src/lib/city-storage";
+import { getReportsForCity, type CivicReport } from "@/src/lib/mock-data";
+import { getLocalReportsSnapshot, subscribeLocalReports } from "@/src/lib/report-storage";
 
-export default function ProofTimelinePage({ params }: { params: { id: string } }) {
-  const events = [
-    {
-      title: "Citizen report created",
-      detail: "Road damage evidence submitted from MP Nagar Zone 1, Bhopal.",
-      time: "10:12 AM",
-      icon: FileImage,
-      tone: "orange",
-      tx: "0x82f4...91ac",
-    },
-    {
-      title: "AI verified civic issue",
-      detail: "Detected road damage with 96% confidence and critical severity.",
-      time: "10:13 AM",
-      icon: Sparkles,
-      tone: "cyan",
-      tx: "0x19bb...45aa",
-    },
-    {
-      title: "Repair proof submitted",
-      detail: "Contractor uploaded after-repair evidence for public audit.",
-      time: "04:40 PM",
-      icon: UserCheck,
-      tone: "blue",
-      tx: "0x93ac...72fd",
-    },
-    {
-      title: "Warranty activated",
-      detail: "Repair moved to 30-day warranty monitoring period.",
-      time: "04:45 PM",
-      icon: ShieldCheck,
-      tone: "emerald",
-      tx: "0xb928...1ce0",
-    },
-    {
-      title: "Repeat failure detected",
-      detail: "Same location failed again during active warranty window.",
-      time: "3 days later",
-      icon: ShieldAlert,
-      tone: "fuchsia",
-      tx: "0xf12d...8bb0",
-    },
-  ];
+const statusCopy: Record<CivicReport["status"], string> = {
+  OPEN: "Open issue",
+  PENDING_PROOF: "Awaiting repair proof",
+  REPAIR_SUBMITTED: "Repair proof submitted",
+  UNDER_WARRANTY: "Warranty active",
+  REPEAT_FAILURE: "Repeat failure",
+};
+
+const statusTone: Record<CivicReport["status"], string> = {
+  OPEN: "border-[#ffb4ab]/30 bg-[#ffb4ab]/10 text-[#ffb4ab]",
+  PENDING_PROOF: "border-[#00dbe9]/35 bg-[#00dbe9]/10 text-[#7df4ff]",
+  REPAIR_SUBMITTED: "border-[#ff9933]/35 bg-[#ff9933]/10 text-[#ffc08d]",
+  UNDER_WARRANTY: "border-[#00eb88]/35 bg-[#00eb88]/10 text-[#5bffa1]",
+  REPEAT_FAILURE: "border-[#d946ef]/40 bg-[#d946ef]/12 text-[#f0abfc]",
+};
+
+export default function ProofTimelinePage() {
+  const params = useParams<{ id: string }>();
+  const proofId = params.id;
+  const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => "bhopal");
+  const localReportsSnapshot = useSyncExternalStore(
+    subscribeLocalReports,
+    getLocalReportsSnapshot,
+    () => "[]"
+  );
+  const localReports = useMemo(
+    () => JSON.parse(localReportsSnapshot) as CivicReport[],
+    [localReportsSnapshot]
+  );
+  const cityReports = useMemo(() => getReportsForCity(citySnapshot), [citySnapshot]);
+  const allReports = useMemo(() => {
+    const localIds = new Set(localReports.map((report) => report.id));
+    return [...localReports, ...cityReports.filter((report) => !localIds.has(report.id))];
+  }, [cityReports, localReports]);
+  const report = allReports.find((item) => item.id === proofId) ?? cityReports[3];
+  const events = report.history?.length ? report.history : fallbackEvents(report);
+  const hasRepairProof = Boolean(report.repairImageDataUrl || report.repairImageName);
+  const isWarrantyActive = report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE";
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#050505] text-zinc-100">
@@ -83,37 +86,44 @@ export default function ProofTimelinePage({ params }: { params: { id: string } }
       <section className="relative z-10 mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-6 xl:grid-cols-[1fr_380px] xl:px-6 xl:py-8">
         <div>
           <div className="rounded-2xl border border-fuchsia-400/20 bg-[linear-gradient(145deg,rgba(217,70,239,0.16),rgba(0,219,233,0.06))] p-6 shadow-[0_0_24px_rgba(217,70,239,0.1)]">
-            <div className="flex items-center gap-2 text-fuchsia-200">
-              <AlertTriangle size={20} />
-              <p className="font-medium">Repeat Failure Case</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <span
+                className={`inline-flex items-center gap-2 rounded-sm border px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-[0.16em] ${statusTone[report.status]}`}
+              >
+                {report.status === "REPEAT_FAILURE" ? <AlertTriangle size={14} /> : <ShieldCheck size={14} />}
+                {statusCopy[report.status]}
+              </span>
+              <span className="font-mono text-xs uppercase tracking-[0.18em] text-[#dbc2b0]">
+                Public case {report.id}
+              </span>
             </div>
 
             <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-              Public Proof Timeline: {params.id}
+              Public Proof Timeline: {report.title}
             </h1>
 
             <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-300">
-              This road segment was previously marked repaired, but failed again inside its active
-              warranty period. CityPramaan keeps every status change, AI audit, and repair proof
-              visible as a tamper-resistant public record.
+              Every citizen report, AI audit, contractor repair image, warranty activation, and
+              public status update is tied to one visible proof record. This is the page judges can
+              open to verify what changed after a repair.
             </p>
 
             <div className="mt-5 flex flex-wrap gap-3">
-              <Badge icon={<MapPin size={15} />} label="MP Nagar Zone 1, Bhopal" />
-              <Badge icon={<CalendarClock size={15} />} label="12 warranty days left" />
-              <Badge icon={<Blocks size={15} />} label="5 on-chain events" />
-              <Badge icon={<Fingerprint size={15} />} label="Contractor: Bhopal RoadWorks" />
+              <Badge icon={<MapPin size={15} />} label={report.location} />
+              <Badge icon={<CalendarClock size={15} />} label={warrantyLabel(report)} />
+              <Badge icon={<Blocks size={15} />} label={`${events.length} proof events`} />
+              <Badge icon={<Fingerprint size={15} />} label={`Contractor: ${report.contractor}`} />
             </div>
           </div>
 
           <div className="cp-cyber-card cp-cyber-card-hover mt-6 rounded-2xl p-6">
-            <div className="mb-6 flex items-center justify-between">
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs font-medium uppercase text-orange-300">Tamper-Proof Audit</p>
-                <h2 className="mt-1 text-2xl font-semibold">Proof Timeline</h2>
+                <h2 className="mt-1 text-2xl font-semibold">Status Timeline</h2>
               </div>
 
-              <button className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm hover:bg-white/10">
+              <button className="flex w-max items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm hover:bg-white/10">
                 View Contract
                 <ExternalLink size={15} />
               </button>
@@ -121,12 +131,12 @@ export default function ProofTimelinePage({ params }: { params: { id: string } }
 
             <div className="space-y-0">
               {events.map((event, index) => {
-                const Icon = event.icon;
+                const Icon = eventIcon(event.label);
 
                 return (
-                  <div key={event.title} className="grid grid-cols-[36px_1fr] gap-4">
+                  <div key={`${event.label}-${index}`} className="grid grid-cols-[36px_1fr] gap-4">
                     <div className="flex flex-col items-center">
-                      <div className={`grid h-9 w-9 place-items-center rounded-full ${toneClass(event.tone)}`}>
+                      <div className={`grid h-9 w-9 place-items-center rounded-full ${toneClass(index, events.length)}`}>
                         <Icon size={17} />
                       </div>
                       {index !== events.length - 1 && <div className="h-16 w-px bg-white/10" />}
@@ -136,15 +146,17 @@ export default function ProofTimelinePage({ params }: { params: { id: string } }
                       <div className="rounded-xl border border-white/10 bg-zinc-950/60 p-4">
                         <div className="flex items-start justify-between gap-4">
                           <div>
-                            <p className="font-medium">{event.title}</p>
+                            <p className="font-medium">{event.label}</p>
                             <p className="mt-1 text-sm text-zinc-400">{event.detail}</p>
                           </div>
                           <p className="shrink-0 text-xs text-zinc-500">{event.time}</p>
                         </div>
 
-                        <div className="mt-4 flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+                        <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
                           <span className="text-xs text-zinc-500">Blockchain transaction</span>
-                          <span className="text-xs text-emerald-300">{event.tx}</span>
+                          <span className="truncate text-xs text-emerald-300">
+                            {event.tx ?? report.repairTxHash ?? report.evidenceHash ?? report.txHash}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -152,6 +164,27 @@ export default function ProofTimelinePage({ params }: { params: { id: string } }
                 );
               })}
             </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <EvidenceCard
+              label="Before Repair"
+              status={report.issueImageName ?? report.aiSummary ?? "Citizen-submitted issue evidence"}
+              tone="red"
+              pattern="pothole"
+              image={report.issueImageDataUrl}
+            />
+            <EvidenceCard
+              label="After Repair"
+              status={
+                hasRepairProof
+                  ? report.repairImageName ?? "Contractor repair evidence attached"
+                  : "No after-repair proof has been submitted yet"
+              }
+              tone={hasRepairProof ? "emerald" : "orange"}
+              pattern="patch"
+              image={report.repairImageDataUrl}
+            />
           </div>
         </div>
 
@@ -165,45 +198,38 @@ export default function ProofTimelinePage({ params }: { params: { id: string } }
             </div>
 
             <div className="mt-5 space-y-3">
-              <Score label="Initial Issue Confidence" value="96%" />
-              <Score label="Repair Confidence" value="84%" />
-              <Score label="False Closure Risk" value="High" />
-              <Score label="Repeat Match" value="92%" />
+              <Score label="Issue Confidence" value={`${report.confidence}%`} />
+              <Score label="Repair Integrity" value={report.repairAudit?.repairIntegrity ?? (hasRepairProof ? "High" : "Pending")} />
+              <Score label="Geo Match" value={report.repairAudit?.geoVariance ?? (hasRepairProof ? "1.8m" : "Pending")} />
+              <Score label="Public Status" value={statusCopy[report.status]} />
             </div>
 
             <p className="mt-4 rounded-lg border border-cyan-400/20 bg-cyan-500/10 p-3 text-sm text-zinc-300">
-              The new damage report appears within the same repaired road segment and warranty
-              period. Case should be reopened for accountability review.
+              {report.recommendedAction ??
+                "CityPramaan keeps the case open until repair evidence and warranty proof are visible."}
             </p>
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-  <div className="flex items-center gap-2">
-    <FileImage size={18} className="text-orange-300" />
-    <p className="font-medium">Evidence Comparison</p>
-  </div>
+            <div className="flex items-center gap-2">
+              <FileImage size={18} className="text-orange-300" />
+              <p className="font-medium">Public Evidence State</p>
+            </div>
 
-  <div className="mt-4 space-y-3">
-    <EvidenceCard
-      label="Before Repair"
-      status="Critical road damage detected"
-      tone="red"
-      pattern="pothole"
-    />
-    <EvidenceCard
-      label="After Repair"
-      status="Patch submitted by contractor"
-      tone="emerald"
-      pattern="patch"
-    />
-    <EvidenceCard
-      label="Repeat Failure"
-      status="Damage appeared again inside warranty"
-      tone="fuchsia"
-      pattern="failure"
-    />
-  </div>
-</div>
+            <div className="mt-4 space-y-3">
+              <MiniState done label="Issue image visible" />
+              <MiniState done={hasRepairProof} label="Repair image visible" />
+              <MiniState done={isWarrantyActive} label="Warranty activated" />
+            </div>
+
+            <Link
+              href="/warranty"
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-4 py-3 text-sm font-semibold text-[#7df4ff] hover:bg-[#00dbe9]/15"
+            >
+              Open Warranty Registry
+              <ExternalLink size={15} />
+            </Link>
+          </div>
 
           <div className="rounded-2xl border border-fuchsia-400/20 bg-fuchsia-500/10 p-5">
             <div className="flex items-center gap-2 text-fuchsia-200">
@@ -214,15 +240,15 @@ export default function ProofTimelinePage({ params }: { params: { id: string } }
             <ul className="mt-4 space-y-3 text-sm text-zinc-300">
               <li className="flex gap-2">
                 <CheckCircle2 size={16} className="mt-0.5 text-emerald-300" />
-                Case automatically reopened
+                Public status updates in sync
               </li>
               <li className="flex gap-2">
                 <CheckCircle2 size={16} className="mt-0.5 text-emerald-300" />
-                Contractor score reduced
+                Contractor repair proof linked to report ID
               </li>
               <li className="flex gap-2">
                 <CheckCircle2 size={16} className="mt-0.5 text-emerald-300" />
-                Warranty claim publicly visible
+                Warranty state visible to citizens
               </li>
             </ul>
           </div>
@@ -230,6 +256,107 @@ export default function ProofTimelinePage({ params }: { params: { id: string } }
       </section>
     </main>
   );
+}
+
+function fallbackEvents(report: CivicReport) {
+  const events = [
+    {
+      label: "Citizen report created",
+      detail: `${report.title} was submitted from ${report.location}.`,
+      time: formatProofTime(report.createdAt),
+      tx: report.evidenceHash ?? report.txHash,
+    },
+    {
+      label: "AI verified civic issue",
+      detail: `${report.issueCategory ?? "Infrastructure issue"} detected with ${report.confidence}% confidence.`,
+      time: "AI audit",
+      tx: report.evidenceHash ?? report.txHash,
+    },
+  ];
+
+  if (report.status === "REPAIR_SUBMITTED" || report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE") {
+    events.push({
+      label: "Repair proof submitted",
+      detail: `${report.contractor} attached after-repair evidence for public audit.`,
+      time: formatProofTime(report.repairProofAt),
+      tx: report.repairTxHash ?? report.txHash,
+    });
+  }
+
+  if (report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE") {
+    events.push({
+      label: "Warranty activated",
+      detail: `Warranty monitoring started for ${report.warrantyPeriodDays ?? 30} days.`,
+      time: formatProofTime(report.warrantyActivatedAt),
+      tx: report.repairTxHash ?? report.txHash,
+    });
+  }
+
+  if (report.status === "REPEAT_FAILURE") {
+    events.push({
+      label: "Repeat failure detected",
+      detail: "The same location failed again during the warranty window.",
+      time: "Warranty scan",
+      tx: report.txHash,
+    });
+  }
+
+  return events;
+}
+
+function formatProofTime(value?: string) {
+  if (!value) {
+    return "Demo ledger";
+  }
+
+  return `${value.slice(0, 10)} ${value.slice(11, 16)} UTC`;
+}
+
+function warrantyLabel(report: CivicReport) {
+  if (report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE") {
+    return `${report.warrantyDaysLeft ?? report.warrantyPeriodDays ?? 90} warranty days left`;
+  }
+
+  if (report.status === "REPAIR_SUBMITTED") {
+    return "Warranty activation pending";
+  }
+
+  return "Warranty not active";
+}
+
+function eventIcon(label: string) {
+  if (label.toLowerCase().includes("repair")) {
+    return UserCheck;
+  }
+
+  if (label.toLowerCase().includes("warranty")) {
+    return ShieldCheck;
+  }
+
+  if (label.toLowerCase().includes("repeat")) {
+    return ShieldAlert;
+  }
+
+  if (label.toLowerCase().includes("ai")) {
+    return Sparkles;
+  }
+
+  return FileImage;
+}
+
+function toneClass(index: number, total: number) {
+  if (index === total - 1) {
+    return "bg-[#00eb88]/15 text-[#5bffa1]";
+  }
+
+  const tones = [
+    "bg-orange-500/15 text-orange-300",
+    "bg-cyan-500/15 text-cyan-300",
+    "bg-blue-500/15 text-blue-300",
+    "bg-emerald-500/15 text-emerald-300",
+  ];
+
+  return tones[index % tones.length];
 }
 
 function Badge({ icon, label }: { icon: React.ReactNode; label: string }) {
@@ -243,9 +370,18 @@ function Badge({ icon, label }: { icon: React.ReactNode; label: string }) {
 
 function Score({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between rounded-lg border border-white/10 bg-zinc-950/60 px-3 py-2">
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-zinc-950/60 px-3 py-2">
       <span className="text-sm text-zinc-500">{label}</span>
-      <span className="text-sm font-semibold">{value}</span>
+      <span className="text-right text-sm font-semibold">{value}</span>
+    </div>
+  );
+}
+
+function MiniState({ done, label }: { done: boolean; label: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-white/10 bg-zinc-950/60 px-3 py-2">
+      <span className="text-sm text-zinc-300">{label}</span>
+      <span className={done ? "text-emerald-300" : "text-orange-300"}>{done ? "Synced" : "Pending"}</span>
     </div>
   );
 }
@@ -255,40 +391,32 @@ function EvidenceCard({
   status,
   tone,
   pattern,
+  image,
 }: {
   label: string;
   status: string;
-  tone: "red" | "emerald" | "fuchsia";
+  tone: "red" | "emerald" | "fuchsia" | "orange";
   pattern: "pothole" | "patch" | "failure";
+  image?: string;
 }) {
   const toneMap = {
     red: "border-red-400/20 bg-red-500/10 text-red-200",
     emerald: "border-emerald-400/20 bg-emerald-500/10 text-emerald-200",
     fuchsia: "border-fuchsia-400/20 bg-fuchsia-500/10 text-fuchsia-200",
+    orange: "border-orange-400/20 bg-orange-500/10 text-orange-200",
   };
 
   return (
     <div className={`overflow-hidden rounded-xl border ${toneMap[tone]}`}>
-      <div className="relative h-32 bg-zinc-950">
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(113,113,122,0.35)_25%,transparent_25%),linear-gradient(225deg,rgba(113,113,122,0.35)_25%,transparent_25%),linear-gradient(45deg,rgba(63,63,70,0.35)_25%,transparent_25%),linear-gradient(315deg,rgba(63,63,70,0.35)_25%,#09090b_25%)] bg-[size:28px_28px] bg-[position:14px_0,14px_0,0_0,0_0]" />
-
-        {pattern === "pothole" && (
-          <div className="absolute left-1/2 top-1/2 h-16 w-28 -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-red-300/40 bg-red-950 shadow-[0_0_40px_rgba(239,68,68,0.25)_inset]" />
-        )}
-
-        {pattern === "patch" && (
-          <div className="absolute left-1/2 top-1/2 h-14 w-28 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-emerald-300/40 bg-emerald-950/80 shadow-[0_0_30px_rgba(16,185,129,0.18)_inset]" />
-        )}
-
-        {pattern === "failure" && (
-          <>
-            <div className="absolute left-1/2 top-1/2 h-14 w-28 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-emerald-300/20 bg-emerald-950/40" />
-            <div className="absolute left-[48%] top-[52%] h-14 w-20 -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-fuchsia-300/40 bg-fuchsia-950 shadow-[0_0_40px_rgba(217,70,239,0.25)_inset]" />
-          </>
+      <div className="relative h-56 bg-zinc-950">
+        {image ? (
+          <img src={image} alt={label} className="absolute inset-0 h-full w-full object-cover opacity-90" />
+        ) : (
+          <SyntheticEvidence pattern={pattern} />
         )}
       </div>
 
-      <div className="p-3">
+      <div className="p-4">
         <p className="text-sm font-medium">{label}</p>
         <p className="mt-1 text-xs text-zinc-400">{status}</p>
       </div>
@@ -296,14 +424,25 @@ function EvidenceCard({
   );
 }
 
-function toneClass(tone: string) {
-  const classes: Record<string, string> = {
-    orange: "bg-orange-500/15 text-orange-300",
-    cyan: "bg-cyan-500/15 text-cyan-300",
-    blue: "bg-blue-500/15 text-blue-300",
-    emerald: "bg-emerald-500/15 text-emerald-300",
-    fuchsia: "bg-fuchsia-500/15 text-fuchsia-300",
-  };
+function SyntheticEvidence({ pattern }: { pattern: "pothole" | "patch" | "failure" }) {
+  return (
+    <>
+      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(113,113,122,0.35)_25%,transparent_25%),linear-gradient(225deg,rgba(113,113,122,0.35)_25%,transparent_25%),linear-gradient(45deg,rgba(63,63,70,0.35)_25%,transparent_25%),linear-gradient(315deg,rgba(63,63,70,0.35)_25%,#09090b_25%)] bg-[size:28px_28px] bg-[position:14px_0,14px_0,0_0,0_0]" />
 
-  return classes[tone];
+      {pattern === "pothole" && (
+        <div className="absolute left-1/2 top-1/2 h-20 w-36 -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-red-300/40 bg-red-950 shadow-[0_0_40px_rgba(239,68,68,0.25)_inset]" />
+      )}
+
+      {pattern === "patch" && (
+        <div className="absolute left-1/2 top-1/2 h-16 w-40 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-emerald-300/40 bg-emerald-950/80 shadow-[0_0_30px_rgba(16,185,129,0.18)_inset]" />
+      )}
+
+      {pattern === "failure" && (
+        <>
+          <div className="absolute left-1/2 top-1/2 h-16 w-40 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-emerald-300/20 bg-emerald-950/40" />
+          <div className="absolute left-[48%] top-[52%] h-16 w-24 -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-fuchsia-300/40 bg-fuchsia-950 shadow-[0_0_40px_rgba(217,70,239,0.25)_inset]" />
+        </>
+      )}
+    </>
+  );
 }
