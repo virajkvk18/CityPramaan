@@ -33,6 +33,7 @@ import {
   X,
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
+import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import {
   demoCities,
@@ -45,6 +46,9 @@ import {
   analyzeInfrastructureIssue,
   type InfrastructureAnalysis,
 } from "@/src/lib/infrastructure-analyzer";
+import { getLanguageSnapshot, subscribeLanguage } from "@/src/lib/language-storage";
+import { translate } from "@/src/lib/language-context";
+import { buildGoogleMapsUrl } from "@/src/lib/mock-data";
 import {
   createLocalReportId,
   readFileAsDataUrl,
@@ -87,10 +91,20 @@ const issuePresets = [
 
 export default function ReportIssuePage() {
   const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => "bhopal");
+  const languageSnapshot = useSyncExternalStore(
+    subscribeLanguage,
+    getLanguageSnapshot,
+    () => "en"
+  );
   const selectedCity = getCityByKey(citySnapshot);
+  const tr = (key: Parameters<typeof translate>[1]) => translate(languageSnapshot, key);
   const [imageName, setImageName] = useState("");
   const [imageDataUrl, setImageDataUrl] = useState("");
   const [location, setLocation] = useState(() => formatCityLocation(getCityByKey(getCitySnapshot())));
+  const [latitude, setLatitude] = useState(selectedCity.lat);
+  const [longitude, setLongitude] = useState(selectedCity.lng);
+  const [mapsLink, setMapsLink] = useState("");
+  const [locationMessage, setLocationMessage] = useState("Default city coordinate selected.");
   const [description, setDescription] = useState(
     "Large pothole appeared again near the same repaired road segment."
   );
@@ -99,6 +113,8 @@ export default function ReportIssuePage() {
   const [signing, setSigning] = useState(false);
   const [aiProcessing, setAiProcessing] = useState(false);
   const [aiResult, setAiResult] = useState<InfrastructureAnalysis | null>(null);
+  const googleMapsUrl = buildGoogleMapsUrl(latitude, longitude);
+  const googleMapsEmbedUrl = `https://maps.google.com/maps?q=${latitude},${longitude}&z=16&output=embed`;
 
   function runAiVerification() {
     setVerified(false);
@@ -131,6 +147,63 @@ export default function ReportIssuePage() {
     setSubmitted(false);
   }
 
+  function pinManualLocation(nextLatitude = latitude, nextLongitude = longitude) {
+    const pinnedLocation = `${selectedCity.primaryArea}, ${selectedCity.name} (${nextLatitude.toFixed(
+      5
+    )}, ${nextLongitude.toFixed(5)})`;
+
+    setLatitude(nextLatitude);
+    setLongitude(nextLongitude);
+    setLocation(pinnedLocation);
+    setLocationMessage("Google Maps pin updated from manual coordinates.");
+    setSubmitted(false);
+  }
+
+  function useCurrentGps() {
+    if (!navigator.geolocation) {
+      setLocationMessage("GPS is not available in this browser. Enter coordinates manually.");
+      return;
+    }
+
+    setLocationMessage("Requesting GPS permission...");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const nextLatitude = Number(position.coords.latitude.toFixed(6));
+        const nextLongitude = Number(position.coords.longitude.toFixed(6));
+
+        setLatitude(nextLatitude);
+        setLongitude(nextLongitude);
+        setLocation(`GPS pinned location (${nextLatitude.toFixed(5)}, ${nextLongitude.toFixed(5)})`);
+        setLocationMessage("Live GPS location pinned and ready for proof.");
+        setSubmitted(false);
+      },
+      () => {
+        setLocationMessage("GPS permission was blocked. Use manual coordinates or Google Maps link.");
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  }
+
+  function applyGoogleMapsLink() {
+    const decodedLink = decodeURIComponent(mapsLink);
+    const coordinateMatch =
+      decodedLink.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/) ??
+      decodedLink.match(/[?&](?:q|query)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/) ??
+      decodedLink.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+
+    if (!coordinateMatch) {
+      setLocationMessage("Could not read coordinates from that Google Maps link. Try GPS or manual coordinates.");
+      return;
+    }
+
+    const nextLatitude = Number(coordinateMatch[1]);
+    const nextLongitude = Number(coordinateMatch[2]);
+
+    pinManualLocation(nextLatitude, nextLongitude);
+    setLocation(`Google Maps pinned location (${nextLatitude.toFixed(5)}, ${nextLongitude.toFixed(5)})`);
+    setLocationMessage("Google Maps link parsed and pinned to this report.");
+  }
+
   function createProof() {
     const result =
       aiResult ??
@@ -156,6 +229,9 @@ export default function ReportIssuePage() {
       txHash: "0x7bd9...42fa",
       warrantyDaysLeft: null,
       location,
+      latitude,
+      longitude,
+      mapUrl: googleMapsUrl,
       issueCategory: result.category,
       assetType: result.assetType,
       aiSummary: result.publicSummary,
@@ -193,6 +269,10 @@ export default function ReportIssuePage() {
 
     setSelectedCityKey(city.key);
     setLocation(formatCityLocation(city));
+    setLatitude(city.lat);
+    setLongitude(city.lng);
+    setMapsLink("");
+    setLocationMessage(`${city.name} default Google Maps pin selected.`);
     setImageName("");
     setImageDataUrl("");
     setDescription(`Large pothole appeared again near the repaired road segment at ${city.primaryArea}.`);
@@ -233,6 +313,7 @@ export default function ReportIssuePage() {
           <button className="grid h-9 w-9 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0]/70 transition hover:text-[#00eb88]">
             <Settings size={16} />
           </button>
+          <LanguageSelector compact />
           <ThemeToggle />
           <button className="rounded border border-[#ffc08d]/50 bg-[#ffc08d]/10 px-4 py-2 font-mono text-xs text-[#ffc08d] transition hover:bg-[#ffc08d]/20">
             Connect Wallet
@@ -276,7 +357,7 @@ export default function ReportIssuePage() {
           <header className="mb-7 flex items-end justify-between border-b border-white/5 pb-4">
             <div>
               <p className="font-mono text-xs uppercase text-[#00dbe9]">Initiate verifiable infrastructure log</p>
-              <h1 className="mt-2 text-4xl font-semibold text-white sm:text-5xl">Citizen Report</h1>
+              <h1 className="mt-2 text-4xl font-semibold text-white sm:text-5xl">{tr("reportIssue")}</h1>
               <p className="mt-2 text-sm text-[#dbc2b0]">
                 Filing node: {selectedCity.name}, {selectedCity.state}. You can also type any exact
                 landmark or GPS-backed address below.
@@ -383,22 +464,114 @@ export default function ReportIssuePage() {
                   </div>
 
                   <div>
-                    <label className="mb-2 block font-mono text-xs uppercase text-[#00dbe9]">
-                      Geospatial Anchor
-                    </label>
-                    <div className="flex flex-col gap-3 sm:flex-row">
-                      <div className="input-recessed flex flex-1 items-center rounded px-4 py-3">
-                        <MapPin size={17} className="mr-2 text-[#ffc08d]" />
-                    <input
-                      value={location}
-                      onChange={(event) => setLocation(event.target.value)}
-                      className="w-full bg-transparent font-mono text-sm text-white outline-none"
-                    />
+                    <div className="mb-3 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+                      <div>
+                        <label className="block font-mono text-xs uppercase text-[#00dbe9]">
+                          {tr("mapLocation")}
+                        </label>
+                        <p className="mt-1 text-xs text-[#dbc2b0]/70">{tr("mapLocationSubtitle")}</p>
                       </div>
-                      <button className="radar-pulse flex items-center justify-center gap-2 rounded border border-[#00eb88] bg-[#00eb88]/5 px-4 py-3 font-mono text-xs text-[#00eb88] transition hover:bg-[#00eb88]/10">
-                        <LocateFixed size={16} />
-                        GPS Proof
-                      </button>
+                      <a
+                        href={googleMapsUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center gap-2 rounded border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-3 py-2 font-mono text-xs text-[#00dbe9] transition hover:bg-[#00dbe9]/15"
+                      >
+                        <MapPin size={14} />
+                        {tr("openGoogleMaps")}
+                      </a>
+                    </div>
+
+                    <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+                      <div className="overflow-hidden rounded-lg border border-[#00dbe9]/20 bg-black/35">
+                        <iframe
+                          title="Selected Google Maps location"
+                          src={googleMapsEmbedUrl}
+                          className="h-72 w-full grayscale-[0.15]"
+                          loading="lazy"
+                          referrerPolicy="no-referrer-when-downgrade"
+                        />
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="input-recessed flex items-center rounded px-4 py-3">
+                          <MapPin size={17} className="mr-2 text-[#ffc08d]" />
+                          <input
+                            value={location}
+                            onChange={(event) => {
+                              setLocation(event.target.value);
+                              setSubmitted(false);
+                            }}
+                            className="w-full bg-transparent font-mono text-sm text-white outline-none"
+                            aria-label={tr("selectedAddress")}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <label className="rounded border border-white/10 bg-black/25 p-2">
+                            <span className="block font-mono text-[10px] uppercase text-[#dbc2b0]/60">Lat</span>
+                            <input
+                              type="number"
+                              step="0.000001"
+                              value={latitude}
+                              onChange={(event) => setLatitude(Number(event.target.value))}
+                              onBlur={() => pinManualLocation()}
+                              className="mt-1 w-full bg-transparent font-mono text-sm text-white outline-none"
+                            />
+                          </label>
+                          <label className="rounded border border-white/10 bg-black/25 p-2">
+                            <span className="block font-mono text-[10px] uppercase text-[#dbc2b0]/60">Lng</span>
+                            <input
+                              type="number"
+                              step="0.000001"
+                              value={longitude}
+                              onChange={(event) => setLongitude(Number(event.target.value))}
+                              onBlur={() => pinManualLocation()}
+                              className="mt-1 w-full bg-transparent font-mono text-sm text-white outline-none"
+                            />
+                          </label>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={useCurrentGps}
+                          className="radar-pulse flex w-full items-center justify-center gap-2 rounded border border-[#00eb88] bg-[#00eb88]/5 px-4 py-3 font-mono text-xs text-[#00eb88] transition hover:bg-[#00eb88]/10"
+                        >
+                          <LocateFixed size={16} />
+                          {tr("useCurrentGps")}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => pinManualLocation()}
+                          className="flex w-full items-center justify-center gap-2 rounded border border-[#ffc08d]/35 bg-[#ffc08d]/10 px-4 py-3 font-mono text-xs text-[#ffc08d] transition hover:bg-[#ffc08d]/15"
+                        >
+                          {tr("manualCoordinates")}
+                        </button>
+
+                        <div className="rounded border border-white/10 bg-black/25 p-3">
+                          <label className="mb-2 block font-mono text-[10px] uppercase text-[#dbc2b0]/60">
+                            Paste Google Maps link
+                          </label>
+                          <input
+                            value={mapsLink}
+                            onChange={(event) => setMapsLink(event.target.value)}
+                            placeholder="https://www.google.com/maps/..."
+                            className="w-full rounded border border-white/10 bg-black/40 px-3 py-2 text-xs text-white outline-none focus:border-[#00dbe9]/60"
+                          />
+                          <button
+                            type="button"
+                            onClick={applyGoogleMapsLink}
+                            className="mt-2 w-full rounded border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-3 py-2 font-mono text-xs text-[#00dbe9] transition hover:bg-[#00dbe9]/15"
+                          >
+                            Pin From Google Maps Link
+                          </button>
+                        </div>
+
+                        <p className="rounded border border-white/10 bg-black/25 p-3 text-xs leading-5 text-[#dbc2b0]/75">
+                          {locationMessage}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
@@ -489,7 +662,7 @@ export default function ReportIssuePage() {
                       className="mt-4 flex w-full items-center justify-center gap-2 rounded bg-[#00dbe9] px-4 py-3 text-sm font-semibold text-[#00363a] transition hover:bg-[#7df4ff] disabled:cursor-wait disabled:opacity-70"
                     >
                       <Sparkles size={16} />
-                      Analyze Infrastructure Issue
+                      {tr("analyzeIssue")}
                     </button>
                   </div>
                 )}
@@ -543,7 +716,7 @@ export default function ReportIssuePage() {
                   className="royal-blue-glow flex w-full items-center justify-center gap-2 rounded border border-[#2A2D35] bg-[#1A1C23] px-4 py-4 font-mono text-xs font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ShieldCheck size={16} />
-                  {submitted ? "Proof Created" : "Create Blockchain Proof"}
+                  {submitted ? "Proof Created" : tr("createProof")}
                 </button>
                 {!verified && (
                   <p className="mt-3 text-center text-xs text-[#dbc2b0]/60">

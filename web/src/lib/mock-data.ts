@@ -19,6 +19,9 @@ export type CivicReport = {
   txHash: string;
   warrantyDaysLeft: number | null;
   location: string;
+  latitude?: number;
+  longitude?: number;
+  mapUrl?: string;
   issueCategory?: string;
   assetType?: string;
   aiSummary?: string;
@@ -68,6 +71,9 @@ export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY):
       txHash: "0x82f4...91ac",
       warrantyDaysLeft: null,
       location: formatCityLocation(city, city.secondaryArea),
+      latitude: city.lat + 0.006,
+      longitude: city.lng + 0.004,
+      mapUrl: buildGoogleMapsUrl(city.lat + 0.006, city.lng + 0.004),
       issueCategory: "ROAD_DAMAGE",
       assetType: "City Road",
       aiSummary: "Road damage requires contractor inspection and repair proof.",
@@ -87,6 +93,9 @@ export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY):
       txHash: "0xa91b...22fd",
       warrantyDaysLeft: null,
       location: formatCityLocation(city, city.secondaryArea),
+      latitude: city.lat + 0.004,
+      longitude: city.lng + 0.003,
+      mapUrl: buildGoogleMapsUrl(city.lat + 0.004, city.lng + 0.003),
       issueCategory: "ROAD_DAMAGE",
       assetType: "City Road",
       aiSummary: "Contractor has submitted repair evidence. Warranty activation is pending.",
@@ -107,6 +116,9 @@ export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY):
       txHash: "0x44ce...73ab",
       warrantyDaysLeft: 24,
       location: formatCityLocation(city),
+      latitude: city.lat,
+      longitude: city.lng,
+      mapUrl: buildGoogleMapsUrl(city.lat, city.lng),
       issueCategory: "ROAD_DAMAGE",
       assetType: "City Road",
       aiSummary: "Repair has passed audit and is under active warranty monitoring.",
@@ -131,6 +143,9 @@ export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY):
       txHash: "0xf12d...8bb0",
       warrantyDaysLeft: 12,
       location: formatCityLocation(city),
+      latitude: city.lat,
+      longitude: city.lng,
+      mapUrl: buildGoogleMapsUrl(city.lat, city.lng),
       issueCategory: "ROAD_DAMAGE",
       assetType: "City Road",
       aiSummary: "Repeat failure is detected inside the active warranty window.",
@@ -147,3 +162,7 @@ export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY):
 }
 
 export const reports: CivicReport[] = getReportsForCity();
+
+export function buildGoogleMapsUrl(latitude: number, longitude: number) {
+  return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+}

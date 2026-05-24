@@ -11,8 +11,10 @@ import {
   Bell,
   BookOpen,
   CalendarClock,
+  ExternalLink,
   FileImage,
   LayoutDashboard,
+  MapPin,
   Radar,
   Router,
   Settings,
@@ -21,20 +23,29 @@ import {
   Sparkles,
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
+import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { demoCities, getCityByKey, type CityKey } from "@/src/lib/city-context";
 import { getCitySnapshot, setSelectedCityKey, subscribeCity } from "@/src/lib/city-storage";
 import { getReportsForCity, type CivicReport } from "@/src/lib/mock-data";
 import { getLocalReportsSnapshot, subscribeLocalReports } from "@/src/lib/report-storage";
+import { translate } from "@/src/lib/language-context";
+import { getLanguageSnapshot, subscribeLanguage } from "@/src/lib/language-storage";
 
 export default function WarrantyScannerPage() {
   const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => "bhopal");
+  const languageSnapshot = useSyncExternalStore(
+    subscribeLanguage,
+    getLanguageSnapshot,
+    () => "en"
+  );
   const localReportsSnapshot = useSyncExternalStore(
     subscribeLocalReports,
     getLocalReportsSnapshot,
     () => "[]"
   );
   const selectedCity = getCityByKey(citySnapshot);
+  const tr = (key: Parameters<typeof translate>[1]) => translate(languageSnapshot, key);
   const localReports = useMemo(
     () => JSON.parse(localReportsSnapshot) as CivicReport[],
     [localReportsSnapshot]
@@ -81,6 +92,7 @@ export default function WarrantyScannerPage() {
           <button className="grid h-9 w-9 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0]/70 transition hover:text-[#00eb88]">
             <Settings size={16} />
           </button>
+          <LanguageSelector compact />
           <ThemeToggle />
         </div>
       </header>
@@ -119,36 +131,42 @@ export default function WarrantyScannerPage() {
                 <ArrowLeft size={16} />
                 Back to Command Center
               </Link>
-              <p className="font-mono text-xs uppercase text-[#00dbe9]">Synced warranty registry</p>
+              <p className="font-mono text-xs uppercase text-[#00dbe9]">{tr("publicRegistry")}</p>
               <h1 className="mt-2 text-4xl font-semibold text-white sm:text-5xl">
-                Warranty Scanner <span className="text-[#dbc2b0]/35">|</span> Public Proof
+                {tr("warrantyScanner")} <span className="text-[#dbc2b0]/35">|</span> {tr("publicProof")}
               </h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[#dbc2b0]">
-                Every contractor proof that activates a warranty appears here. Unrepaired reports
-                stay visible as not active, so judges can see the full lifecycle.
+                {tr("publicRegistrySubtitle")}
               </p>
             </div>
-            <select
-              value={selectedCity.key}
-              onChange={(event) => {
-                setSelectedCityKey(event.target.value as CityKey);
-                setSelectedReportId("");
-              }}
-              className="input-recessed rounded px-4 py-3 font-mono text-sm text-white"
-            >
-              {demoCities.map((city) => (
-                <option key={city.key} value={city.key} className="bg-[#050505] text-white">
-                  {city.name}
-                </option>
-              ))}
-            </select>
+            <div className="flex flex-wrap gap-3">
+              <LanguageSelector />
+              <label className="flex items-center gap-2 rounded border border-[#ffc08d]/25 bg-[#ffc08d]/10 px-3 py-2 text-[#ffc08d]">
+                <MapPin size={15} />
+                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]">{tr("city")}</span>
+                <select
+                  value={selectedCity.key}
+                  onChange={(event) => {
+                    setSelectedCityKey(event.target.value as CityKey);
+                    setSelectedReportId("");
+                  }}
+                  className="bg-transparent font-mono text-xs font-bold text-[#ffc08d] outline-none"
+                >
+                  {demoCities.map((city) => (
+                    <option key={city.key} value={city.key} className="bg-[#050505] text-white">
+                      {city.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
             <div className="flex flex-col gap-6 lg:col-span-4">
               <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
                 <div className="mb-5 flex items-center justify-between">
-                  <h3 className="font-mono text-xs uppercase text-[#ffc08d]">Warranty Registry</h3>
+                  <h3 className="font-mono text-xs uppercase text-[#ffc08d]">{tr("publicIssueHistory")}</h3>
                   <span className="rounded border border-[#00dbe9]/25 bg-[#00dbe9]/10 px-2 py-1 font-mono text-[10px] text-[#00dbe9]">
                     {warrantyReports.length} cases
                   </span>
@@ -197,7 +215,7 @@ export default function WarrantyScannerPage() {
                     <div className="mb-5 flex flex-col justify-between gap-3 border-b border-white/5 pb-4 sm:flex-row sm:items-start">
                       <div>
                         <p className="font-mono text-xs uppercase text-[#ffc08d]">
-                          Selected warranty case | {selectedReport.id}
+                          {tr("selectedCase")} | {selectedReport.id}
                         </p>
                         <h2 className="mt-2 text-2xl font-semibold text-white">{selectedReport.title}</h2>
                         <p className="mt-2 text-sm text-[#dbc2b0]">{selectedReport.location}</p>
@@ -213,10 +231,10 @@ export default function WarrantyScannerPage() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                      <Info label="Status" value={statusLabel(selectedReport)} />
-                      <Info label="Warranty" value={warrantyLabel(selectedReport)} />
-                      <Info label="Contractor" value={selectedReport.contractor} />
-                      <Info label="Public Hash" value={selectedReport.evidenceHash ?? selectedReport.txHash} />
+                      <Info label={tr("status")} value={statusLabel(selectedReport)} />
+                      <Info label={tr("warranty")} value={warrantyLabel(selectedReport)} />
+                      <Info label={tr("contractor")} value={selectedReport.contractor} />
+                      <Info label={tr("publicHash")} value={selectedReport.evidenceHash ?? selectedReport.txHash} />
                     </div>
 
                     {scanning && (
@@ -230,25 +248,25 @@ export default function WarrantyScannerPage() {
                     <div className="mb-5 flex flex-col justify-between gap-3 border-b border-white/5 pb-4 sm:flex-row sm:items-end">
                       <h3 className="flex items-center gap-2 font-mono text-xs uppercase text-[#ffc08d]">
                         <FileImage size={15} />
-                        Public Evidence Comparison
+                        {tr("publicProof")}
                       </h3>
                       <Link
                         href={`/proof/${selectedReport.id}`}
                         className="rounded border border-[#00dbe9]/30 bg-[#00dbe9]/10 px-4 py-2 text-sm font-semibold text-[#00dbe9]"
                       >
-                        Open Public Proof
+                        {tr("openPublicProof")}
                       </Link>
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <EvidencePanel
-                        label="Citizen Issue Before"
+                        label={tr("issueBefore")}
                         image={selectedReport.issueImageDataUrl}
                         status={selectedReport.issueImageName ?? selectedReport.aiSummary ?? "Reported civic issue"}
                         tone="rose"
                       />
                       <EvidencePanel
-                        label="Contractor Repair After"
+                        label={tr("contractorProofAfter")}
                         image={selectedReport.repairImageDataUrl}
                         status={
                           selectedReport.repairImageName ??
@@ -259,6 +277,14 @@ export default function WarrantyScannerPage() {
                         tone="emerald"
                       />
                     </div>
+                  </section>
+
+                  <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
+                    <h3 className="mb-4 flex items-center gap-2 border-b border-white/5 pb-3 font-mono text-xs uppercase text-[#00dbe9]">
+                      <MapPin size={15} />
+                      {tr("mapLocation")}
+                    </h3>
+                    <GoogleMapPreview report={selectedReport} />
                   </section>
 
                   <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
@@ -447,6 +473,52 @@ function EvidencePanel({
         <div className="absolute inset-0 bg-black/30" />
       </div>
       <p className="mt-2 px-1 text-xs text-[#dbc2b0]/70">{status}</p>
+    </div>
+  );
+}
+
+function GoogleMapPreview({ report }: { report: CivicReport }) {
+  if (!report.latitude || !report.longitude) {
+    return (
+      <div className="rounded border border-white/10 bg-black/30 p-4 text-sm text-[#dbc2b0]">
+        Exact map pin is pending for this older demo record. New citizen reports will store GPS
+        coordinates automatically.
+      </div>
+    );
+  }
+
+  const mapUrl =
+    report.mapUrl ??
+    `https://www.google.com/maps/search/?api=1&query=${report.latitude},${report.longitude}`;
+  const embedUrl = `https://maps.google.com/maps?q=${report.latitude},${report.longitude}&z=16&output=embed`;
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
+      <div className="overflow-hidden rounded-lg border border-[#00dbe9]/20 bg-black/35">
+        <iframe
+          title={`Google Maps location for ${report.id}`}
+          src={embedUrl}
+          className="h-64 w-full grayscale-[0.12]"
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+        />
+      </div>
+      <div className="rounded border border-white/10 bg-black/25 p-4">
+        <p className="font-mono text-xs uppercase text-[#00dbe9]">Exact public location</p>
+        <p className="mt-2 text-sm leading-6 text-[#dbc2b0]">{report.location}</p>
+        <p className="mt-3 font-mono text-xs text-[#ffc08d]">
+          {report.latitude.toFixed(5)}, {report.longitude.toFixed(5)}
+        </p>
+        <a
+          href={mapUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-4 py-3 text-sm font-semibold text-[#00dbe9] transition hover:bg-[#00dbe9]/15"
+        >
+          Open in Google Maps
+          <ExternalLink size={14} />
+        </a>
+      </div>
     </div>
   );
 }

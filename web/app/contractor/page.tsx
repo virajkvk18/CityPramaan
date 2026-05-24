@@ -68,6 +68,9 @@ export default function ContractorPage() {
   const [audited, setAudited] = useState(false);
   const [submittedId, setSubmittedId] = useState("");
   const [auditProcessing, setAuditProcessing] = useState(false);
+  const [actionMessage, setActionMessage] = useState(
+    "Select a report, upload the after-repair image, then submit proof."
+  );
 
   async function handleRepairFile(file?: File) {
     if (!file) {
@@ -78,34 +81,65 @@ export default function ContractorPage() {
     setRepairImageDataUrl(await readFileAsDataUrl(file));
     setAudited(false);
     setSubmittedId("");
+    setActionMessage("Repair evidence attached. You can run the audit or directly submit proof.");
   }
 
   function runRepairAudit() {
     if (!repairImage || !selectedReport) {
+      setActionMessage("Upload after-repair evidence before running the AI audit.");
       return;
     }
 
     setAudited(false);
     setAuditProcessing(true);
+    setActionMessage("AI audit is checking the before/after evidence.");
 
     window.setTimeout(() => {
       setAudited(true);
       setAuditProcessing(false);
+      setActionMessage("AI audit passed. Warranty activation is ready.");
     }, 900);
   }
 
   function submitRepairProof() {
-    if (!selectedReport || !audited) {
+    if (!selectedReport) {
       return;
     }
 
+    if (submittedId === selectedReport.id) {
+      setActionMessage("This repair proof is already submitted and visible in warranty/public proof.");
+      return;
+    }
+
+    if (!repairImage) {
+      setActionMessage("Upload the contractor after-repair image first, then submit proof.");
+      return;
+    }
+
+    if (!audited) {
+      setAudited(false);
+      setAuditProcessing(true);
+      setActionMessage("Running AI audit automatically before activating warranty...");
+
+      window.setTimeout(() => {
+        setAudited(true);
+        setAuditProcessing(false);
+        activateWarranty(selectedReport);
+      }, 900);
+      return;
+    }
+
+    activateWarranty(selectedReport);
+  }
+
+  function activateWarranty(report: CivicReport) {
     const now = new Date();
     const warrantyDays = 90;
     const warrantyExpiresAt = new Date(now.getTime() + warrantyDays * 24 * 60 * 60 * 1000);
-    const tx = `0x93ac...${selectedReport.id.replace("CP-", "")}fd`;
+    const tx = `0x93ac...${report.id.replace("CP-", "")}fd`;
     const updated = appendReportEvent(
       {
-        ...selectedReport,
+        ...report,
         cityKey: selectedCity.key,
         contractor: selectedCity.contractor,
         status: "UNDER_WARRANTY",
@@ -117,7 +151,7 @@ export default function ContractorPage() {
         repairImageName: repairImage || "contractor-after-repair.jpg",
         repairImageDataUrl,
         repairTxHash: tx,
-        txHash: selectedReport.txHash || tx,
+        txHash: report.txHash || tx,
         repairAudit: {
           materialMatch: "95.4%",
           repairIntegrity: "High",
@@ -127,7 +161,7 @@ export default function ContractorPage() {
       },
       {
         label: "Repair proof submitted",
-        detail: `${selectedCity.contractor} uploaded after-repair proof for ${selectedReport.location}.`,
+        detail: `${selectedCity.contractor} uploaded after-repair proof for ${report.location}.`,
         time: now.toLocaleString(),
         tx,
       }
@@ -138,10 +172,11 @@ export default function ContractorPage() {
         label: "Warranty activated",
         detail: `${warrantyDays}-day repair warranty activated and visible to the public.`,
         time: now.toLocaleString(),
-        tx: `0xb928...${selectedReport.id.replace("CP-", "")}ce`,
+        tx: `0xb928...${report.id.replace("CP-", "")}ce`,
       })
     );
-    setSubmittedId(selectedReport.id);
+    setSubmittedId(report.id);
+    setActionMessage("Proof submitted. Warranty is now active and synced to warranty/public proof pages.");
   }
 
   function chooseCity(cityKey: CityKey) {
@@ -150,6 +185,7 @@ export default function ContractorPage() {
     setRepairImageDataUrl("");
     setAudited(false);
     setSubmittedId("");
+    setActionMessage("City changed. Select a synced case and upload after-repair evidence.");
   }
 
   return (
@@ -399,13 +435,17 @@ export default function ContractorPage() {
                       </button>
                       <button
                         onClick={submitRepairProof}
-                        disabled={!audited}
+                        disabled={!selectedReport || auditProcessing}
                         className="btn-primary-shimmer flex flex-1 items-center justify-center gap-2 rounded bg-[#00eb88] px-4 py-3 font-mono text-xs font-semibold text-[#00210e] transition disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        <ShieldCheck size={16} />
-                        Submit Proof & Activate Warranty
+                        <ShieldCheck size={16} className={auditProcessing ? "animate-spin" : ""} />
+                        {auditProcessing ? "Auditing & Activating..." : "Submit Proof & Activate Warranty"}
                       </button>
                     </div>
+
+                    <p className="mt-3 rounded border border-[#ffc08d]/20 bg-[#ffc08d]/10 px-3 py-2 text-xs text-[#ffdcc2]">
+                      {actionMessage}
+                    </p>
                   </div>
 
                   {(auditProcessing || audited || submittedId === selectedReport.id) && (
