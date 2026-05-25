@@ -180,7 +180,6 @@ export default function ProofTimelinePage() {
         ownerVerified: true,
         closedAt: now.toISOString(),
         closureNote: "Issue owner verified the repair and closed the case.",
-        warrantyDaysLeft: 0,
       },
       {
         label: "Issue closed by report issuer",
@@ -193,6 +192,56 @@ export default function ProofTimelinePage() {
 
     upsertLocalReport(updated);
     setActionMessage("Issue closed and synced. It will no longer appear on the command center map.");
+  }
+
+  function raiseUnderWarrantyIssue() {
+    const message = feedbackText.trim();
+    const latestReport = getLatestReport();
+    const canRaise =
+      latestReport.status === "UNDER_WARRANTY" ||
+      latestReport.status === "CLOSED" ||
+      latestReport.status === "REPEAT_FAILURE";
+
+    if (!canRaise || !latestReport.warrantyActivatedAt) {
+      setActionMessage("Warranty must be active before a repeat issue can be raised.");
+      return;
+    }
+
+    const now = new Date();
+    const feedback = message
+      ? {
+          id: `WRN-${now.getTime()}`,
+          author: "Public reviewer",
+          message,
+          createdAt: now.toISOString(),
+        }
+      : undefined;
+    const updated = appendReportEvent(
+      {
+        ...latestReport,
+        status: "REPEAT_FAILURE",
+        ownerVerified: false,
+        closureNote: undefined,
+        recommendedAction:
+          "Public repeat issue raised under warranty. Contractor must re-inspect and submit fresh repair proof.",
+        warrantyDaysLeft: latestReport.warrantyDaysLeft ?? latestReport.warrantyPeriodDays ?? 90,
+        publicFeedback: feedback
+          ? [...(latestReport.publicFeedback ?? []), feedback]
+          : latestReport.publicFeedback,
+      },
+      {
+        label: "Under-warranty repeat issue raised",
+        detail:
+          message ||
+          "Public reviewer reported the same issue at the same location during the warranty period.",
+        time: now.toLocaleString(),
+        tx: `0xwrn...${latestReport.id.replace("CP-", "")}`,
+      }
+    );
+
+    upsertLocalReport(updated);
+    setFeedbackText("");
+    setActionMessage("Under-warranty issue raised. It is back on the command center map as a repeat failure.");
   }
 
   return (
@@ -391,6 +440,16 @@ export default function ProofTimelinePage() {
                   className="rounded-lg border border-[#ffc08d]/45 bg-[#ffc08d]/12 px-4 py-3 text-sm font-semibold text-[#ffdcc2] transition hover:bg-[#ffc08d]/18"
                 >
                   Approve Repair & Activate Warranty
+                </button>
+              )}
+              {(report.status === "UNDER_WARRANTY" ||
+                report.status === "CLOSED" ||
+                report.status === "REPEAT_FAILURE") && (
+                <button
+                  onClick={raiseUnderWarrantyIssue}
+                  className="rounded-lg border border-[#ffb4ab]/40 bg-[#ffb4ab]/10 px-4 py-3 text-sm font-semibold text-[#ffb4ab] transition hover:bg-[#ffb4ab]/15"
+                >
+                  Raise Same Issue Under Warranty
                 </button>
               )}
               <button

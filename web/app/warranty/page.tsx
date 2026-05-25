@@ -106,6 +106,7 @@ export default function WarrantyScannerPage() {
           <NavItem href="/" icon={<LayoutDashboard size={18} />} label={tr("commandCenter")} />
           <NavItem href="/proof/CP-004" icon={<BadgeCheck size={18} />} label={tr("verifiedRepairs")} />
           <NavItem href="/report" icon={<AlertTriangle size={18} />} label={tr("activeReports")} />
+          <NavItem href="/pending" icon={<FileImage size={18} />} label={tr("pendingProof")} />
           <NavItem href="/warranty" icon={<ShieldAlert size={18} />} label={tr("warrantyScanner")} active />
           <NavItem href="/contractor" icon={<ShieldCheck size={18} />} label={tr("contractorAudit")} />
         </nav>

@@ -228,7 +228,7 @@ export default function ContractorPage() {
           <NavItem href="/" icon={<LayoutDashboard size={18} />} label={t("commandCenter")} />
           <NavItem href="/contractor" icon={<BadgeCheck size={18} />} label={t("verifiedRepairs")} active />
           <NavItem href="/report" icon={<Camera size={18} />} label={t("activeReports")} />
-          <NavItem href="/proof/CP-004" icon={<ShieldCheck size={18} />} label={t("urbanLedger")} />
+          <NavItem href="/pending" icon={<ShieldCheck size={18} />} label={t("pendingProof")} />
           <NavItem href="/warranty" icon={<BarChart3 size={18} />} label={t("warrantyScanner")} />
         </nav>
 

@@ -335,7 +335,7 @@ export default function ReportIssuePage() {
             active
           />
           <NavItem href="/warranty" icon={<ShieldCheck size={18} />} label={tr("urbanLedger")} />
-          <NavItem href="/warranty" icon={<FileImage size={18} />} label={tr("pendingProof")} />
+          <NavItem href="/pending" icon={<FileImage size={18} />} label={tr("pendingProof")} />
         </nav>
 
         <Link

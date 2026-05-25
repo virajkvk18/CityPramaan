@@ -52,7 +52,7 @@ const navItems = [
   { labelKey: "verifiedRepairs" as const, icon: BadgeCheck, href: "/proof/CP-004" },
   { labelKey: "activeReports" as const, icon: AlertTriangle, href: "/report" },
   { labelKey: "urbanLedger" as const, icon: Wallet, href: "/warranty" },
-  { labelKey: "pendingProof" as const, icon: ScanSearch, href: "/warranty" },
+  { labelKey: "pendingProof" as const, icon: ScanSearch, href: "/pending" },
 ];
 
 export default function Home() {
@@ -226,6 +226,7 @@ export default function Home() {
               <div className="flex flex-wrap gap-3">
                 <CitySelector value={selectedCity.key} />
                 <CommandLink href="/contractor" label={t("contractorView")} icon={<Building2 size={16} />} tone="cyan" />
+                <CommandLink href="/pending" label={t("pendingProof")} icon={<ScanSearch size={16} />} tone="glass" />
                 <CommandLink href="/warranty" label={t("warrantyScanner")} icon={<ScanSearch size={16} />} tone="gold" />
                 <CommandLink
                   href={`/proof/${selected.id}`}
