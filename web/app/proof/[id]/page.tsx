@@ -23,6 +23,7 @@ import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { ChainProofCard } from "@/src/components/proof/ChainProofCard";
+import { getCityByKey } from "@/src/lib/city-context";
 import { getCitySnapshot, subscribeCity } from "@/src/lib/city-storage";
 import { getReportsForCity, type CivicReport } from "@/src/lib/mock-data";
 import {
@@ -62,6 +63,19 @@ export default function ProofTimelinePage() {
     return [...localReports, ...cityReports.filter((report) => !localIds.has(report.id))];
   }, [cityReports, localReports]);
   const report = allReports.find((item) => item.id === proofId) ?? cityReports[3];
+  const activeCity = getCityByKey(report.cityKey ?? citySnapshot);
+  const cityHistoryReports = useMemo(() => {
+    const baseReports =
+      activeCity.key === citySnapshot ? cityReports : getReportsForCity(activeCity.key);
+    const localForCity = localReports.filter(
+      (item) => !item.cityKey || item.cityKey === activeCity.key
+    );
+    const localIds = new Set(localForCity.map((item) => item.id));
+
+    return [...localForCity, ...baseReports.filter((item) => !localIds.has(item.id))]
+      .filter((item) => !item.cityKey || item.cityKey === activeCity.key)
+      .sort(sortCityHistoryReports);
+  }, [activeCity.key, cityReports, citySnapshot, localReports]);
   const events = report.history?.length ? report.history : fallbackEvents(report);
   const hasRepairProof = Boolean(report.repairImageDataUrl || report.repairImageName);
   const isWarrantyActive = report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE" || report.status === "CLOSED";
@@ -284,8 +298,8 @@ export default function ProofTimelinePage() {
 
             <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-300">
               Every citizen report, AI audit, contractor repair image, warranty activation, and
-              public status update is tied to one visible proof record. This is the page judges can
-              open to verify what changed after a repair.
+              public status update is tied to one visible proof record. This is the page citizens,
+              officials, contractors, and public auditors can open to verify what changed after a repair.
             </p>
 
             <div className="mt-5 flex flex-wrap gap-3">
@@ -413,6 +427,69 @@ export default function ProofTimelinePage() {
               {t("openWarrantyRegistry")}
               <ExternalLink size={15} />
             </Link>
+          </div>
+
+          <div className="rounded-2xl border border-[#00dbe9]/20 bg-[#00dbe9]/5 p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 text-[#7df4ff]">
+                  <CalendarClock size={18} />
+                  <p className="font-medium">City Report History</p>
+                </div>
+                <p className="mt-1 text-xs text-zinc-400">
+                  {activeCity.name} public reports and proof records
+                </p>
+              </div>
+              <span className="rounded-full border border-[#00dbe9]/25 bg-black/30 px-2 py-1 font-mono text-[10px] text-[#7df4ff]">
+                {cityHistoryReports.length} cases
+              </span>
+            </div>
+
+            <div className="mt-4 max-h-[430px] space-y-3 overflow-y-auto pr-1">
+              {cityHistoryReports.map((item) => {
+                const selected = item.id === report.id;
+
+                return (
+                  <Link
+                    key={item.id}
+                    href={`/proof/${item.id}`}
+                    className={`block rounded-xl border p-3 transition ${
+                      selected
+                        ? "border-[#ffc08d]/45 bg-[#ffc08d]/10"
+                        : "border-white/10 bg-zinc-950/45 hover:border-[#00dbe9]/35 hover:bg-[#00dbe9]/10"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#7df4ff]">
+                          {item.id}
+                        </p>
+                        <p className="mt-1 line-clamp-2 text-sm font-semibold text-zinc-100">
+                          {item.title}
+                        </p>
+                      </div>
+                      <span
+                        className={`shrink-0 rounded border px-2 py-1 font-mono text-[9px] uppercase ${statusTone[item.status]}`}
+                      >
+                        {statusCopy(item.status, t)}
+                      </span>
+                    </div>
+                    <p className="mt-2 flex items-center gap-1 text-xs text-zinc-400">
+                      <MapPin size={12} />
+                      <span className="truncate">{item.location}</span>
+                    </p>
+                    <div className="mt-3 flex items-center justify-between gap-3 text-xs text-zinc-500">
+                      <span>{reportHistoryTime(item)}</span>
+                      <span className="text-[#ffc08d]">
+                        {item.repairImageDataUrl || item.repairImageName
+                          ? "Repair proof"
+                          : "Awaiting repair"}
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
 
           <div className="rounded-2xl border border-[#00eb88]/20 bg-[#00eb88]/5 p-5">
@@ -569,9 +646,57 @@ function fallbackEvents(report: CivicReport) {
   return events;
 }
 
+function sortCityHistoryReports(a: CivicReport, b: CivicReport) {
+  const priority = (report: CivicReport) => {
+    if (report.status === "REPAIR_SUBMITTED") {
+      return 0;
+    }
+
+    if (report.status === "OPEN" || report.status === "PENDING_PROOF") {
+      return 1;
+    }
+
+    if (report.status === "REPEAT_FAILURE") {
+      return 2;
+    }
+
+    if (report.status === "UNDER_WARRANTY") {
+      return 3;
+    }
+
+    return 4;
+  };
+  const time = (report: CivicReport) =>
+    Date.parse(
+      report.closedAt ??
+        report.repairProofAt ??
+        report.warrantyActivatedAt ??
+        report.updatedAt ??
+        report.createdAt ??
+        ""
+    ) || 0;
+
+  return priority(a) - priority(b) || time(b) - time(a) || a.id.localeCompare(b.id);
+}
+
+function reportHistoryTime(report: CivicReport) {
+  const value =
+    report.closedAt ??
+    report.repairProofAt ??
+    report.warrantyActivatedAt ??
+    report.updatedAt ??
+    report.createdAt;
+
+  if (!value) {
+    return "Proof record";
+  }
+
+  return new Date(value).toLocaleString();
+}
+
 function formatProofTime(value?: string) {
   if (!value) {
-    return "Demo ledger";
+    return "Proof record";
   }
 
   return `${value.slice(0, 10)} ${value.slice(11, 16)} UTC`;
