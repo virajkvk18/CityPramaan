@@ -109,11 +109,60 @@ export function appendReportEvent(
   };
 }
 
-export function readFileAsDataUrl(file: File) {
+export async function readFileAsDataUrl(file: File) {
+  if (!file.type.startsWith("image/") || file.type === "image/svg+xml") {
+    return readRawFileAsDataUrl(file);
+  }
+
+  try {
+    return await readCompressedImageAsDataUrl(file);
+  } catch {
+    return readRawFileAsDataUrl(file);
+  }
+}
+
+function readRawFileAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result ?? ""));
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
+  });
+}
+
+async function readCompressedImageAsDataUrl(file: File) {
+  const rawDataUrl = await readRawFileAsDataUrl(file);
+
+  if (rawDataUrl.length <= 900_000) {
+    return rawDataUrl;
+  }
+
+  const image = await loadImage(rawDataUrl);
+  const maxSide = 1100;
+  const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+  const width = Math.max(1, Math.round(image.width * scale));
+  const height = Math.max(1, Math.round(image.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    return rawDataUrl;
+  }
+
+  context.drawImage(image, 0, 0, width, height);
+  const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.72);
+
+  return compressedDataUrl.length < rawDataUrl.length ? compressedDataUrl : rawDataUrl;
+}
+
+function loadImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Unable to load image"));
+    image.src = src;
   });
 }

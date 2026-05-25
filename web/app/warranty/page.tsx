@@ -55,9 +55,11 @@ export default function WarrantyScannerPage() {
     const localIds = new Set(localForCity.map((report) => report.id));
     return [...localForCity, ...getReportsForCity(selectedCity.key).filter((report) => !localIds.has(report.id))];
   }, [localReports, selectedCity.key]);
-  const warrantyReports = allReports.filter((report) =>
-    ["UNDER_WARRANTY", "REPEAT_FAILURE", "REPAIR_SUBMITTED", "PENDING_PROOF", "OPEN", "CLOSED"].includes(report.status)
-  );
+  const warrantyReports = allReports
+    .filter((report) =>
+      ["UNDER_WARRANTY", "REPEAT_FAILURE", "REPAIR_SUBMITTED", "PENDING_PROOF", "OPEN", "CLOSED"].includes(report.status)
+    )
+    .sort(sortWarrantyReports);
   const [selectedReportId, setSelectedReportId] = useState(warrantyReports[0]?.id ?? "");
   const [scanning, setScanning] = useState(false);
   const selectedReport =
@@ -473,6 +475,33 @@ function warrantyLabel(report: CivicReport, tr: (key: "notActive" | "pending" | 
   }
 
   return tr("notActive");
+}
+
+function sortWarrantyReports(a: CivicReport, b: CivicReport) {
+  const priority = (report: CivicReport) => {
+    if (report.status === "REPAIR_SUBMITTED" && (report.repairImageDataUrl || report.repairImageName)) {
+      return 0;
+    }
+
+    if (report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE") {
+      return 1;
+    }
+
+    if (report.status === "REPAIR_SUBMITTED") {
+      return 2;
+    }
+
+    if (report.status === "PENDING_PROOF" || report.status === "OPEN") {
+      return 3;
+    }
+
+    return 4;
+  };
+
+  const time = (report: CivicReport) =>
+    Date.parse(report.repairProofAt ?? report.warrantyActivatedAt ?? report.updatedAt ?? report.createdAt ?? "") || 0;
+
+  return priority(a) - priority(b) || time(b) - time(a) || a.id.localeCompare(b.id);
 }
 
 function Info({ label, value }: { label: string; value: string }) {

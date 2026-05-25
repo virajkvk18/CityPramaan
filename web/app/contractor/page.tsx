@@ -69,6 +69,7 @@ export default function ContractorPage() {
   const selectedReport = repairQueue.find((report) => report.id === selectedReportId) ?? repairQueue[0];
   const [repairImage, setRepairImage] = useState("");
   const [repairImageDataUrl, setRepairImageDataUrl] = useState("");
+  const [repairImageLoading, setRepairImageLoading] = useState(false);
   const [audited, setAudited] = useState(false);
   const [submittedId, setSubmittedId] = useState("");
   const [auditProcessing, setAuditProcessing] = useState(false);
@@ -82,15 +83,32 @@ export default function ContractorPage() {
     }
 
     setRepairImage(file.name);
-    setRepairImageDataUrl(await readFileAsDataUrl(file));
+    setRepairImageDataUrl("");
+    setRepairImageLoading(true);
     setAudited(false);
     setSubmittedId("");
-    setActionMessage(`${t("afterRepairProofAttached")}. ${t("runAiRepairAudit")} / submit proof for issuer approval.`);
+    setActionMessage("Preparing repair proof image for public record...");
+
+    try {
+      setRepairImageDataUrl(await readFileAsDataUrl(file));
+      setActionMessage(`${t("afterRepairProofAttached")}. ${t("runAiRepairAudit")} / submit proof for issuer approval.`);
+    } catch {
+      setRepairImage("");
+      setRepairImageDataUrl("");
+      setActionMessage("Could not prepare this image. Please choose another repair proof photo.");
+    } finally {
+      setRepairImageLoading(false);
+    }
   }
 
   function runRepairAudit() {
     if (!repairImage || !selectedReport) {
       setActionMessage(t("uploadAfterRepairEvidence"));
+      return;
+    }
+
+    if (repairImageLoading || !repairImageDataUrl) {
+      setActionMessage("Repair proof image is still being prepared. Please wait a moment.");
       return;
     }
 
@@ -121,6 +139,11 @@ export default function ContractorPage() {
       return;
     }
 
+    if (repairImageLoading || !repairImageDataUrl) {
+      setActionMessage("Repair proof image is still being prepared. Please wait a moment.");
+      return;
+    }
+
     if (!audited) {
       setAudited(false);
       setAuditProcessing(true);
@@ -148,7 +171,7 @@ export default function ContractorPage() {
       closureConfidence: "92.7%",
       visibleDamageRemaining: "Low",
       recommendation:
-        "Mock AI compared the citizen issue photo with contractor repair proof. The damaged surface appears filled, GPS variance is low, and the case is ready for citizen owner verification.",
+        "AI compared the citizen issue photo with contractor repair proof. The damaged surface appears filled, GPS variance is low, and the case is ready for citizen owner verification.",
     };
     const updated = appendReportEvent(
       {
@@ -183,6 +206,7 @@ export default function ContractorPage() {
     setSelectedCityKey(cityKey);
     setRepairImage("");
     setRepairImageDataUrl("");
+    setRepairImageLoading(false);
     setAudited(false);
     setSubmittedId("");
     setActionMessage(`${t("city")} ${t("active")}. ${t("selectedCase")} / ${t("uploadAfterRepairEvidence")}.`);
@@ -299,6 +323,7 @@ export default function ContractorPage() {
                         setSelectedReportId(report.id);
                         setRepairImage("");
                         setRepairImageDataUrl("");
+                        setRepairImageLoading(false);
                         setAudited(false);
                         setSubmittedId("");
                       }}
@@ -409,17 +434,21 @@ export default function ContractorPage() {
 
                         {repairImage ? (
                           <>
-                            <img
-                              src={repairImageDataUrl}
-                              alt="Uploaded repair proof"
-                              className="absolute inset-0 h-full w-full object-cover opacity-75"
-                            />
+                            {repairImageDataUrl ? (
+                              <img
+                                src={repairImageDataUrl}
+                                alt="Uploaded repair proof"
+                                className="absolute inset-0 h-full w-full object-cover opacity-75"
+                              />
+                            ) : (
+                              <div className="absolute inset-0 evidence-asphalt opacity-75" />
+                            )}
                             <div className="absolute inset-0 bg-black/35" />
                             <div className="scanner-line z-30" />
                             <div className="absolute bottom-3 left-3 right-3 rounded border border-[#00eb88]/20 bg-black/65 p-3">
                               <p className="font-semibold text-[#00eb88]">{repairImage}</p>
                               <p className="mt-1 font-mono text-xs text-[#dbc2b0]/70">
-                                {t("afterRepairProofAttached")} {selectedReport.id}
+                                {repairImageLoading ? "Preparing public proof image..." : `${t("afterRepairProofAttached")} ${selectedReport.id}`}
                               </p>
                             </div>
                           </>
@@ -441,20 +470,20 @@ export default function ContractorPage() {
                       <button
                         type="button"
                         onClick={runRepairAudit}
-                        disabled={!repairImage || auditProcessing}
+                        disabled={!repairImage || repairImageLoading || auditProcessing}
                         className="flex flex-1 items-center justify-center gap-2 rounded border border-[#00dbe9] bg-[#00dbe9]/10 px-4 py-3 font-mono text-xs text-[#00dbe9] transition hover:bg-[#00dbe9]/15 disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        <Sparkles size={16} className={auditProcessing ? "animate-spin" : ""} />
-                        {auditProcessing ? `${t("aiRepairAudit")}...` : audited ? t("ready") : t("runAiRepairAudit")}
+                        <Sparkles size={16} className={auditProcessing || repairImageLoading ? "animate-spin" : ""} />
+                        {repairImageLoading ? "Preparing image..." : auditProcessing ? `${t("aiRepairAudit")}...` : audited ? t("ready") : t("runAiRepairAudit")}
                       </button>
                       <button
                         type="button"
                         onClick={submitRepairProof}
-                        disabled={auditProcessing}
+                        disabled={repairImageLoading || auditProcessing}
                         className="btn-primary-shimmer relative z-20 flex flex-1 items-center justify-center gap-2 rounded bg-[#00eb88] px-4 py-3 font-mono text-xs font-semibold text-[#00210e] transition disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        <ShieldCheck size={16} className={auditProcessing ? "animate-spin" : ""} />
-                        {auditProcessing ? `${t("aiRepairAudit")}...` : "Submit Proof for Approval"}
+                        <ShieldCheck size={16} className={auditProcessing || repairImageLoading ? "animate-spin" : ""} />
+                        {repairImageLoading ? "Preparing image..." : auditProcessing ? `${t("aiRepairAudit")}...` : "Submit Proof for Approval"}
                       </button>
                     </div>
 

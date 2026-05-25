@@ -59,7 +59,9 @@ export default function PendingApprovalPage() {
     const localIds = new Set(localForCity.map((report) => report.id));
     return [...localForCity, ...getReportsForCity(selectedCity.key).filter((report) => !localIds.has(report.id))];
   }, [localReports, selectedCity.key]);
-  const reviewReports = allReports.filter((report) => reviewStatuses.includes(report.status));
+  const reviewReports = allReports
+    .filter((report) => reviewStatuses.includes(report.status))
+    .sort(sortReviewReports);
   const pendingCount = reviewReports.filter((report) => report.status === "REPAIR_SUBMITTED").length;
   const [selectedReportId, setSelectedReportId] = useState(
     reviewReports.find((report) => report.status === "REPAIR_SUBMITTED")?.id ?? reviewReports[0]?.id ?? ""
@@ -403,6 +405,33 @@ function statusCopy(report: CivicReport) {
   };
 
   return labels[report.status];
+}
+
+function sortReviewReports(a: CivicReport, b: CivicReport) {
+  const priority = (report: CivicReport) => {
+    if (report.status === "REPAIR_SUBMITTED" && (report.repairImageDataUrl || report.repairImageName)) {
+      return 0;
+    }
+
+    if (report.status === "REPAIR_SUBMITTED") {
+      return 1;
+    }
+
+    if (report.status === "PENDING_PROOF" || report.status === "OPEN") {
+      return 2;
+    }
+
+    if (report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE") {
+      return 3;
+    }
+
+    return 4;
+  };
+
+  const time = (report: CivicReport) =>
+    Date.parse(report.repairProofAt ?? report.updatedAt ?? report.createdAt ?? "") || 0;
+
+  return priority(a) - priority(b) || time(b) - time(a) || a.id.localeCompare(b.id);
 }
 
 function EvidencePanel({
