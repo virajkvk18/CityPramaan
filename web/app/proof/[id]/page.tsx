@@ -112,6 +112,43 @@ export default function ProofTimelinePage() {
     setActionMessage("Feedback added. The issue owner can review it before closing the case.");
   }
 
+  function approveRepairAndActivateWarranty() {
+    const latestReport = getLatestReport();
+
+    if (latestReport.status !== "REPAIR_SUBMITTED") {
+      setActionMessage("Approval is available only when contractor proof is pending issuer review.");
+      return;
+    }
+
+    if (!latestReport.repairImageDataUrl && !latestReport.repairImageName) {
+      setActionMessage("Contractor repair proof is required before warranty activation.");
+      return;
+    }
+
+    const now = new Date();
+    const warrantyDays = 90;
+    const warrantyExpiresAt = new Date(now.getTime() + warrantyDays * 24 * 60 * 60 * 1000);
+    const updated = appendReportEvent(
+      {
+        ...latestReport,
+        status: "UNDER_WARRANTY",
+        warrantyDaysLeft: warrantyDays,
+        warrantyPeriodDays: warrantyDays,
+        warrantyActivatedAt: now.toISOString(),
+        warrantyExpiresAt: warrantyExpiresAt.toISOString(),
+      },
+      {
+        label: "Repair approved by report issuer",
+        detail: `${warrantyDays}-day warranty activated after issuer reviewed contractor proof and AI audit.`,
+        time: now.toLocaleString(),
+        tx: `0xb928...${latestReport.id.replace("CP-", "")}ce`,
+      }
+    );
+
+    upsertLocalReport(updated);
+    setActionMessage("Repair approved. Warranty is now active and synced to the Warranty Scanner.");
+  }
+
   function closeIssue() {
     const latestReport = getLatestReport();
 
@@ -121,9 +158,16 @@ export default function ProofTimelinePage() {
     }
 
     const latestHasRepairProof = Boolean(latestReport.repairImageDataUrl || latestReport.repairImageName);
+    const latestWarrantyActive =
+      latestReport.status === "UNDER_WARRANTY" || latestReport.status === "REPEAT_FAILURE";
 
     if (!latestHasRepairProof) {
       setActionMessage("Repair proof is required before the issue owner can close this case.");
+      return;
+    }
+
+    if (!latestWarrantyActive) {
+      setActionMessage("Approve the contractor proof and activate warranty before closing the case.");
       return;
     }
 
@@ -329,8 +373,8 @@ export default function ProofTimelinePage() {
             </div>
 
             <p className="mt-3 text-sm leading-6 text-zinc-300">
-              If citizens can see the repair proof here, they can leave feedback for the report issuer.
-              The issuer can close the issue only after repair proof exists.
+              Contractor proof first waits here for issuer approval. Once approved, warranty activates
+              and the issuer can later close the issue after public review.
             </p>
 
             <textarea
@@ -341,6 +385,14 @@ export default function ProofTimelinePage() {
             />
 
             <div className="mt-3 grid gap-3">
+              {report.status === "REPAIR_SUBMITTED" && (
+                <button
+                  onClick={approveRepairAndActivateWarranty}
+                  className="rounded-lg border border-[#ffc08d]/45 bg-[#ffc08d]/12 px-4 py-3 text-sm font-semibold text-[#ffdcc2] transition hover:bg-[#ffc08d]/18"
+                >
+                  Approve Repair & Activate Warranty
+                </button>
+              )}
               <button
                 onClick={savePublicFeedback}
                 className="rounded-lg border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-4 py-3 text-sm font-semibold text-[#7df4ff] transition hover:bg-[#00dbe9]/15"
@@ -349,7 +401,7 @@ export default function ProofTimelinePage() {
               </button>
               <button
                 onClick={closeIssue}
-                disabled={!hasRepairProof || report.status === "CLOSED"}
+                disabled={!isWarrantyActive || report.status === "CLOSED"}
                 className="rounded-lg border border-[#00eb88]/35 bg-[#00eb88]/12 px-4 py-3 text-sm font-semibold text-[#5bffa1] transition hover:bg-[#00eb88]/18 disabled:cursor-not-allowed disabled:opacity-45"
               >
                 {report.status === "CLOSED" ? "Issue closed" : "Issue owner: mark solved & close"}

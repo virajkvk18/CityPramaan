@@ -11,7 +11,6 @@ import {
   Gauge,
   MapPin,
   RotateCcw,
-  Scale,
   ScanSearch,
   ShieldCheck,
   Sparkles,
@@ -53,7 +52,7 @@ const navItems = [
   { labelKey: "verifiedRepairs" as const, icon: BadgeCheck, href: "/proof/CP-004" },
   { labelKey: "activeReports" as const, icon: AlertTriangle, href: "/report" },
   { labelKey: "urbanLedger" as const, icon: Wallet, href: "/warranty" },
-  { labelKey: "governance" as const, icon: Scale, href: "/about" },
+  { labelKey: "pendingProof" as const, icon: ScanSearch, href: "/warranty" },
 ];
 
 export default function Home() {

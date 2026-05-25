@@ -73,7 +73,7 @@ export default function ContractorPage() {
   const [submittedId, setSubmittedId] = useState("");
   const [auditProcessing, setAuditProcessing] = useState(false);
   const [actionMessage, setActionMessage] = useState(
-    `${t("selectedCase")}, ${t("uploadAfterRepairEvidence")}, ${t("submitProofActivateWarranty")}.`
+    `${t("selectedCase")}, ${t("uploadAfterRepairEvidence")}, then submit proof for issuer approval.`
   );
 
   async function handleRepairFile(file?: File) {
@@ -85,7 +85,7 @@ export default function ContractorPage() {
     setRepairImageDataUrl(await readFileAsDataUrl(file));
     setAudited(false);
     setSubmittedId("");
-    setActionMessage(`${t("afterRepairProofAttached")}. ${t("runAiRepairAudit")} / ${t("submitProofActivateWarranty")}.`);
+    setActionMessage(`${t("afterRepairProofAttached")}. ${t("runAiRepairAudit")} / submit proof for issuer approval.`);
   }
 
   function runRepairAudit() {
@@ -101,7 +101,7 @@ export default function ContractorPage() {
     window.setTimeout(() => {
       setAudited(true);
       setAuditProcessing(false);
-      setActionMessage(`${t("aiRepairAudit")} ${t("ready")}. ${t("warrantyActivated")}.`);
+      setActionMessage(`${t("aiRepairAudit")} ${t("ready")}. Proof can now be sent for issuer approval.`);
     }, 900);
   }
 
@@ -111,7 +111,7 @@ export default function ContractorPage() {
     }
 
     if (submittedId === selectedReport.id) {
-      setActionMessage(`${t("repairProof")} ${t("publicProof")} / ${t("warrantyScanner")}.`);
+      setActionMessage(`${t("repairProof")} submitted. Waiting for issuer approval on ${t("publicProof")}.`);
       return;
     }
 
@@ -123,23 +123,21 @@ export default function ContractorPage() {
     if (!audited) {
       setAudited(false);
       setAuditProcessing(true);
-      setActionMessage(`${t("aiRepairAudit")}... ${t("warrantyActivated")}`);
+      setActionMessage(`${t("aiRepairAudit")}... preparing proof for issuer approval.`);
 
       window.setTimeout(() => {
         setAudited(true);
         setAuditProcessing(false);
-        activateWarranty(selectedReport);
+        submitProofForApproval(selectedReport);
       }, 900);
       return;
     }
 
-    activateWarranty(selectedReport);
+    submitProofForApproval(selectedReport);
   }
 
-  function activateWarranty(report: CivicReport) {
+  function submitProofForApproval(report: CivicReport) {
     const now = new Date();
-    const warrantyDays = 90;
-    const warrantyExpiresAt = new Date(now.getTime() + warrantyDays * 24 * 60 * 60 * 1000);
     const tx = `0x93ac...${report.id.replace("CP-", "")}fd`;
     const repairAudit = {
       materialMatch: "95.4%",
@@ -156,11 +154,10 @@ export default function ContractorPage() {
         ...report,
         cityKey: selectedCity.key,
         contractor: selectedCity.contractor,
-        status: "UNDER_WARRANTY",
-        warrantyDaysLeft: warrantyDays,
-        warrantyPeriodDays: warrantyDays,
-        warrantyActivatedAt: now.toISOString(),
-        warrantyExpiresAt: warrantyExpiresAt.toISOString(),
+        status: "REPAIR_SUBMITTED",
+        warrantyDaysLeft: null,
+        warrantyActivatedAt: undefined,
+        warrantyExpiresAt: undefined,
         repairProofAt: now.toISOString(),
         repairImageName: repairImage || "contractor-after-repair.jpg",
         repairImageDataUrl,
@@ -170,22 +167,15 @@ export default function ContractorPage() {
       },
       {
         label: "Repair proof submitted",
-        detail: `${selectedCity.contractor} uploaded after-repair proof for ${report.location}.`,
+        detail: `${selectedCity.contractor} uploaded after-repair proof for ${report.location}. Waiting for report issuer approval before warranty activation.`,
         time: now.toLocaleString(),
         tx,
       }
     );
 
-    upsertLocalReport(
-      appendReportEvent(updated, {
-        label: "Warranty activated",
-        detail: `${warrantyDays}-day repair warranty activated. Issue owner can now verify the repair or collect public feedback before final closure.`,
-        time: now.toLocaleString(),
-        tx: `0xb928...${report.id.replace("CP-", "")}ce`,
-      })
-    );
+    upsertLocalReport(updated);
     setSubmittedId(report.id);
-    setActionMessage(`${t("repairProof")} ${t("active")}. ${t("warrantyStateVisible")}.`);
+    setActionMessage(`${t("repairProof")} submitted. Status is now ${t("repairSubmitted")} / ${t("pending")}. Issuer must approve it from ${t("publicProof")}.`);
   }
 
   function chooseCity(cityKey: CityKey) {
@@ -271,7 +261,7 @@ export default function ContractorPage() {
               </h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-[#dbc2b0]">
                 {t("selectedCase")}. {t("issueBefore")}. {t("uploadAfterRepairEvidence")}.
-                {t("runAiRepairAudit")}. {t("submitProofActivateWarranty")}.
+                {t("runAiRepairAudit")}. Submit proof for issuer approval, then warranty activates from Public Proof.
               </p>
             </div>
             <select
@@ -461,7 +451,7 @@ export default function ContractorPage() {
                         className="btn-primary-shimmer flex flex-1 items-center justify-center gap-2 rounded bg-[#00eb88] px-4 py-3 font-mono text-xs font-semibold text-[#00210e] transition disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <ShieldCheck size={16} className={auditProcessing ? "animate-spin" : ""} />
-                        {auditProcessing ? `${t("aiRepairAudit")}...` : t("submitProofActivateWarranty")}
+                        {auditProcessing ? `${t("aiRepairAudit")}...` : "Submit Proof for Approval"}
                       </button>
                     </div>
 
@@ -481,7 +471,7 @@ export default function ContractorPage() {
                         <div className="mt-4 space-y-3">
                           <ProcessingStep label={`${t("issueBefore")} + ${t("contractorProofAfter")}`} />
                           <ProcessingStep label={`${t("mapLocation")} / ${t("repairIntegrity")}`} />
-                          <ProcessingStep label={t("warrantyActivated")} />
+                          <ProcessingStep label="Preparing issuer approval request" />
                         </div>
                       ) : (
                         <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -498,10 +488,10 @@ export default function ContractorPage() {
                         <div className="mt-5 rounded border border-[#00eb88]/25 bg-[#00eb88]/10 p-4">
                           <div className="flex items-center gap-2 text-[#00eb88]">
                             <CheckCircle2 size={18} />
-                            <p className="font-semibold">{t("repairSubmitted")} / {t("warrantyActivated")}</p>
+                            <p className="font-semibold">{t("repairSubmitted")} / {t("pending")}</p>
                           </div>
                           <p className="mt-2 text-sm text-[#dbc2b0]">
-                            {t("syncedWarrantyRegistry")}. {t("publicProofTimeline")}.
+                            Contractor proof is now visible in {t("publicProof")}. Issuer approval will activate warranty.
                           </p>
                           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                             <Link

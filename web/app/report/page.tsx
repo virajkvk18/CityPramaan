@@ -16,7 +16,6 @@ import {
   Droplets,
   FileImage,
   Fingerprint,
-  Gavel,
   LayoutDashboard,
   Moon,
   LocateFixed,
@@ -336,7 +335,7 @@ export default function ReportIssuePage() {
             active
           />
           <NavItem href="/warranty" icon={<ShieldCheck size={18} />} label={tr("urbanLedger")} />
-          <NavItem href="/about" icon={<Gavel size={18} />} label={tr("governance")} />
+          <NavItem href="/warranty" icon={<FileImage size={18} />} label={tr("pendingProof")} />
         </nav>
 
         <Link
