@@ -77,10 +77,21 @@ export default function Home() {
     [localReports, selectedCity.key]
   );
   const dashboardReports = useMemo(
-    () => [...localCityReports, ...cityReports],
+    () => {
+      const localIds = new Set(localCityReports.map((report) => report.id));
+      return [...localCityReports, ...cityReports.filter((report) => !localIds.has(report.id))];
+    },
     [localCityReports, cityReports]
   );
-  const selected = localCityReports[0] ?? cityReports[3];
+  const activeDashboardReports = useMemo(
+    () => dashboardReports.filter((report) => report.status !== "CLOSED"),
+    [dashboardReports]
+  );
+  const activeLocalReports = useMemo(
+    () => localCityReports.filter((report) => report.status !== "CLOSED"),
+    [localCityReports]
+  );
+  const selected = activeLocalReports[0] ?? activeDashboardReports[0] ?? cityReports[3];
   const isNewLocalReport = selected.status === "PENDING_PROOF";
   const timelineEvents = isNewLocalReport
     ? [t("citizenReport"), t("aiPreVerification"), t("newProof"), t("awaitingContractorAssignment")]
@@ -152,7 +163,7 @@ export default function Home() {
               {t("publicAudit")}
             </p>
             <div className="space-y-4 px-3">
-              <AuditMetric label={t("activeReports")} value={`${128 + localCityReports.length}`} tone="text-[#ffc08d]" />
+              <AuditMetric label={t("activeReports")} value={`${128 + activeLocalReports.length}`} tone="text-[#ffc08d]" />
               <AuditMetric label={t("verifiedRepairs")} value="76" tone="text-[#00eb88]" />
               <AuditMetric label={t("repeatFailure")} value="09" tone="text-[#ffb4ab]" />
               <AuditMetric label={t("onChainProofs")} value={`${214 + localCityReports.length}`} tone="text-[#00dbe9]" />
@@ -177,13 +188,13 @@ export default function Home() {
             </div>
           )}
 
-          {localCityReports.length > 0 && (
+          {activeLocalReports.length > 0 && (
             <div className="mt-5 rounded-md border border-[#00dbe9]/30 bg-[linear-gradient(135deg,rgba(0,219,233,0.12),rgba(0,0,0,0.18))] p-5">
               <p className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-[#7df4ff]">
                 {t("latestCitizenReport")}
               </p>
-              <p className="mt-3 text-sm text-[#e5e2e3]">{localCityReports[0].title}</p>
-              <p className="mt-1 text-xs text-[#dbc2b0]">{localCityReports[0].location}</p>
+              <p className="mt-3 text-sm text-[#e5e2e3]">{activeLocalReports[0].title}</p>
+              <p className="mt-1 text-xs text-[#dbc2b0]">{activeLocalReports[0].location}</p>
               <button
                 onClick={clearLocalReports}
                 className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-sm border border-[#00dbe9]/40 bg-black/30 px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#7df4ff] hover:bg-black/60"
@@ -237,7 +248,7 @@ export default function Home() {
               <PulseStat
                 icon={<Gauge size={17} />}
                 label={t("activeReports")}
-                value={`${128 + localCityReports.length}`}
+                value={`${128 + activeLocalReports.length}`}
                 detail={t("liveCivicStream")}
                 tone="amber"
               />
@@ -273,7 +284,7 @@ export default function Home() {
             </div>
 
             <div className="cp-command-frame relative">
-              <AnimatedCityMap reports={dashboardReports} city={selectedCity} />
+              <AnimatedCityMap reports={activeDashboardReports} city={selectedCity} />
             </div>
 
             <div className="cp-live-strip mt-5 overflow-hidden rounded-md border border-white/10 bg-black/30 backdrop-blur-xl">

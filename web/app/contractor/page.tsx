@@ -43,6 +43,7 @@ const activeStatuses: CivicReport["status"][] = [
   "PENDING_PROOF",
   "REPAIR_SUBMITTED",
   "UNDER_WARRANTY",
+  "REPEAT_FAILURE",
 ];
 
 export default function ContractorPage() {
@@ -140,6 +141,16 @@ export default function ContractorPage() {
     const warrantyDays = 90;
     const warrantyExpiresAt = new Date(now.getTime() + warrantyDays * 24 * 60 * 60 * 1000);
     const tx = `0x93ac...${report.id.replace("CP-", "")}fd`;
+    const repairAudit = {
+      materialMatch: "95.4%",
+      repairIntegrity: "High",
+      geoVariance: "+/-0.5 m",
+      beforeAfterDelta: "84% visible damage reduction",
+      closureConfidence: "92.7%",
+      visibleDamageRemaining: "Low",
+      recommendation:
+        "Mock AI compared the citizen issue photo with contractor repair proof. The damaged surface appears filled, GPS variance is low, and the case is ready for citizen owner verification.",
+    };
     const updated = appendReportEvent(
       {
         ...report,
@@ -155,12 +166,7 @@ export default function ContractorPage() {
         repairImageDataUrl,
         repairTxHash: tx,
         txHash: report.txHash || tx,
-        repairAudit: {
-          materialMatch: "95.4%",
-          repairIntegrity: "High",
-          geoVariance: "+/-0.5 m",
-          recommendation: "Warranty activated after AI before/after repair audit.",
-        },
+        repairAudit,
       },
       {
         label: "Repair proof submitted",
@@ -173,7 +179,7 @@ export default function ContractorPage() {
     upsertLocalReport(
       appendReportEvent(updated, {
         label: "Warranty activated",
-        detail: `${warrantyDays}-day repair warranty activated and visible to the public.`,
+        detail: `${warrantyDays}-day repair warranty activated. Issue owner can now verify the repair or collect public feedback before final closure.`,
         time: now.toLocaleString(),
         tx: `0xb928...${report.id.replace("CP-", "")}ce`,
       })
@@ -324,6 +330,7 @@ export default function ContractorPage() {
                             REPAIR_SUBMITTED: t("repairSubmitted"),
                             UNDER_WARRANTY: t("underWarranty"),
                             REPEAT_FAILURE: t("repeatFailure"),
+                            CLOSED: "Closed",
                           }}
                         />
                       </div>
@@ -482,6 +489,8 @@ export default function ContractorPage() {
                           <Audit label={t("repairIntegrity")} value="High" tone="emerald" />
                           <Audit label={t("geoMatch")} value="+/-0.5 m" tone="cyan" />
                           <Audit label={t("warranty")} value="90 Days" tone="amber" />
+                          <Audit label="AI closure confidence" value="92.7%" tone="emerald" />
+                          <Audit label="Visible damage left" value="Low" tone="cyan" />
                         </div>
                       )}
 
@@ -614,6 +623,7 @@ function StatusBadge({
     REPAIR_SUBMITTED: "border-[#ffc08d]/30 bg-[#ffc08d]/10 text-[#ffc08d]",
     UNDER_WARRANTY: "border-[#00eb88]/30 bg-[#00eb88]/10 text-[#00eb88]",
     REPEAT_FAILURE: "border-[#d946ef]/30 bg-[#d946ef]/10 text-[#f0abfc]",
+    CLOSED: "border-[#00eb88]/30 bg-[#00eb88]/10 text-[#00eb88]",
   };
 
   return (

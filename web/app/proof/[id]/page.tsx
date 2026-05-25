@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { useParams } from "next/navigation";
 import {
   AlertTriangle,
@@ -25,7 +25,12 @@ import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { ChainProofCard } from "@/src/components/proof/ChainProofCard";
 import { getCitySnapshot, subscribeCity } from "@/src/lib/city-storage";
 import { getReportsForCity, type CivicReport } from "@/src/lib/mock-data";
-import { getLocalReportsSnapshot, subscribeLocalReports } from "@/src/lib/report-storage";
+import {
+  appendReportEvent,
+  getLocalReportsSnapshot,
+  subscribeLocalReports,
+  upsertLocalReport,
+} from "@/src/lib/report-storage";
 import { useLanguage } from "@/src/lib/use-language";
 
 const statusTone: Record<CivicReport["status"], string> = {
@@ -34,6 +39,7 @@ const statusTone: Record<CivicReport["status"], string> = {
   REPAIR_SUBMITTED: "border-[#ff9933]/35 bg-[#ff9933]/10 text-[#ffc08d]",
   UNDER_WARRANTY: "border-[#00eb88]/35 bg-[#00eb88]/10 text-[#5bffa1]",
   REPEAT_FAILURE: "border-[#d946ef]/40 bg-[#d946ef]/12 text-[#f0abfc]",
+  CLOSED: "border-[#00eb88]/35 bg-[#00eb88]/10 text-[#5bffa1]",
 };
 
 export default function ProofTimelinePage() {
@@ -58,7 +64,92 @@ export default function ProofTimelinePage() {
   const report = allReports.find((item) => item.id === proofId) ?? cityReports[3];
   const events = report.history?.length ? report.history : fallbackEvents(report);
   const hasRepairProof = Boolean(report.repairImageDataUrl || report.repairImageName);
-  const isWarrantyActive = report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE";
+  const isWarrantyActive = report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE" || report.status === "CLOSED";
+  const [feedbackText, setFeedbackText] = useState("");
+  const [actionMessage, setActionMessage] = useState("");
+
+  function getLatestReport() {
+    try {
+      const savedReports = JSON.parse(getLocalReportsSnapshot()) as CivicReport[];
+      return savedReports.find((item) => item.id === report.id) ?? report;
+    } catch {
+      return report;
+    }
+  }
+
+  function savePublicFeedback() {
+    const message = feedbackText.trim();
+
+    if (!message) {
+      setActionMessage("Write public feedback first.");
+      return;
+    }
+
+    const now = new Date();
+    const feedback = {
+      id: `FDB-${now.getTime()}`,
+      author: "Public reviewer",
+      message,
+      createdAt: now.toISOString(),
+    };
+    const latestReport = getLatestReport();
+    const updated = appendReportEvent(
+      {
+        ...latestReport,
+        cityKey: latestReport.cityKey ?? citySnapshot,
+        publicFeedback: [...(latestReport.publicFeedback ?? []), feedback],
+      },
+      {
+        label: "Public feedback sent to issue owner",
+        detail: message,
+        time: now.toLocaleString(),
+        tx: `0xfb${now.getTime().toString(16).slice(-6)}...note`,
+      }
+    );
+
+    upsertLocalReport(updated);
+    setFeedbackText("");
+    setActionMessage("Feedback added. The issue owner can review it before closing the case.");
+  }
+
+  function closeIssue() {
+    const latestReport = getLatestReport();
+
+    if (latestReport.status === "CLOSED") {
+      setActionMessage("This issue is already closed.");
+      return;
+    }
+
+    const latestHasRepairProof = Boolean(latestReport.repairImageDataUrl || latestReport.repairImageName);
+
+    if (!latestHasRepairProof) {
+      setActionMessage("Repair proof is required before the issue owner can close this case.");
+      return;
+    }
+
+    const now = new Date();
+    const updated = appendReportEvent(
+      {
+        ...latestReport,
+        cityKey: latestReport.cityKey ?? citySnapshot,
+        status: "CLOSED",
+        ownerVerified: true,
+        closedAt: now.toISOString(),
+        closureNote: "Issue owner verified the repair and closed the case.",
+        warrantyDaysLeft: 0,
+      },
+      {
+        label: "Issue closed by report issuer",
+        detail:
+          "Repair accepted after public proof review. The case is removed from the active command center map but stays in public history.",
+        time: now.toLocaleString(),
+        tx: `0xcl0...${report.id.replace("CP-", "")}`,
+      }
+    );
+
+    upsertLocalReport(updated);
+    setActionMessage("Issue closed and synced. It will no longer appear on the command center map.");
+  }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#050505] text-zinc-100">
@@ -195,13 +286,17 @@ export default function ProofTimelinePage() {
 
             <div className="mt-5 space-y-3">
               <Score label={t("aiConfidence")} value={`${report.confidence}%`} />
+              <Score label="Before / after delta" value={report.repairAudit?.beforeAfterDelta ?? (hasRepairProof ? "84% improvement" : t("pending"))} />
+              <Score label="Closure confidence" value={report.repairAudit?.closureConfidence ?? (hasRepairProof ? "92.7%" : t("pending"))} />
               <Score label={t("repairIntegrity")} value={report.repairAudit?.repairIntegrity ?? (hasRepairProof ? "High" : t("pending"))} />
               <Score label={t("geoMatch")} value={report.repairAudit?.geoVariance ?? (hasRepairProof ? "1.8m" : t("pending"))} />
+              <Score label="Visible damage left" value={report.repairAudit?.visibleDamageRemaining ?? (hasRepairProof ? "Low" : t("pending"))} />
               <Score label={t("publicStatus")} value={statusCopy(report.status, t)} />
             </div>
 
             <p className="mt-4 rounded-lg border border-cyan-400/20 bg-cyan-500/10 p-3 text-sm text-zinc-300">
-              {report.recommendedAction ??
+              {report.repairAudit?.recommendation ??
+                report.recommendedAction ??
                 "CityPramaan keeps the case open until repair evidence and warranty proof are visible."}
             </p>
           </div>
@@ -225,6 +320,60 @@ export default function ProofTimelinePage() {
               {t("openWarrantyRegistry")}
               <ExternalLink size={15} />
             </Link>
+          </div>
+
+          <div className="rounded-2xl border border-[#00eb88]/20 bg-[#00eb88]/5 p-5">
+            <div className="flex items-center gap-2 text-[#5bffa1]">
+              <UserCheck size={18} />
+              <p className="font-medium">Public feedback & issuer closure</p>
+            </div>
+
+            <p className="mt-3 text-sm leading-6 text-zinc-300">
+              If citizens can see the repair proof here, they can leave feedback for the report issuer.
+              The issuer can close the issue only after repair proof exists.
+            </p>
+
+            <textarea
+              value={feedbackText}
+              onChange={(event) => setFeedbackText(event.target.value)}
+              placeholder="Example: Patch looks complete, but one edge still has loose gravel."
+              className="mt-4 min-h-24 w-full resize-none rounded-lg border border-white/10 bg-zinc-950/70 px-3 py-3 text-sm text-white outline-none transition placeholder:text-zinc-500 focus:border-[#00dbe9]/55"
+            />
+
+            <div className="mt-3 grid gap-3">
+              <button
+                onClick={savePublicFeedback}
+                className="rounded-lg border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-4 py-3 text-sm font-semibold text-[#7df4ff] transition hover:bg-[#00dbe9]/15"
+              >
+                Send feedback to issuer
+              </button>
+              <button
+                onClick={closeIssue}
+                disabled={!hasRepairProof || report.status === "CLOSED"}
+                className="rounded-lg border border-[#00eb88]/35 bg-[#00eb88]/12 px-4 py-3 text-sm font-semibold text-[#5bffa1] transition hover:bg-[#00eb88]/18 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                {report.status === "CLOSED" ? "Issue closed" : "Issue owner: mark solved & close"}
+              </button>
+            </div>
+
+            {actionMessage && (
+              <p className="mt-3 rounded-lg border border-[#ffc08d]/20 bg-[#ffc08d]/10 p-3 text-sm text-[#ffdcc2]">
+                {actionMessage}
+              </p>
+            )}
+
+            {report.publicFeedback?.length ? (
+              <div className="mt-4 space-y-3">
+                {report.publicFeedback.map((feedback) => (
+                  <div key={feedback.id} className="rounded-lg border border-white/10 bg-zinc-950/55 p-3">
+                    <p className="text-sm leading-6 text-zinc-200">{feedback.message}</p>
+                    <p className="mt-2 text-xs text-zinc-500">
+                      {feedback.author} | {new Date(feedback.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           <div className="rounded-2xl border border-fuchsia-400/20 bg-fuchsia-500/10 p-5">
@@ -270,7 +419,7 @@ function fallbackEvents(report: CivicReport) {
     },
   ];
 
-  if (report.status === "REPAIR_SUBMITTED" || report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE") {
+  if (report.status === "REPAIR_SUBMITTED" || report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE" || report.status === "CLOSED") {
     events.push({
       label: "Repair proof submitted",
       detail: `${report.contractor} attached after-repair evidence for public audit.`,
@@ -279,7 +428,7 @@ function fallbackEvents(report: CivicReport) {
     });
   }
 
-  if (report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE") {
+  if (report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE" || report.status === "CLOSED") {
     events.push({
       label: "Warranty activated",
       detail: `Warranty monitoring started for ${report.warrantyPeriodDays ?? 30} days.`,
@@ -297,6 +446,15 @@ function fallbackEvents(report: CivicReport) {
     });
   }
 
+  if (report.status === "CLOSED") {
+    events.push({
+      label: "Issue closed by report issuer",
+      detail: report.closureNote ?? "Repair accepted and moved from active map into public history.",
+      time: formatProofTime(report.closedAt),
+      tx: report.repairTxHash ?? report.txHash,
+    });
+  }
+
   return events;
 }
 
@@ -309,6 +467,10 @@ function formatProofTime(value?: string) {
 }
 
 function warrantyLabel(report: CivicReport, t: (key: "pending" | "notActive" | "warranty") => string) {
+  if (report.status === "CLOSED") {
+    return "Closed";
+  }
+
   if (report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE") {
     return `${report.warrantyDaysLeft ?? report.warrantyPeriodDays ?? 90} ${t("warranty")}`;
   }
@@ -330,12 +492,17 @@ function statusCopy(
     REPAIR_SUBMITTED: t("repairSubmitted"),
     UNDER_WARRANTY: t("active"),
     REPEAT_FAILURE: t("repeatFailure"),
+    CLOSED: "Closed",
   };
 
   return labels[status];
 }
 
 function eventIcon(label: string) {
+  if (label.toLowerCase().includes("closed")) {
+    return CheckCircle2;
+  }
+
   if (label.toLowerCase().includes("repair")) {
     return UserCheck;
   }

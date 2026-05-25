@@ -5,7 +5,8 @@ export type ReportStatus =
   | "PENDING_PROOF"
   | "REPAIR_SUBMITTED"
   | "UNDER_WARRANTY"
-  | "REPEAT_FAILURE";
+  | "REPEAT_FAILURE"
+  | "CLOSED";
 
 export type CivicReport = {
   id: string;
@@ -39,13 +40,27 @@ export type CivicReport = {
   warrantyPeriodDays?: number;
   evidenceHash?: string;
   repairTxHash?: string;
+  ownerVerified?: boolean;
+  closedAt?: string;
+  closureNote?: string;
+  publicFeedback?: CivicReportFeedback[];
   repairAudit?: {
     materialMatch: string;
     repairIntegrity: string;
     geoVariance: string;
     recommendation: string;
+    beforeAfterDelta?: string;
+    closureConfidence?: string;
+    visibleDamageRemaining?: string;
   };
   history?: CivicReportEvent[];
+};
+
+export type CivicReportFeedback = {
+  id: string;
+  author: string;
+  message: string;
+  createdAt: string;
 };
 
 export type CivicReportEvent = {
@@ -130,6 +145,15 @@ export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY):
       warrantyActivatedAt: "2026-05-20T16:45:00.000Z",
       warrantyPeriodDays: 30,
       repairTxHash: "0x93ac...72fd",
+      repairAudit: {
+        materialMatch: "94.8%",
+        repairIntegrity: "High",
+        geoVariance: "+/-0.6 m",
+        beforeAfterDelta: "82% visible surface improvement",
+        closureConfidence: "91.2%",
+        visibleDamageRemaining: "Low",
+        recommendation: "AI sees the pothole surface filled and recommends citizen owner verification.",
+      },
     },
     {
       id: "CP-004",
@@ -157,6 +181,15 @@ export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY):
       warrantyActivatedAt: "2026-05-21T16:45:00.000Z",
       warrantyPeriodDays: 30,
       repairTxHash: "0x93ac...72fd",
+      repairAudit: {
+        materialMatch: "58.6%",
+        repairIntegrity: "Low",
+        geoVariance: "+/-1.4 m",
+        beforeAfterDelta: "22% improvement lost",
+        closureConfidence: "35.1%",
+        visibleDamageRemaining: "High",
+        recommendation: "AI sees repeat road damage inside warranty. Reopen claim and reduce contractor reputation.",
+      },
     },
   ];
 }

@@ -56,7 +56,7 @@ export default function WarrantyScannerPage() {
     return [...localForCity, ...getReportsForCity(selectedCity.key).filter((report) => !localIds.has(report.id))];
   }, [localReports, selectedCity.key]);
   const warrantyReports = allReports.filter((report) =>
-    ["UNDER_WARRANTY", "REPEAT_FAILURE", "REPAIR_SUBMITTED", "PENDING_PROOF", "OPEN"].includes(report.status)
+    ["UNDER_WARRANTY", "REPEAT_FAILURE", "REPAIR_SUBMITTED", "PENDING_PROOF", "OPEN", "CLOSED"].includes(report.status)
   );
   const [selectedReportId, setSelectedReportId] = useState(warrantyReports[0]?.id ?? "");
   const [scanning, setScanning] = useState(false);
@@ -192,6 +192,7 @@ export default function WarrantyScannerPage() {
                           activeText={tr("active")}
                           pendingText={tr("pending")}
                           notActiveText={tr("notActive")}
+                          closedText="Closed"
                         />
                       </div>
                       <p className="mt-2 text-xs text-[#dbc2b0]/70">{report.location}</p>
@@ -206,9 +207,28 @@ export default function WarrantyScannerPage() {
                   {tr("aiDiagnosticsVerdict")}
                 </h3>
                 <div className="space-y-4">
-                  <Diagnostic label="Primary Cause" value="Substandard asphalt grade" score="85%" tone="rose" />
-                  <Diagnostic label="Secondary Factor" value="Base compaction issue" score="62%" tone="amber" />
-                  <Diagnostic label="Weather Overlay" value="Non-causal weathering" score="12%" tone="emerald" />
+                  <Diagnostic
+                    label="Before / After Difference"
+                    value={selectedReport?.repairAudit?.beforeAfterDelta ?? "Awaiting contractor proof"}
+                    score={selectedReport?.repairAudit?.closureConfidence ?? `${selectedReport?.confidence ?? 0}%`}
+                    tone={selectedReport?.repairAudit ? "emerald" : "amber"}
+                  />
+                  <Diagnostic
+                    label="Visible Damage Remaining"
+                    value={selectedReport?.repairAudit?.visibleDamageRemaining ?? "Unknown"}
+                    score={selectedReport?.repairAudit?.materialMatch ?? tr("pending")}
+                    tone={selectedReport?.repairAudit?.visibleDamageRemaining === "High" ? "rose" : "emerald"}
+                  />
+                  <Diagnostic
+                    label="AI Recommendation"
+                    value={
+                      selectedReport?.repairAudit?.recommendation ??
+                      selectedReport?.recommendedAction ??
+                      "Collect repair proof first."
+                    }
+                    score={selectedReport?.repairAudit?.repairIntegrity ?? tr("pending")}
+                    tone={selectedReport?.repairAudit?.repairIntegrity === "Low" ? "rose" : "amber"}
+                  />
                 </div>
               </section>
             </div>
@@ -241,6 +261,13 @@ export default function WarrantyScannerPage() {
                       <Info label={tr("contractor")} value={selectedReport.contractor} />
                       <Info label={tr("publicHash")} value={selectedReport.evidenceHash ?? selectedReport.txHash} />
                     </div>
+
+                    {selectedReport.status === "CLOSED" && (
+                      <div className="mt-5 rounded border border-[#00eb88]/25 bg-[#00eb88]/10 p-4 text-sm leading-6 text-[#d3fbff]">
+                        Issue closed by the report issuer. Repair proof, public feedback, warranty data,
+                        and the full proof timeline stay visible here as public history.
+                      </div>
+                    )}
 
                     {scanning && (
                       <div className="mt-5 rounded border border-[#00dbe9]/20 bg-[#00dbe9]/10 p-4 text-sm text-[#dbc2b0]">
@@ -275,7 +302,7 @@ export default function WarrantyScannerPage() {
                         image={selectedReport.repairImageDataUrl}
                         status={
                           selectedReport.repairImageName ??
-                          (selectedReport.status === "UNDER_WARRANTY"
+                          (selectedReport.status === "UNDER_WARRANTY" || selectedReport.status === "CLOSED"
                             ? tr("repairImageVisible")
                             : tr("noRepairProofYet"))
                         }
@@ -315,6 +342,29 @@ export default function WarrantyScannerPage() {
                         )
                       )}
                     </div>
+                  </section>
+
+                  <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
+                    <h3 className="mb-4 border-b border-white/5 pb-3 font-mono text-xs uppercase text-[#ffc08d]">
+                      Public feedback to issue owner
+                    </h3>
+                    {selectedReport.publicFeedback?.length ? (
+                      <div className="space-y-3">
+                        {selectedReport.publicFeedback.map((feedback) => (
+                          <div key={feedback.id} className="rounded border border-white/10 bg-black/30 p-3">
+                            <p className="text-sm leading-6 text-white">{feedback.message}</p>
+                            <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-[#dbc2b0]/60">
+                              {feedback.author} | {new Date(feedback.createdAt).toLocaleString()}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm leading-6 text-[#dbc2b0]">
+                        No public feedback has been added yet. Citizens can add feedback from the
+                        public proof page before the issue owner closes the case.
+                      </p>
+                    )}
                   </section>
                 </>
               ) : (
@@ -366,26 +416,31 @@ function WarrantyBadge({
   activeText,
   pendingText,
   notActiveText,
+  closedText,
 }: {
   report: CivicReport;
   activeText: string;
   pendingText: string;
   notActiveText: string;
+  closedText: string;
 }) {
   const active = report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE";
   const pending = report.status === "REPAIR_SUBMITTED";
+  const closed = report.status === "CLOSED";
 
   return (
     <span
       className={`shrink-0 rounded border px-2 py-1 font-mono text-[10px] uppercase ${
-        active
+        closed
+          ? "border-[#00eb88]/30 bg-[#00eb88]/10 text-[#00eb88]"
+          : active
           ? "border-[#00eb88]/30 bg-[#00eb88]/10 text-[#00eb88]"
           : pending
             ? "border-[#ffc08d]/30 bg-[#ffc08d]/10 text-[#ffc08d]"
             : "border-[#ffb4ab]/30 bg-[#ffb4ab]/10 text-[#ffb4ab]"
       }`}
     >
-      {active ? activeText : pending ? pendingText : notActiveText}
+      {closed ? closedText : active ? activeText : pending ? pendingText : notActiveText}
     </span>
   );
 }
@@ -397,12 +452,17 @@ function statusLabel(report: CivicReport, tr: (key: "active" | "pending" | "notA
     REPAIR_SUBMITTED: tr("repairSubmitted"),
     UNDER_WARRANTY: tr("active"),
     REPEAT_FAILURE: tr("repeatFailure"),
+    CLOSED: "Closed",
   };
 
   return labels[report.status];
 }
 
 function warrantyLabel(report: CivicReport, tr: (key: "notActive" | "pending" | "warranty") => string) {
+  if (report.status === "CLOSED") {
+    return "Closed";
+  }
+
   if (report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE") {
     return `${report.warrantyDaysLeft ?? report.warrantyPeriodDays ?? 90} ${tr("warranty")}`;
   }
@@ -553,6 +613,8 @@ function GoogleMapPreview({
 }
 
 function fallbackHistory(report: CivicReport) {
+  const repaired = report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE" || report.status === "CLOSED";
+
   return [
     {
       label: "Citizen report created",
@@ -560,13 +622,22 @@ function fallbackHistory(report: CivicReport) {
       time: "Demo timeline",
     },
     {
-      label: report.status === "UNDER_WARRANTY" ? "Warranty activated" : "Awaiting contractor repair",
+      label: repaired ? "Warranty activated" : "Awaiting contractor repair",
       detail:
-        report.status === "UNDER_WARRANTY"
+        repaired
           ? "Contractor proof passed audit and warranty monitoring is active."
           : "No repair warranty has been activated for this case yet.",
       time: "Demo timeline",
     },
+    ...(report.status === "CLOSED"
+      ? [
+          {
+            label: "Issue closed by report issuer",
+            detail: report.closureNote ?? "Repair accepted and kept in public history.",
+            time: report.closedAt ? new Date(report.closedAt).toLocaleString() : "Demo timeline",
+          },
+        ]
+      : []),
   ];
 }
 

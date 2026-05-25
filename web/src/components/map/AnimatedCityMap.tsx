@@ -54,6 +54,13 @@ const pinTone: Record<
     stem: "from-[#d946ef]",
     text: "text-[#f0abfc]",
   },
+  CLOSED: {
+    label: "Closed",
+    dot: "bg-[#00eb88]",
+    pulse: "stitch-pin-emerald",
+    stem: "from-[#00eb88]",
+    text: "text-[#5bffa1]",
+  },
 };
 
 const mockOffsets = [
@@ -68,6 +75,7 @@ const mockOffsets = [
 
 export function AnimatedCityMap({ reports, city }: AnimatedCityMapProps) {
   const { t } = useLanguage();
+  const visibleReports = reports.filter((report) => report.status !== "CLOSED");
   const mapSpan = 0.028;
   const minLat = city.lat - mapSpan;
   const maxLat = city.lat + mapSpan;
@@ -80,7 +88,11 @@ export function AnimatedCityMap({ reports, city }: AnimatedCityMapProps) {
     REPAIR_SUBMITTED: t("repairSubmitted"),
     UNDER_WARRANTY: t("underWarranty"),
     REPEAT_FAILURE: t("repeatFailure"),
+    CLOSED: "Closed",
   };
+  const visibleStatuses = (Object.keys(pinTone) as ReportStatus[]).filter(
+    (status) => status !== "CLOSED"
+  );
 
   return (
     <div className="glass-panel relative min-h-[620px] flex-1 overflow-hidden rounded-md border border-white/10 bg-[#101014] shadow-[0_0_36px_rgba(0,0,0,0.55)]">
@@ -143,7 +155,7 @@ export function AnimatedCityMap({ reports, city }: AnimatedCityMapProps) {
 
       <div className="absolute left-5 top-5 z-30 flex flex-wrap gap-2">
         <SignalPill label="Map Layer" value="OSM Mock" tone="text-[#00dbe9]" />
-        <SignalPill label="Nodes Verified" value={`${214 + reports.length}`} tone="text-[#00eb88]" />
+        <SignalPill label="Nodes Verified" value={`${214 + visibleReports.length}`} tone="text-[#00eb88]" />
         <SignalPill label="Risk Index" value="High" tone="text-[#ffc08d]" />
       </div>
 
@@ -157,7 +169,7 @@ export function AnimatedCityMap({ reports, city }: AnimatedCityMapProps) {
       </div>
 
       <div className="absolute inset-0 z-20">
-        {reports.map((report, index) => {
+        {visibleReports.map((report, index) => {
           const tone = pinTone[report.status];
           const offset = mockOffsets[index % mockOffsets.length];
           const lat = city.lat + offset.lat;
@@ -193,7 +205,7 @@ export function AnimatedCityMap({ reports, city }: AnimatedCityMapProps) {
       <div className="absolute bottom-5 left-5 z-30 rounded-md border border-white/10 bg-[#131314]/85 p-4 text-xs text-[#dbc2b0] backdrop-blur-md">
         <div className="mb-3 font-mono font-bold uppercase tracking-[0.18em] text-[#e5e2e3]">{t("publicStatus")}</div>
         <div className="grid gap-2">
-          {(Object.keys(pinTone) as ReportStatus[]).map((status) => (
+          {visibleStatuses.map((status) => (
             <div key={status} className="flex items-center gap-2">
               <span className={`h-2.5 w-2.5 rounded-full ${pinTone[status].dot}`} />
               {statusLabels[status]}
@@ -206,7 +218,7 @@ export function AnimatedCityMap({ reports, city }: AnimatedCityMapProps) {
         <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#00dbe9]">
           {t("liveCivicStream")}
         </p>
-        <p className="mt-2 text-2xl font-black text-white">{reports.length}</p>
+        <p className="mt-2 text-2xl font-black text-white">{visibleReports.length}</p>
         <p className="mt-1 text-xs text-[#dbc2b0]">{t("activeReports")}: {city.primaryArea}</p>
       </div>
     </div>
