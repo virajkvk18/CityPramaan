@@ -26,8 +26,25 @@ export function saveLocalReports(reports: CivicReport[]) {
     return;
   }
 
-  window.localStorage.setItem(LOCAL_REPORTS_KEY, JSON.stringify(reports));
-  window.dispatchEvent(new Event(REPORTS_UPDATED_EVENT));
+  const saveAttempts = [
+    reports,
+    compactStoredReports(reports, 1),
+    compactStoredReports(reports, 0),
+    compactStoredReports(reports, 0).slice(0, 8),
+  ];
+  let lastError: unknown;
+
+  for (const attempt of saveAttempts) {
+    try {
+      window.localStorage.setItem(LOCAL_REPORTS_KEY, JSON.stringify(attempt));
+      window.dispatchEvent(new Event(REPORTS_UPDATED_EVENT));
+      return;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError;
 }
 
 export function updateLocalReport(reportId: string, updater: (report: CivicReport) => CivicReport) {
@@ -133,12 +150,12 @@ function readRawFileAsDataUrl(file: File) {
 async function readCompressedImageAsDataUrl(file: File) {
   const rawDataUrl = await readRawFileAsDataUrl(file);
 
-  if (rawDataUrl.length <= 900_000) {
+  if (rawDataUrl.length <= 320_000) {
     return rawDataUrl;
   }
 
   const image = await loadImage(rawDataUrl);
-  const maxSide = 1100;
+  const maxSide = 760;
   const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
   const width = Math.max(1, Math.round(image.width * scale));
   const height = Math.max(1, Math.round(image.height * scale));
@@ -153,7 +170,10 @@ async function readCompressedImageAsDataUrl(file: File) {
   }
 
   context.drawImage(image, 0, 0, width, height);
-  const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.72);
+  const compressedDataUrl =
+    [0.68, 0.58, 0.48]
+      .map((quality) => canvas.toDataURL("image/jpeg", quality))
+      .find((dataUrl) => dataUrl.length <= 520_000) ?? canvas.toDataURL("image/jpeg", 0.42);
 
   return compressedDataUrl.length < rawDataUrl.length ? compressedDataUrl : rawDataUrl;
 }
@@ -165,4 +185,16 @@ function loadImage(src: string) {
     image.onerror = () => reject(new Error("Unable to load image"));
     image.src = src;
   });
+}
+
+function compactStoredReports(reports: CivicReport[], preserveMediaCount: number) {
+  return reports.slice(0, 20).map((report, index) =>
+    index < preserveMediaCount
+      ? report
+      : {
+          ...report,
+          issueImageDataUrl: undefined,
+          repairImageDataUrl: undefined,
+        }
+  );
 }

@@ -111,6 +111,7 @@ export default function ReportIssuePage() {
   const [submitted, setSubmitted] = useState(false);
   const [signing, setSigning] = useState(false);
   const [proofCreating, setProofCreating] = useState(false);
+  const [proofError, setProofError] = useState("");
   const [aiProcessing, setAiProcessing] = useState(false);
   const [aiResult, setAiResult] = useState<InfrastructureAnalysis | null>(null);
   const googleMapsUrl = buildGoogleMapsUrl(latitude, longitude);
@@ -145,6 +146,7 @@ export default function ReportIssuePage() {
     setVerified(false);
     setAiResult(null);
     setSubmitted(false);
+    setProofError("");
   }
 
   function pinManualLocation(nextLatitude = latitude, nextLongitude = longitude) {
@@ -157,6 +159,7 @@ export default function ReportIssuePage() {
     setLocation(pinnedLocation);
     setLocationMessage("Google Maps pin updated from manual coordinates.");
     setSubmitted(false);
+    setProofError("");
   }
 
   function useCurrentGps() {
@@ -176,6 +179,7 @@ export default function ReportIssuePage() {
         setLocation(`GPS pinned location (${nextLatitude.toFixed(5)}, ${nextLongitude.toFixed(5)})`);
         setLocationMessage("Live GPS location pinned and ready for proof.");
         setSubmitted(false);
+        setProofError("");
       },
       () => {
         setLocationMessage("GPS permission was blocked. Use manual coordinates or Google Maps link.");
@@ -210,6 +214,7 @@ export default function ReportIssuePage() {
     }
 
     setProofCreating(true);
+    setProofError("");
     try {
       const result =
         aiResult ??
@@ -272,7 +277,11 @@ export default function ReportIssuePage() {
       setSubmitted(true);
       setSigning(false);
     } catch {
-      setLocationMessage("Could not create proof record. Try a smaller image or submit again.");
+      const message =
+        "Could not save this proof in browser storage. Clear old local reports or try a smaller image.";
+
+      setProofError(message);
+      setLocationMessage(message);
     } finally {
       setProofCreating(false);
     }
@@ -294,6 +303,7 @@ export default function ReportIssuePage() {
     setAiResult(null);
     setSubmitted(false);
     setProofCreating(false);
+    setProofError("");
   }
 
   return (
@@ -714,7 +724,7 @@ export default function ReportIssuePage() {
                 <div className="mt-4">
                   <div className="mb-1 flex justify-between">
                     <span className="font-mono text-[10px] uppercase text-[#dbc2b0]/60">
-                    {tr("resolverReputationActive")}
+                      {tr("resolverReputationActive")}
                     </span>
                     <span className="font-mono text-sm text-[#ffc08d]">842.50</span>
                   </div>
@@ -727,7 +737,10 @@ export default function ReportIssuePage() {
               <section className="cp-cyber-card rounded-lg p-6">
                 <button
                   type="button"
-                  onClick={() => setSigning(true)}
+                  onClick={() => {
+                    setProofError("");
+                    setSigning(true);
+                  }}
                   disabled={aiProcessing || submitted || proofCreating}
                   className="royal-blue-glow flex w-full items-center justify-center gap-2 rounded border border-[#2A2D35] bg-[#1A1C23] px-4 py-4 font-mono text-xs font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-40"
                 >
@@ -836,6 +849,12 @@ export default function ReportIssuePage() {
                 {proofCreating ? `${tr("signAndCreate")}...` : tr("signAndCreate")}
               </button>
             </div>
+
+            {proofError && (
+              <p className="mt-3 rounded border border-[#ffb4ab]/25 bg-[#ffb4ab]/10 px-3 py-2 text-sm text-[#ffdad6]">
+                {proofError}
+              </p>
+            )}
           </div>
         </div>
       )}
