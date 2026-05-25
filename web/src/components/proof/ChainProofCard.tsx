@@ -1,4 +1,7 @@
+"use client";
+
 import { Blocks, CheckCircle2, Database, FileKey2, Fingerprint } from "lucide-react";
+import { useLanguage } from "@/src/lib/use-language";
 
 type ChainProofCardProps = {
   compact?: boolean;
@@ -14,34 +17,36 @@ const proof = {
 };
 
 export function ChainProofCard({ compact = false }: ChainProofCardProps) {
+  const { t } = useLanguage();
+
   return (
     <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-emerald-200">
           <Blocks size={18} />
-          <p className="font-medium">On-chain Proof</p>
+          <p className="font-medium">{t("onChainProofs")}</p>
         </div>
         <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-200">
           <CheckCircle2 size={13} />
-          Live
+          {t("active")}
         </span>
       </div>
 
       {!compact && (
         <p className="mt-3 text-sm leading-6 text-zinc-300">
-          Status changes and repair evidence are anchored as tamper-resistant public records.
+          {t("publicStatusUpdates")}. {t("hashAnchored")}.
         </p>
       )}
 
       <div className="mt-4 grid gap-2">
-        <ProofRow icon={<Database size={15} />} label="Network" value={proof.network} />
+        <ProofRow icon={<Database size={15} />} label={t("chainStatus")} value={proof.network} />
         <ProofRow icon={<Fingerprint size={15} />} label="Contract" value={proof.contract} />
         <ProofRow icon={<Blocks size={15} />} label="Block" value={proof.block} />
         <ProofRow icon={<FileKey2 size={15} />} label="IPFS CID" value={proof.ipfsCid} />
       </div>
 
       <div className="mt-3 rounded-lg border border-white/10 bg-zinc-950/60 px-3 py-2">
-        <p className="text-xs text-zinc-500">Latest transaction</p>
+        <p className="text-xs text-zinc-500">{t("blockchainTransaction")}</p>
         <p className="mt-1 break-all text-xs font-medium text-emerald-300">{proof.txHash}</p>
       </div>
     </div>

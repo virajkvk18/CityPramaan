@@ -20,19 +20,13 @@ import {
   UserCheck,
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
+import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { ChainProofCard } from "@/src/components/proof/ChainProofCard";
 import { getCitySnapshot, subscribeCity } from "@/src/lib/city-storage";
 import { getReportsForCity, type CivicReport } from "@/src/lib/mock-data";
 import { getLocalReportsSnapshot, subscribeLocalReports } from "@/src/lib/report-storage";
-
-const statusCopy: Record<CivicReport["status"], string> = {
-  OPEN: "Open issue",
-  PENDING_PROOF: "Awaiting repair proof",
-  REPAIR_SUBMITTED: "Repair proof submitted",
-  UNDER_WARRANTY: "Warranty active",
-  REPEAT_FAILURE: "Repeat failure",
-};
+import { useLanguage } from "@/src/lib/use-language";
 
 const statusTone: Record<CivicReport["status"], string> = {
   OPEN: "border-[#ffb4ab]/30 bg-[#ffb4ab]/10 text-[#ffb4ab]",
@@ -43,6 +37,7 @@ const statusTone: Record<CivicReport["status"], string> = {
 };
 
 export default function ProofTimelinePage() {
+  const { t } = useLanguage();
   const params = useParams<{ id: string }>();
   const proofId = params.id;
   const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => "bhopal");
@@ -74,12 +69,13 @@ export default function ProofTimelinePage() {
       <header className="relative z-10 flex h-16 items-center justify-between border-b border-[#ff9933]/15 bg-[#030507]/75 px-6 shadow-[0_0_30px_rgba(0,219,233,0.08)] backdrop-blur-xl">
         <Link href="/" className="flex items-center gap-2 text-sm text-zinc-300 hover:text-white">
           <ArrowLeft size={16} />
-          Back to Command Center
+          {t("backToCommandCenter")}
         </Link>
 
         <div className="flex items-center gap-3">
           <ThemeToggle />
-          <BrandLogo size="sm" subtitle="Public blockchain proof" />
+          <LanguageSelector compact />
+          <BrandLogo size="sm" subtitle={t("publicProof")} />
         </div>
       </header>
 
@@ -91,15 +87,15 @@ export default function ProofTimelinePage() {
                 className={`inline-flex items-center gap-2 rounded-sm border px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-[0.16em] ${statusTone[report.status]}`}
               >
                 {report.status === "REPEAT_FAILURE" ? <AlertTriangle size={14} /> : <ShieldCheck size={14} />}
-                {statusCopy[report.status]}
+                {statusCopy(report.status, t)}
               </span>
               <span className="font-mono text-xs uppercase tracking-[0.18em] text-[#dbc2b0]">
-                Public case {report.id}
+                {t("publicCase")} {report.id}
               </span>
             </div>
 
             <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-              Public Proof Timeline: {report.title}
+              {t("publicProofTimeline")}: {report.title}
             </h1>
 
             <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-300">
@@ -110,21 +106,21 @@ export default function ProofTimelinePage() {
 
             <div className="mt-5 flex flex-wrap gap-3">
               <Badge icon={<MapPin size={15} />} label={report.location} />
-              <Badge icon={<CalendarClock size={15} />} label={warrantyLabel(report)} />
-              <Badge icon={<Blocks size={15} />} label={`${events.length} proof events`} />
-              <Badge icon={<Fingerprint size={15} />} label={`Contractor: ${report.contractor}`} />
+              <Badge icon={<CalendarClock size={15} />} label={warrantyLabel(report, t)} />
+              <Badge icon={<Blocks size={15} />} label={`${events.length} ${t("proofEventsIndexed")}`} />
+              <Badge icon={<Fingerprint size={15} />} label={`${t("contractor")}: ${report.contractor}`} />
             </div>
           </div>
 
           <div className="cp-cyber-card cp-cyber-card-hover mt-6 rounded-2xl p-6">
             <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-xs font-medium uppercase text-orange-300">Tamper-Proof Audit</p>
-                <h2 className="mt-1 text-2xl font-semibold">Status Timeline</h2>
+                <p className="text-xs font-medium uppercase text-orange-300">{t("publicAudit")}</p>
+                <h2 className="mt-1 text-2xl font-semibold">{t("proofTimeline")}</h2>
               </div>
 
               <button className="flex w-max items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm hover:bg-white/10">
-                View Contract
+                {t("viewContract")}
                 <ExternalLink size={15} />
               </button>
             </div>
@@ -153,7 +149,7 @@ export default function ProofTimelinePage() {
                         </div>
 
                         <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
-                          <span className="text-xs text-zinc-500">Blockchain transaction</span>
+                          <span className="text-xs text-zinc-500">{t("blockchainTransaction")}</span>
                           <span className="truncate text-xs text-emerald-300">
                             {event.tx ?? report.repairTxHash ?? report.evidenceHash ?? report.txHash}
                           </span>
@@ -168,18 +164,18 @@ export default function ProofTimelinePage() {
 
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <EvidenceCard
-              label="Before Repair"
+              label={t("issueBefore")}
               status={report.issueImageName ?? report.aiSummary ?? "Citizen-submitted issue evidence"}
               tone="red"
               pattern="pothole"
               image={report.issueImageDataUrl}
             />
             <EvidenceCard
-              label="After Repair"
+              label={t("contractorProofAfter")}
               status={
                 hasRepairProof
                   ? report.repairImageName ?? "Contractor repair evidence attached"
-                  : "No after-repair proof has been submitted yet"
+                  : t("noRepairProofYet")
               }
               tone={hasRepairProof ? "emerald" : "orange"}
               pattern="patch"
@@ -194,14 +190,14 @@ export default function ProofTimelinePage() {
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
             <div className="flex items-center gap-2">
               <Sparkles size={18} className="text-cyan-300" />
-              <p className="font-medium">AI Verdict</p>
+              <p className="font-medium">{t("aiVerdict")}</p>
             </div>
 
             <div className="mt-5 space-y-3">
-              <Score label="Issue Confidence" value={`${report.confidence}%`} />
-              <Score label="Repair Integrity" value={report.repairAudit?.repairIntegrity ?? (hasRepairProof ? "High" : "Pending")} />
-              <Score label="Geo Match" value={report.repairAudit?.geoVariance ?? (hasRepairProof ? "1.8m" : "Pending")} />
-              <Score label="Public Status" value={statusCopy[report.status]} />
+              <Score label={t("aiConfidence")} value={`${report.confidence}%`} />
+              <Score label={t("repairIntegrity")} value={report.repairAudit?.repairIntegrity ?? (hasRepairProof ? "High" : t("pending"))} />
+              <Score label={t("geoMatch")} value={report.repairAudit?.geoVariance ?? (hasRepairProof ? "1.8m" : t("pending"))} />
+              <Score label={t("publicStatus")} value={statusCopy(report.status, t)} />
             </div>
 
             <p className="mt-4 rounded-lg border border-cyan-400/20 bg-cyan-500/10 p-3 text-sm text-zinc-300">
@@ -213,20 +209,20 @@ export default function ProofTimelinePage() {
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
             <div className="flex items-center gap-2">
               <FileImage size={18} className="text-orange-300" />
-              <p className="font-medium">Public Evidence State</p>
+              <p className="font-medium">{t("publicEvidenceState")}</p>
             </div>
 
             <div className="mt-4 space-y-3">
-              <MiniState done label="Issue image visible" />
-              <MiniState done={hasRepairProof} label="Repair image visible" />
-              <MiniState done={isWarrantyActive} label="Warranty activated" />
+              <MiniState done label={t("issueImageVisible")} synced={t("active")} pending={t("pending")} />
+              <MiniState done={hasRepairProof} label={t("repairImageVisible")} synced={t("active")} pending={t("pending")} />
+              <MiniState done={isWarrantyActive} label={t("warrantyActivated")} synced={t("active")} pending={t("pending")} />
             </div>
 
             <Link
               href="/warranty"
               className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-4 py-3 text-sm font-semibold text-[#7df4ff] hover:bg-[#00dbe9]/15"
             >
-              Open Warranty Registry
+              {t("openWarrantyRegistry")}
               <ExternalLink size={15} />
             </Link>
           </div>
@@ -234,21 +230,21 @@ export default function ProofTimelinePage() {
           <div className="rounded-2xl border border-fuchsia-400/20 bg-fuchsia-500/10 p-5">
             <div className="flex items-center gap-2 text-fuchsia-200">
               <ShieldAlert size={18} />
-              <p className="font-medium">Accountability Impact</p>
+              <p className="font-medium">{t("accountabilityImpact")}</p>
             </div>
 
             <ul className="mt-4 space-y-3 text-sm text-zinc-300">
               <li className="flex gap-2">
                 <CheckCircle2 size={16} className="mt-0.5 text-emerald-300" />
-                Public status updates in sync
+                {t("publicStatusUpdates")}
               </li>
               <li className="flex gap-2">
                 <CheckCircle2 size={16} className="mt-0.5 text-emerald-300" />
-                Contractor repair proof linked to report ID
+                {t("contractorRepairProofLinked")}
               </li>
               <li className="flex gap-2">
                 <CheckCircle2 size={16} className="mt-0.5 text-emerald-300" />
-                Warranty state visible to citizens
+                {t("warrantyStateVisible")}
               </li>
             </ul>
           </div>
@@ -312,16 +308,31 @@ function formatProofTime(value?: string) {
   return `${value.slice(0, 10)} ${value.slice(11, 16)} UTC`;
 }
 
-function warrantyLabel(report: CivicReport) {
+function warrantyLabel(report: CivicReport, t: (key: "pending" | "notActive" | "warranty") => string) {
   if (report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE") {
-    return `${report.warrantyDaysLeft ?? report.warrantyPeriodDays ?? 90} warranty days left`;
+    return `${report.warrantyDaysLeft ?? report.warrantyPeriodDays ?? 90} ${t("warranty")}`;
   }
 
   if (report.status === "REPAIR_SUBMITTED") {
-    return "Warranty activation pending";
+    return t("pending");
   }
 
-  return "Warranty not active";
+  return t("notActive");
+}
+
+function statusCopy(
+  status: CivicReport["status"],
+  t: (key: "openIssues" | "pendingProof" | "repairSubmitted" | "active" | "repeatFailure") => string
+) {
+  const labels = {
+    OPEN: t("openIssues"),
+    PENDING_PROOF: t("pendingProof"),
+    REPAIR_SUBMITTED: t("repairSubmitted"),
+    UNDER_WARRANTY: t("active"),
+    REPEAT_FAILURE: t("repeatFailure"),
+  };
+
+  return labels[status];
 }
 
 function eventIcon(label: string) {
@@ -377,11 +388,21 @@ function Score({ label, value }: { label: string; value: string }) {
   );
 }
 
-function MiniState({ done, label }: { done: boolean; label: string }) {
+function MiniState({
+  done,
+  label,
+  synced,
+  pending,
+}: {
+  done: boolean;
+  label: string;
+  synced: string;
+  pending: string;
+}) {
   return (
     <div className="flex items-center justify-between rounded-lg border border-white/10 bg-zinc-950/60 px-3 py-2">
       <span className="text-sm text-zinc-300">{label}</span>
-      <span className={done ? "text-emerald-300" : "text-orange-300"}>{done ? "Synced" : "Pending"}</span>
+      <span className={done ? "text-emerald-300" : "text-orange-300"}>{done ? synced : pending}</span>
     </div>
   );
 }

@@ -1,4 +1,7 @@
+"use client";
+
 import { Landmark } from "lucide-react";
+import { useLanguage } from "@/src/lib/use-language";
 
 type BrandLogoProps = {
   className?: string;
@@ -11,10 +14,12 @@ export function BrandLogo({
   className = "",
   showText = true,
   size = "md",
-  subtitle = "Proof of Repair for Accountable Cities",
+  subtitle,
 }: BrandLogoProps) {
+  const { t } = useLanguage();
   const markSize = size === "sm" ? "h-11 w-11 rounded-lg" : "h-14 w-14 rounded-xl";
   const titleSize = size === "sm" ? "text-2xl" : "text-[29px]";
+  const resolvedSubtitle = subtitle ?? `${t("publicProof")} · ${t("warrantyGuard")}`;
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
@@ -45,7 +50,7 @@ export function BrandLogo({
             City<span className="cp-brand-text">Pramaan</span>
           </span>
           <span className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-[#dbc2b0]">
-            {subtitle}
+            {resolvedSubtitle}
           </span>
         </div>
       )}

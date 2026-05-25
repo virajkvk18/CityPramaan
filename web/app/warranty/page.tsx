@@ -83,7 +83,7 @@ export default function WarrantyScannerPage() {
           >
             <ArrowLeft size={17} />
           </Link>
-          <BrandLogo size="sm" subtitle="Warranty breach scanner" />
+          <BrandLogo size="sm" subtitle={tr("warrantyScanner")} />
         </div>
         <div className="flex items-center gap-3">
           <button className="grid h-9 w-9 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0]/70 transition hover:text-[#00eb88]">
@@ -99,27 +99,27 @@ export default function WarrantyScannerPage() {
 
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-[#ff9933]/15 bg-[linear-gradient(180deg,rgba(255,153,51,0.08),rgba(0,0,0,0.5)_22%,rgba(0,219,233,0.045))] px-4 pb-5 pt-20 shadow-[5px_0_24px_rgba(0,0,0,0.45)] backdrop-blur-2xl md:flex">
         <div className="mt-2 border-b border-white/10 px-2 pb-5">
-          <BrandLogo size="sm" subtitle="Warranty breach scanner" />
+          <BrandLogo size="sm" subtitle={tr("warrantyScanner")} />
         </div>
 
         <nav className="mt-8 flex flex-1 flex-col gap-1">
-          <NavItem href="/" icon={<LayoutDashboard size={18} />} label="Command Center" />
-          <NavItem href="/proof/CP-004" icon={<BadgeCheck size={18} />} label="Verified Repairs" />
-          <NavItem href="/report" icon={<AlertTriangle size={18} />} label="Active Reports" />
-          <NavItem href="/warranty" icon={<ShieldAlert size={18} />} label="Warranty Scanner" active />
-          <NavItem href="/contractor" icon={<ShieldCheck size={18} />} label="Contractor Audit" />
+          <NavItem href="/" icon={<LayoutDashboard size={18} />} label={tr("commandCenter")} />
+          <NavItem href="/proof/CP-004" icon={<BadgeCheck size={18} />} label={tr("verifiedRepairs")} />
+          <NavItem href="/report" icon={<AlertTriangle size={18} />} label={tr("activeReports")} />
+          <NavItem href="/warranty" icon={<ShieldAlert size={18} />} label={tr("warrantyScanner")} active />
+          <NavItem href="/contractor" icon={<ShieldCheck size={18} />} label={tr("contractorAudit")} />
         </nav>
 
         <Link
           href="/report"
           className="btn-primary-shimmer grid rounded bg-[#ffc08d] px-4 py-3 text-center font-mono text-xs font-semibold text-[#4c2700]"
         >
-          Submit Report
+          {tr("submitReport")}
         </Link>
 
         <div className="mt-5 border-t border-white/5 pt-4">
-          <NavItem href="/" icon={<Router size={15} />} label="System Status" small />
-          <NavItem href="/about" icon={<BookOpen size={15} />} label="Documentation" small />
+          <NavItem href="/" icon={<Router size={15} />} label={tr("systemStatus")} small />
+          <NavItem href="/about" icon={<BookOpen size={15} />} label={tr("documentation")} small />
         </div>
       </aside>
 
@@ -187,7 +187,12 @@ export default function WarrantyScannerPage() {
                           <p className="font-mono text-xs text-[#00dbe9]">{report.id}</p>
                           <p className="mt-1 font-semibold text-white">{report.title}</p>
                         </div>
-                        <WarrantyBadge report={report} />
+                        <WarrantyBadge
+                          report={report}
+                          activeText={tr("active")}
+                          pendingText={tr("pending")}
+                          notActiveText={tr("notActive")}
+                        />
                       </div>
                       <p className="mt-2 text-xs text-[#dbc2b0]/70">{report.location}</p>
                     </button>
@@ -198,7 +203,7 @@ export default function WarrantyScannerPage() {
               <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
                 <h3 className="mb-4 flex items-center gap-2 border-b border-white/5 pb-3 font-mono text-xs uppercase text-[#d3fbff]">
                   <Sparkles size={15} />
-                  AI Diagnostics Verdict
+                  {tr("aiDiagnosticsVerdict")}
                 </h3>
                 <div className="space-y-4">
                   <Diagnostic label="Primary Cause" value="Substandard asphalt grade" score="85%" tone="rose" />
@@ -226,20 +231,20 @@ export default function WarrantyScannerPage() {
                         className="btn-primary-shimmer flex items-center justify-center gap-2 rounded border border-[#ffb4ab] bg-[#93000a]/40 px-4 py-3 font-mono text-xs font-semibold text-[#ffb4ab] transition hover:bg-[#93000a]/55 disabled:cursor-wait disabled:opacity-70"
                       >
                         <Radar size={16} className={scanning ? "animate-spin" : ""} />
-                        {scanning ? "Scanning..." : "Scan Repeat Failure"}
+                        {scanning ? `${tr("scanRepeatFailure")}...` : tr("scanRepeatFailure")}
                       </button>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                      <Info label={tr("status")} value={statusLabel(selectedReport)} />
-                      <Info label={tr("warranty")} value={warrantyLabel(selectedReport)} />
+                      <Info label={tr("status")} value={statusLabel(selectedReport, tr)} />
+                      <Info label={tr("warranty")} value={warrantyLabel(selectedReport, tr)} />
                       <Info label={tr("contractor")} value={selectedReport.contractor} />
                       <Info label={tr("publicHash")} value={selectedReport.evidenceHash ?? selectedReport.txHash} />
                     </div>
 
                     {scanning && (
                       <div className="mt-5 rounded border border-[#00dbe9]/20 bg-[#00dbe9]/10 p-4 text-sm text-[#dbc2b0]">
-                        Comparing latest reports with this repaired segment and warranty window...
+                        {tr("repeatFailureScan")} / {tr("warranty")}
                       </div>
                     )}
                   </section>
@@ -262,7 +267,7 @@ export default function WarrantyScannerPage() {
                       <EvidencePanel
                         label={tr("issueBefore")}
                         image={selectedReport.issueImageDataUrl}
-                        status={selectedReport.issueImageName ?? selectedReport.aiSummary ?? "Reported civic issue"}
+                        status={selectedReport.issueImageName ?? selectedReport.aiSummary ?? tr("citizenReport")}
                         tone="rose"
                       />
                       <EvidencePanel
@@ -271,8 +276,8 @@ export default function WarrantyScannerPage() {
                         status={
                           selectedReport.repairImageName ??
                           (selectedReport.status === "UNDER_WARRANTY"
-                            ? "Repair proof available"
-                            : "No repair proof submitted yet")
+                            ? tr("repairImageVisible")
+                            : tr("noRepairProofYet"))
                         }
                         tone="emerald"
                       />
@@ -284,13 +289,18 @@ export default function WarrantyScannerPage() {
                       <MapPin size={15} />
                       {tr("mapLocation")}
                     </h3>
-                    <GoogleMapPreview report={selectedReport} />
+                    <GoogleMapPreview
+                      report={selectedReport}
+                      exactLocationLabel={tr("exactPublicLocation")}
+                      openMapsLabel={tr("openGoogleMaps")}
+                      pendingLocationLabel={tr("mapLocationSubtitle")}
+                    />
                   </section>
 
                   <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
                     <h3 className="mb-6 flex items-center gap-2 border-b border-white/5 pb-3 font-mono text-xs uppercase text-[#d3fbff]">
                       <CalendarClock size={15} />
-                      Synced Warranty Timeline
+                      {tr("syncedWarrantyRegistry")} / {tr("proofTimeline")}
                     </h3>
                     <div className="relative flex flex-col gap-7 border-l border-white/10 pl-6">
                       {(selectedReport.history?.length ? selectedReport.history : fallbackHistory(selectedReport)).map(
@@ -309,9 +319,9 @@ export default function WarrantyScannerPage() {
                 </>
               ) : (
                 <div className="cp-cyber-card rounded-lg p-8 text-center">
-                  <p className="text-xl font-semibold text-white">No warranty records yet.</p>
+                  <p className="text-xl font-semibold text-white">{tr("warranty")}: {tr("notActive")}</p>
                   <Link href="/contractor" className="mt-4 inline-flex rounded bg-[#ffc08d] px-5 py-3 font-semibold text-[#4c2700]">
-                    Submit contractor proof
+                    {tr("submitProofActivateWarranty")}
                   </Link>
                 </div>
               )}
@@ -351,7 +361,17 @@ function NavItem({
   );
 }
 
-function WarrantyBadge({ report }: { report: CivicReport }) {
+function WarrantyBadge({
+  report,
+  activeText,
+  pendingText,
+  notActiveText,
+}: {
+  report: CivicReport;
+  activeText: string;
+  pendingText: string;
+  notActiveText: string;
+}) {
   const active = report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE";
   const pending = report.status === "REPAIR_SUBMITTED";
 
@@ -365,33 +385,33 @@ function WarrantyBadge({ report }: { report: CivicReport }) {
             : "border-[#ffb4ab]/30 bg-[#ffb4ab]/10 text-[#ffb4ab]"
       }`}
     >
-      {active ? "Active" : pending ? "Pending" : "Not Active"}
+      {active ? activeText : pending ? pendingText : notActiveText}
     </span>
   );
 }
 
-function statusLabel(report: CivicReport) {
+function statusLabel(report: CivicReport, tr: (key: "active" | "pending" | "notActive" | "openIssues" | "repairSubmitted" | "repeatFailure") => string) {
   const labels = {
-    OPEN: "Open",
-    PENDING_PROOF: "Needs Repair",
-    REPAIR_SUBMITTED: "Proof Pending",
-    UNDER_WARRANTY: "Active",
-    REPEAT_FAILURE: "Breach",
+    OPEN: tr("openIssues"),
+    PENDING_PROOF: tr("pending"),
+    REPAIR_SUBMITTED: tr("repairSubmitted"),
+    UNDER_WARRANTY: tr("active"),
+    REPEAT_FAILURE: tr("repeatFailure"),
   };
 
   return labels[report.status];
 }
 
-function warrantyLabel(report: CivicReport) {
+function warrantyLabel(report: CivicReport, tr: (key: "notActive" | "pending" | "warranty") => string) {
   if (report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE") {
-    return `${report.warrantyDaysLeft ?? report.warrantyPeriodDays ?? 90} days left`;
+    return `${report.warrantyDaysLeft ?? report.warrantyPeriodDays ?? 90} ${tr("warranty")}`;
   }
 
   if (report.status === "REPAIR_SUBMITTED") {
-    return "Awaiting activation";
+    return tr("pending");
   }
 
-  return "Not active";
+  return tr("notActive");
 }
 
 function Info({ label, value }: { label: string; value: string }) {
@@ -477,12 +497,21 @@ function EvidencePanel({
   );
 }
 
-function GoogleMapPreview({ report }: { report: CivicReport }) {
+function GoogleMapPreview({
+  report,
+  exactLocationLabel,
+  openMapsLabel,
+  pendingLocationLabel,
+}: {
+  report: CivicReport;
+  exactLocationLabel: string;
+  openMapsLabel: string;
+  pendingLocationLabel: string;
+}) {
   if (!report.latitude || !report.longitude) {
     return (
       <div className="rounded border border-white/10 bg-black/30 p-4 text-sm text-[#dbc2b0]">
-        Exact map pin is pending for this older demo record. New citizen reports will store GPS
-        coordinates automatically.
+        {pendingLocationLabel}
       </div>
     );
   }
@@ -504,7 +533,7 @@ function GoogleMapPreview({ report }: { report: CivicReport }) {
         />
       </div>
       <div className="rounded border border-white/10 bg-black/25 p-4">
-        <p className="font-mono text-xs uppercase text-[#00dbe9]">Exact public location</p>
+        <p className="font-mono text-xs uppercase text-[#00dbe9]">{exactLocationLabel}</p>
         <p className="mt-2 text-sm leading-6 text-[#dbc2b0]">{report.location}</p>
         <p className="mt-3 font-mono text-xs text-[#ffc08d]">
           {report.latitude.toFixed(5)}, {report.longitude.toFixed(5)}
@@ -515,7 +544,7 @@ function GoogleMapPreview({ report }: { report: CivicReport }) {
           rel="noreferrer"
           className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-4 py-3 text-sm font-semibold text-[#00dbe9] transition hover:bg-[#00dbe9]/15"
         >
-          Open in Google Maps
+          {openMapsLabel}
           <ExternalLink size={14} />
         </a>
       </div>

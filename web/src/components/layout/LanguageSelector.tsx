@@ -36,7 +36,7 @@ export function LanguageSelector({ compact = false }: { compact?: boolean }) {
         value={languageSnapshot}
         onChange={(event) => setSelectedLanguageKey(event.target.value as LanguageKey)}
         className="bg-transparent font-mono text-xs font-bold text-[#7df4ff] outline-none"
-        aria-label="Select language"
+        aria-label={translate(languageSnapshot, "language")}
       >
         {indianLanguages.map((language) => (
           <option key={language.key} value={language.key} className="bg-[#050505] text-white">

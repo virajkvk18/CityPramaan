@@ -18,6 +18,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
+import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { AnimatedCityMap } from "@/src/components/map/AnimatedCityMap";
 import { ChainProofCard } from "@/src/components/proof/ChainProofCard";
@@ -36,24 +37,27 @@ import {
   MOCK_WALLET_ADDRESS,
   subscribeWallet,
 } from "@/src/lib/wallet-storage";
+import { useLanguage } from "@/src/lib/use-language";
+import type { TranslationKey } from "@/src/lib/language-context";
 
-const timelineDefaults = [
-  "Citizen report created",
-  "AI verified road damage",
-  "Repair proof submitted",
-  "Warranty activated",
-  "Repeat failure reopened",
+const timelineDefaultKeys: TranslationKey[] = [
+  "citizenReport",
+  "aiPreVerification",
+  "repairProof",
+  "warrantyActivated",
+  "repeatFailure",
 ];
 
 const navItems = [
-  { label: "Command Center", icon: Gauge, href: "/", active: true },
-  { label: "Verified Repairs", icon: BadgeCheck, href: "/proof/CP-004" },
-  { label: "Active Reports", icon: AlertTriangle, href: "/report" },
-  { label: "Urban Ledger", icon: Wallet, href: "/warranty" },
-  { label: "Governance", icon: Scale, href: "/about" },
+  { labelKey: "commandCenter" as const, icon: Gauge, href: "/", active: true },
+  { labelKey: "verifiedRepairs" as const, icon: BadgeCheck, href: "/proof/CP-004" },
+  { labelKey: "activeReports" as const, icon: AlertTriangle, href: "/report" },
+  { labelKey: "urbanLedger" as const, icon: Wallet, href: "/warranty" },
+  { labelKey: "governance" as const, icon: Scale, href: "/about" },
 ];
 
 export default function Home() {
+  const { t } = useLanguage();
   const localReportsSnapshot = useSyncExternalStore(
     subscribeLocalReports,
     getLocalReportsSnapshot,
@@ -79,8 +83,8 @@ export default function Home() {
   const selected = localCityReports[0] ?? cityReports[3];
   const isNewLocalReport = selected.status === "PENDING_PROOF";
   const timelineEvents = isNewLocalReport
-    ? ["Citizen report created", "AI verified road damage", "Mock proof prepared", "Awaiting contractor assignment"]
-    : timelineDefaults;
+    ? [t("citizenReport"), t("aiPreVerification"), t("newProof"), t("awaitingContractorAssignment")]
+    : timelineDefaultKeys.map((key) => t(key));
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#050505] text-[#e5e2e3]">
@@ -97,12 +101,13 @@ export default function Home() {
             href="/about"
             className="hidden rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.2em] text-[#ffdcc2] transition hover:border-[#00dbe9]/35 hover:bg-[#00dbe9]/10 hover:text-[#7df4ff] md:inline-flex"
           >
-            About
+            {t("about")}
           </Link>
           <button className="grid h-10 w-10 place-items-center rounded-md border border-white/10 bg-white/[0.04] text-[#dbc2b0] transition hover:border-[#00dbe9]/40 hover:text-[#7df4ff] hover:shadow-[0_0_18px_rgba(0,219,233,0.16)]">
             <Bell size={18} />
           </button>
           <ThemeToggle />
+          <LanguageSelector compact />
           <button
             onClick={walletConnected ? disconnectMockWallet : connectMockWallet}
             className={`relative overflow-hidden rounded-sm border px-5 py-3 font-mono text-xs font-bold uppercase tracking-[0.2em] transition ${
@@ -112,7 +117,7 @@ export default function Home() {
             }`}
           >
             <span className="stitch-shimmer" />
-            {walletConnected ? MOCK_WALLET_ADDRESS : "Connect Wallet"}
+            {walletConnected ? MOCK_WALLET_ADDRESS : t("connectWallet")}
           </button>
         </div>
       </header>
@@ -125,7 +130,7 @@ export default function Home() {
 
               return (
                 <Link
-                  key={item.label}
+                  key={item.labelKey}
                   href={item.href}
                   className={`flex w-full items-center gap-4 rounded-md border px-4 py-4 text-left transition ${
                     item.active
@@ -134,7 +139,9 @@ export default function Home() {
                   }`}
                 >
                   <Icon size={22} />
-                  <span className="font-mono text-xs font-bold uppercase tracking-[0.18em]">{item.label}</span>
+                  <span className="font-mono text-xs font-bold uppercase tracking-[0.18em]">
+                    {t(item.labelKey)}
+                  </span>
                 </Link>
               );
             })}
@@ -142,38 +149,38 @@ export default function Home() {
 
           <div className="mt-8 border-t border-white/10 pt-6">
             <p className="mb-5 px-3 font-mono text-xs font-bold uppercase tracking-[0.2em] text-[#dbc2b0]">
-              Public Audit
+              {t("publicAudit")}
             </p>
             <div className="space-y-4 px-3">
-              <AuditMetric label="Active Reports" value={`${128 + localCityReports.length}`} tone="text-[#ffc08d]" />
-              <AuditMetric label="Verified Repairs" value="76" tone="text-[#00eb88]" />
-              <AuditMetric label="Repeat Failures" value="09" tone="text-[#ffb4ab]" />
-              <AuditMetric label="On-chain Proofs" value={`${214 + localCityReports.length}`} tone="text-[#00dbe9]" />
+              <AuditMetric label={t("activeReports")} value={`${128 + localCityReports.length}`} tone="text-[#ffc08d]" />
+              <AuditMetric label={t("verifiedRepairs")} value="76" tone="text-[#00eb88]" />
+              <AuditMetric label={t("repeatFailure")} value="09" tone="text-[#ffb4ab]" />
+              <AuditMetric label={t("onChainProofs")} value={`${214 + localCityReports.length}`} tone="text-[#00dbe9]" />
             </div>
           </div>
 
           <div className="mt-8 rounded-md border border-[#00dbe9]/30 bg-[linear-gradient(145deg,rgba(0,219,233,0.09),rgba(255,255,255,0.035))] p-5 shadow-[0_0_24px_rgba(0,219,233,0.1)]">
             <div className="flex items-center gap-2 text-[#00eefc]">
               <ScanSearch size={18} />
-              <p className="font-semibold">Not Just Reporting</p>
+              <p className="font-semibold">{t("notJustReporting")}</p>
             </div>
             <p className="mt-3 text-sm leading-6 text-[#e5e2e3]/80">
-              Blockchain-backed warranty verification ensures contractors fix repeat issues with public proof.
+              {t("notJustReportingText")}
             </p>
           </div>
 
           {walletConnected && (
             <div className="mt-5 rounded-md border border-[#00eb88]/30 bg-[linear-gradient(135deg,rgba(0,235,136,0.13),rgba(0,219,233,0.06))] p-5 shadow-[0_0_22px_rgba(0,235,136,0.08)]">
-              <p className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-[#5bffa1]">Citizen Wallet</p>
+              <p className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-[#5bffa1]">{t("citizenWallet")}</p>
               <p className="mt-2 font-mono text-sm text-[#e5e2e3]">{MOCK_WALLET_ADDRESS}</p>
-              <p className="mt-1 text-xs text-[#dbc2b0]">Ready to sign civic proof records</p>
+              <p className="mt-1 text-xs text-[#dbc2b0]">{t("readyToSign")}</p>
             </div>
           )}
 
           {localCityReports.length > 0 && (
             <div className="mt-5 rounded-md border border-[#00dbe9]/30 bg-[linear-gradient(135deg,rgba(0,219,233,0.12),rgba(0,0,0,0.18))] p-5">
               <p className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-[#7df4ff]">
-                Latest Citizen Report
+                {t("latestCitizenReport")}
               </p>
               <p className="mt-3 text-sm text-[#e5e2e3]">{localCityReports[0].title}</p>
               <p className="mt-1 text-xs text-[#dbc2b0]">{localCityReports[0].location}</p>
@@ -182,7 +189,7 @@ export default function Home() {
                 className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-sm border border-[#00dbe9]/40 bg-black/30 px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#7df4ff] hover:bg-black/60"
               >
                 <RotateCcw size={13} />
-                Reset Demo
+                {t("resetDemo")}
               </button>
             </div>
           )}
@@ -195,10 +202,10 @@ export default function Home() {
             <div className="mb-6 flex flex-col gap-5 2xl:flex-row 2xl:items-end 2xl:justify-between">
               <div>
                 <p className="font-mono text-xs font-bold uppercase tracking-[0.24em] text-[#00dbe9]">
-                  Command Center | Multi-city Proof Network
+                  {t("commandCenterSubtitle")}
                 </p>
                 <h2 className="mt-2 max-w-xl text-4xl font-black leading-tight tracking-tight text-white">
-                  {selectedCity.name} Civic Repair Map
+                  {selectedCity.name} {t("commandCenter")}
                 </h2>
                 <p className="mt-2 text-sm text-[#dbc2b0]">
                   Demo node: {selectedCity.primaryArea}, {selectedCity.state}. Switch cities to
@@ -208,11 +215,11 @@ export default function Home() {
 
               <div className="flex flex-wrap gap-3">
                 <CitySelector value={selectedCity.key} />
-                <CommandLink href="/contractor" label="Contractor View" icon={<Building2 size={16} />} tone="cyan" />
-                <CommandLink href="/warranty" label="Warranty Scanner" icon={<ScanSearch size={16} />} tone="gold" />
+                <CommandLink href="/contractor" label={t("contractorView")} icon={<Building2 size={16} />} tone="cyan" />
+                <CommandLink href="/warranty" label={t("warrantyScanner")} icon={<ScanSearch size={16} />} tone="gold" />
                 <CommandLink
                   href={`/proof/${selected.id}`}
-                  label="Public Proof"
+                  label={t("publicProof")}
                   icon={<Blocks size={16} />}
                   tone="glass"
                 />
@@ -221,7 +228,7 @@ export default function Home() {
                   className="relative overflow-hidden rounded-sm bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] px-5 py-3 font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#4c2700] shadow-[0_0_24px_rgba(255,153,51,0.2)] hover:shadow-[0_0_30px_rgba(255,153,51,0.3)]"
                 >
                   <span className="stitch-shimmer" />
-                  Report Issue
+                  {t("reportIssue")}
                 </Link>
               </div>
             </div>
@@ -229,40 +236,40 @@ export default function Home() {
             <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
               <PulseStat
                 icon={<Gauge size={17} />}
-                label="Civic Signal"
+                label={t("activeReports")}
                 value={`${128 + localCityReports.length}`}
-                detail="+18 reports today"
+                detail={t("liveCivicStream")}
                 tone="amber"
               />
               <PulseStat
                 icon={<Sparkles size={17} />}
-                label="AI Confidence"
+                label={t("aiConfidence")}
                 value={`${selected.confidence}%`}
-                detail="Unified issue analysis"
+                detail={t("unifiedAnalysis")}
                 tone="cyan"
               />
               <PulseStat
                 icon={<ShieldCheck size={17} />}
-                label="Warranty Watch"
-                value={selected.warrantyDaysLeft === null ? "Ready" : `${selected.warrantyDaysLeft}d`}
-                detail="Repeat failure scan"
+                label={t("warrantyWatch")}
+                value={selected.warrantyDaysLeft === null ? t("ready") : `${selected.warrantyDaysLeft}d`}
+                detail={t("repeatFailureScan")}
                 tone="emerald"
               />
               <PulseStat
                 icon={<Blocks size={17} />}
-                label="Chain Status"
+                label={t("chainStatus")}
                 value={`${214 + localCityReports.length}`}
-                detail="Proof events indexed"
+                detail={t("proofEventsIndexed")}
                 tone="violet"
               />
             </div>
 
             <div className="mb-5 flex flex-wrap gap-2">
-              <FilterChip label="Open Issues" color="bg-[#ffb4ab]" />
-              <FilterChip label="Pending Proof" color="bg-[#00dbe9]" />
-              <FilterChip label="Repair Submitted" color="bg-[#ff9933]" />
-              <FilterChip label="Under Warranty" color="bg-[#3b82f6]" />
-              <FilterChip label="Repeat Failure" color="bg-[#d946ef]" active />
+              <FilterChip label={t("openIssues")} color="bg-[#ffb4ab]" />
+              <FilterChip label={t("pendingProof")} color="bg-[#00dbe9]" />
+              <FilterChip label={t("repairSubmitted")} color="bg-[#ff9933]" />
+              <FilterChip label={t("underWarranty")} color="bg-[#3b82f6]" />
+              <FilterChip label={t("repeatFailure")} color="bg-[#d946ef]" active />
             </div>
 
             <div className="cp-command-frame relative">
@@ -271,12 +278,12 @@ export default function Home() {
 
             <div className="cp-live-strip mt-5 overflow-hidden rounded-md border border-white/10 bg-black/30 backdrop-blur-xl">
               <div className="cp-live-track flex min-w-max items-center gap-8 px-4 py-3 font-mono text-xs uppercase tracking-[0.18em] text-[#dbc2b0]">
-                <span className="text-[#00eb88]">Live civic stream</span>
-                <span>{selectedCity.name} node synced</span>
-                <span>AI classifier online</span>
-                <span>Warranty oracle listening</span>
-                <span>Public ledger ready</span>
-                <span>Resolver reputation active</span>
+                <span className="text-[#00eb88]">{t("liveCivicStream")}</span>
+                <span>{selectedCity.name} {t("nodeSynced")}</span>
+                <span>{t("aiClassifierOnline")}</span>
+                <span>{t("warrantyOracleListening")}</span>
+                <span>{t("publicLedgerReady")}</span>
+                <span>{t("resolverReputationActive")}</span>
               </div>
             </div>
 
@@ -285,26 +292,26 @@ export default function Home() {
               <div className="relative grid gap-3 p-4 sm:grid-cols-2 2xl:grid-cols-4">
                 <TrustSignal
                   icon={<Sparkles size={17} />}
-                  label="AI Issue Brain"
-                  value="One report flow"
+                  label={t("aiIssueBrain")}
+                  value={t("oneReportFlow")}
                   tone="cyan"
                 />
                 <TrustSignal
                   icon={<Blocks size={17} />}
-                  label="Blockchain Proof"
-                  value="Hash anchored"
+                  label={t("blockchainProof")}
+                  value={t("hashAnchored")}
                   tone="amber"
                 />
                 <TrustSignal
                   icon={<ShieldCheck size={17} />}
-                  label="Warranty Guard"
-                  value="Failure tracked"
+                  label={t("warrantyGuard")}
+                  value={t("failureTracked")}
                   tone="emerald"
                 />
                 <TrustSignal
                   icon={<Wallet size={17} />}
-                  label="Citizen Node"
-                  value={walletConnected ? "Wallet ready" : "Demo mode"}
+                  label={t("citizenNode")}
+                  value={walletConnected ? t("walletReady") : t("demoMode")}
                   tone="violet"
                 />
               </div>
@@ -323,10 +330,10 @@ export default function Home() {
                 }`}
               >
                 {isNewLocalReport ? <ShieldCheck size={14} /> : <AlertTriangle size={14} />}
-                {isNewLocalReport ? "New Proof" : "High Priority"}
+                {isNewLocalReport ? t("newProof") : t("highPriority")}
               </div>
               <h3 className="mt-4 text-2xl font-black tracking-tight text-white">
-                {isNewLocalReport ? "New Proof Created" : "Repeat Failure Detected"}
+                {isNewLocalReport ? t("newProofCreated") : t("repeatFailureDetected")}
               </h3>
               <p className="mt-2 flex items-center gap-2 text-sm text-[#dbc2b0]">
                 <MapPin size={16} />
@@ -336,12 +343,12 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <InfoCard label="Severity" value={selected.severity} />
-            <InfoCard label="AI Confidence" value={`${selected.confidence}%`} accent="text-[#00eb88]" />
-            <InfoCard label="Ward" value={selected.ward} />
+            <InfoCard label={t("severity")} value={selected.severity} />
+            <InfoCard label={t("aiConfidence")} value={`${selected.confidence}%`} accent="text-[#00eb88]" />
+            <InfoCard label={t("ward")} value={selected.ward} />
             <InfoCard
-              label="Warranty"
-              value={selected.warrantyDaysLeft === null ? "Not active" : `${selected.warrantyDaysLeft} days`}
+              label={t("warranty")}
+              value={selected.warrantyDaysLeft === null ? t("notActive") : `${selected.warrantyDaysLeft} days`}
               accent="text-[#ffc08d]"
             />
           </div>
@@ -349,7 +356,7 @@ export default function Home() {
           <div className="mt-6 rounded-md border border-[#d946ef]/40 bg-[linear-gradient(145deg,rgba(217,70,239,0.18),rgba(0,219,233,0.045))] p-5 shadow-[0_0_26px_rgba(217,70,239,0.12)]">
             <div className="mb-4 flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.18em] text-[#f0abfc]">
               <Sparkles size={16} />
-              AI Repair Audit
+              {t("aiRepairAudit")}
             </div>
             <div className="relative mb-4 h-28 overflow-hidden rounded-sm border border-[#d946ef]/30 bg-black/45">
               <div className="absolute inset-4 rounded-sm border border-dashed border-[#d946ef]/70" />
@@ -365,7 +372,7 @@ export default function Home() {
 
           <div className="mt-6">
             <p className="mb-5 font-mono text-xs font-bold uppercase tracking-[0.2em] text-[#dbc2b0]">
-              Proof Timeline
+              {t("proofTimeline")}
             </p>
             <div className="border-l border-white/10 pl-5">
               {timelineEvents.map((event, index) => (
@@ -394,7 +401,7 @@ export default function Home() {
               href={`/proof/${selected.id}`}
               className="mt-4 inline-flex w-full items-center justify-center rounded-sm border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-4 py-3 font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#7df4ff] transition hover:bg-[#00dbe9]/15"
             >
-              Open Public Proof
+              {t("openPublicProof")}
             </Link>
           </div>
         </aside>

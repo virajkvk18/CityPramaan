@@ -24,6 +24,7 @@ import {
   UploadCloud,
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
+import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { demoCities, getCityByKey, type CityKey } from "@/src/lib/city-context";
 import { getCitySnapshot, setSelectedCityKey, subscribeCity } from "@/src/lib/city-storage";
@@ -35,6 +36,7 @@ import {
   subscribeLocalReports,
   upsertLocalReport,
 } from "@/src/lib/report-storage";
+import { useLanguage } from "@/src/lib/use-language";
 
 const activeStatuses: CivicReport["status"][] = [
   "OPEN",
@@ -44,6 +46,7 @@ const activeStatuses: CivicReport["status"][] = [
 ];
 
 export default function ContractorPage() {
+  const { t } = useLanguage();
   const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => "bhopal");
   const localReportsSnapshot = useSyncExternalStore(
     subscribeLocalReports,
@@ -69,7 +72,7 @@ export default function ContractorPage() {
   const [submittedId, setSubmittedId] = useState("");
   const [auditProcessing, setAuditProcessing] = useState(false);
   const [actionMessage, setActionMessage] = useState(
-    "Select a report, upload the after-repair image, then submit proof."
+    `${t("selectedCase")}, ${t("uploadAfterRepairEvidence")}, ${t("submitProofActivateWarranty")}.`
   );
 
   async function handleRepairFile(file?: File) {
@@ -81,23 +84,23 @@ export default function ContractorPage() {
     setRepairImageDataUrl(await readFileAsDataUrl(file));
     setAudited(false);
     setSubmittedId("");
-    setActionMessage("Repair evidence attached. You can run the audit or directly submit proof.");
+    setActionMessage(`${t("afterRepairProofAttached")}. ${t("runAiRepairAudit")} / ${t("submitProofActivateWarranty")}.`);
   }
 
   function runRepairAudit() {
     if (!repairImage || !selectedReport) {
-      setActionMessage("Upload after-repair evidence before running the AI audit.");
+      setActionMessage(t("uploadAfterRepairEvidence"));
       return;
     }
 
     setAudited(false);
     setAuditProcessing(true);
-    setActionMessage("AI audit is checking the before/after evidence.");
+    setActionMessage(t("aiRepairAudit"));
 
     window.setTimeout(() => {
       setAudited(true);
       setAuditProcessing(false);
-      setActionMessage("AI audit passed. Warranty activation is ready.");
+      setActionMessage(`${t("aiRepairAudit")} ${t("ready")}. ${t("warrantyActivated")}.`);
     }, 900);
   }
 
@@ -107,19 +110,19 @@ export default function ContractorPage() {
     }
 
     if (submittedId === selectedReport.id) {
-      setActionMessage("This repair proof is already submitted and visible in warranty/public proof.");
+      setActionMessage(`${t("repairProof")} ${t("publicProof")} / ${t("warrantyScanner")}.`);
       return;
     }
 
     if (!repairImage) {
-      setActionMessage("Upload the contractor after-repair image first, then submit proof.");
+      setActionMessage(t("uploadAfterRepairEvidence"));
       return;
     }
 
     if (!audited) {
       setAudited(false);
       setAuditProcessing(true);
-      setActionMessage("Running AI audit automatically before activating warranty...");
+      setActionMessage(`${t("aiRepairAudit")}... ${t("warrantyActivated")}`);
 
       window.setTimeout(() => {
         setAudited(true);
@@ -176,7 +179,7 @@ export default function ContractorPage() {
       })
     );
     setSubmittedId(report.id);
-    setActionMessage("Proof submitted. Warranty is now active and synced to warranty/public proof pages.");
+    setActionMessage(`${t("repairProof")} ${t("active")}. ${t("warrantyStateVisible")}.`);
   }
 
   function chooseCity(cityKey: CityKey) {
@@ -185,7 +188,7 @@ export default function ContractorPage() {
     setRepairImageDataUrl("");
     setAudited(false);
     setSubmittedId("");
-    setActionMessage("City changed. Select a synced case and upload after-repair evidence.");
+    setActionMessage(`${t("city")} ${t("active")}. ${t("selectedCase")} / ${t("uploadAfterRepairEvidence")}.`);
   }
 
   return (
@@ -199,11 +202,11 @@ export default function ContractorPage() {
           <Link
             href="/"
             className="grid h-9 w-9 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0] transition hover:border-[#00dbe9]/60 hover:text-[#00dbe9]"
-            aria-label="Back to command center"
+            aria-label={t("backToCommandCenter")}
           >
             <ArrowLeft size={17} />
           </Link>
-          <BrandLogo size="sm" subtitle="Contractor repair node" />
+          <BrandLogo size="sm" subtitle={t("contractorRepairAudit")} />
         </div>
         <div className="flex items-center gap-3">
           <button className="grid h-9 w-9 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0]/70 transition hover:text-[#00eb88]">
@@ -213,35 +216,36 @@ export default function ContractorPage() {
             <Settings size={16} />
           </button>
           <ThemeToggle />
+          <LanguageSelector compact />
           <button className="rounded border border-[#ffc08d]/50 bg-[#ffc08d]/10 px-4 py-2 font-mono text-xs text-[#ffc08d] transition hover:bg-[#ffc08d]/20">
-            Connect Wallet
+            {t("connectWallet")}
           </button>
         </div>
       </header>
 
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-[#ff9933]/15 bg-[linear-gradient(180deg,rgba(255,153,51,0.08),rgba(0,0,0,0.5)_22%,rgba(0,219,233,0.045))] px-4 pb-5 pt-20 shadow-[5px_0_24px_rgba(0,0,0,0.45)] backdrop-blur-2xl md:flex">
         <div className="mt-2 border-b border-white/10 px-2 pb-5">
-          <BrandLogo size="sm" subtitle="Verified repair node" />
+          <BrandLogo size="sm" subtitle={t("verifiedRepairs")} />
         </div>
 
         <nav className="mt-8 flex flex-1 flex-col gap-1">
-          <NavItem href="/" icon={<LayoutDashboard size={18} />} label="Command Center" />
-          <NavItem href="/contractor" icon={<BadgeCheck size={18} />} label="Verified Repairs" active />
-          <NavItem href="/report" icon={<Camera size={18} />} label="Active Reports" />
-          <NavItem href="/proof/CP-004" icon={<ShieldCheck size={18} />} label="Urban Ledger" />
-          <NavItem href="/warranty" icon={<BarChart3 size={18} />} label="Warranty Scanner" />
+          <NavItem href="/" icon={<LayoutDashboard size={18} />} label={t("commandCenter")} />
+          <NavItem href="/contractor" icon={<BadgeCheck size={18} />} label={t("verifiedRepairs")} active />
+          <NavItem href="/report" icon={<Camera size={18} />} label={t("activeReports")} />
+          <NavItem href="/proof/CP-004" icon={<ShieldCheck size={18} />} label={t("urbanLedger")} />
+          <NavItem href="/warranty" icon={<BarChart3 size={18} />} label={t("warrantyScanner")} />
         </nav>
 
         <Link
           href="/report"
           className="btn-primary-shimmer grid rounded bg-[#ffc08d] px-4 py-3 text-center font-mono text-xs font-semibold text-[#4c2700]"
         >
-          Submit Report
+          {t("submitReport")}
         </Link>
 
         <div className="mt-5 border-t border-white/5 pt-4">
-          <NavItem href="/" icon={<Router size={15} />} label="System Status" small />
-          <NavItem href="/about" icon={<BookOpen size={15} />} label="Documentation" small />
+          <NavItem href="/" icon={<Router size={15} />} label={t("systemStatus")} small />
+          <NavItem href="/about" icon={<BookOpen size={15} />} label={t("documentation")} small />
         </div>
       </aside>
 
@@ -251,17 +255,17 @@ export default function ContractorPage() {
             <div>
               <Link href="/" className="mb-4 inline-flex items-center gap-2 text-sm text-[#dbc2b0] md:hidden">
                 <ArrowLeft size={16} />
-                Back to Command Center
+                {t("backToCommandCenter")}
               </Link>
               <p className="font-mono text-xs uppercase text-[#00dbe9]">
-                Connected repair queue | {selectedCity.name} node
+                {t("repairProof")} | {selectedCity.name} {t("nodeSynced")}
               </p>
               <h1 className="mt-2 text-4xl font-semibold text-white sm:text-5xl">
-                Contractor Repair Audit
+                {t("contractorRepairAudit")}
               </h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-[#dbc2b0]">
-                Select a raised civic issue, inspect citizen evidence, upload the after-repair photo,
-                run AI audit, and activate the warranty on the same public report record.
+                {t("selectedCase")}. {t("issueBefore")}. {t("uploadAfterRepairEvidence")}.
+                {t("runAiRepairAudit")}. {t("submitProofActivateWarranty")}.
               </p>
             </div>
             <select
@@ -282,11 +286,11 @@ export default function ContractorPage() {
               <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-5">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
-                    <p className="font-mono text-xs uppercase text-[#00dbe9]">Raised issue queue</p>
-                    <p className="mt-1 text-xs text-[#dbc2b0]/70">{repairQueue.length} synced cases</p>
+                    <p className="font-mono text-xs uppercase text-[#00dbe9]">{t("activeReports")}</p>
+                    <p className="mt-1 text-xs text-[#dbc2b0]/70">{repairQueue.length} {t("publicIssueHistory")}</p>
                   </div>
                   <span className="rounded border border-[#00eb88]/25 bg-[#00eb88]/10 px-2 py-1 font-mono text-[10px] text-[#00eb88]">
-                    Live
+                    {t("active")}
                   </span>
                 </div>
 
@@ -312,7 +316,16 @@ export default function ContractorPage() {
                           <p className="font-mono text-xs text-[#00dbe9]">{report.id}</p>
                           <p className="mt-1 font-semibold text-white">{report.title}</p>
                         </div>
-                        <StatusBadge status={report.status} />
+                        <StatusBadge
+                          status={report.status}
+                          labels={{
+                            OPEN: t("openIssues"),
+                            PENDING_PROOF: t("pendingProof"),
+                            REPAIR_SUBMITTED: t("repairSubmitted"),
+                            UNDER_WARRANTY: t("underWarranty"),
+                            REPEAT_FAILURE: t("repeatFailure"),
+                          }}
+                        />
                       </div>
                       <p className="mt-2 flex items-center gap-1 text-xs text-[#dbc2b0]/70">
                         <MapPin size={13} />
@@ -338,9 +351,9 @@ export default function ContractorPage() {
                 </div>
 
                 <div className="relative mt-6 grid grid-cols-2 gap-3">
-                  <Metric icon={<ShieldCheck size={15} />} label="Status" value="Verified Node" tone="emerald" />
-                  <Metric icon={<Star size={15} />} label="Rating" value="4.92 / 5.0" tone="amber" />
-                  <Metric icon={<Hammer size={15} />} label="Open Cases" value={String(repairQueue.length).padStart(2, "0")} tone="cyan" />
+                  <Metric icon={<ShieldCheck size={15} />} label={t("status")} value={t("nodeSynced")} tone="emerald" />
+                  <Metric icon={<Star size={15} />} label="SLA" value="4.92 / 5.0" tone="amber" />
+                  <Metric icon={<Hammer size={15} />} label={t("activeReports")} value={String(repairQueue.length).padStart(2, "0")} tone="cyan" />
                   <Metric icon={<BadgeCheck size={15} />} label="SLA" value="96%" tone="emerald" />
                 </div>
               </section>
@@ -353,7 +366,7 @@ export default function ContractorPage() {
                     <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
                       <div>
                         <p className="font-mono text-xs uppercase text-[#ffc08d]">
-                          Selected Case | {selectedReport.id}
+                          {t("selectedCase")} | {selectedReport.id}
                         </p>
                         <h2 className="mt-2 flex items-center gap-2 text-2xl font-semibold text-white">
                           <Sparkles className="text-[#00dbe9]" size={22} />
@@ -365,19 +378,21 @@ export default function ContractorPage() {
                         </p>
                       </div>
                       <div className="grid grid-cols-2 gap-3 text-sm sm:min-w-72">
-                        <Info label="Severity" value={selectedReport.severity} />
-                        <Info label="AI Confidence" value={`${selectedReport.confidence}%`} />
-                        <Info label="Ward" value={selectedReport.ward} />
+                        <Info label={t("severity")} value={selectedReport.severity} />
+                        <Info label={t("aiConfidence")} value={`${selectedReport.confidence}%`} />
+                        <Info label={t("ward")} value={selectedReport.ward} />
                         <Info label="SLA" value={`${selectedReport.slaHours ?? 72} hrs`} />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                       <EvidenceBox
-                        label="Citizen Issue Evidence"
+                        label={t("issueBefore")}
                         image={selectedReport.issueImageDataUrl}
                         imageName={selectedReport.issueImageName}
                         fallback="pothole"
+                        fallbackTitle={t("issueImageVisible")}
+                        fallbackDetail={`${t("contractor")} + ${t("publicProof")}`}
                       />
 
                       <label
@@ -406,7 +421,7 @@ export default function ContractorPage() {
                             <div className="absolute bottom-3 left-3 right-3 rounded border border-[#00eb88]/20 bg-black/65 p-3">
                               <p className="font-semibold text-[#00eb88]">{repairImage}</p>
                               <p className="mt-1 font-mono text-xs text-[#dbc2b0]/70">
-                                After-repair proof attached to {selectedReport.id}
+                                {t("afterRepairProofAttached")} {selectedReport.id}
                               </p>
                             </div>
                           </>
@@ -416,8 +431,8 @@ export default function ContractorPage() {
                               <div className="mx-auto grid h-16 w-16 place-items-center rounded-full border border-[#00dbe9]/35 bg-[#00dbe9]/10 text-[#00dbe9]">
                                 <UploadCloud size={28} />
                               </div>
-                              <p className="mt-4 font-mono text-sm text-[#00dbe9]">Upload After-Repair Evidence</p>
-                              <p className="mt-1 text-xs text-[#dbc2b0]/55">This image will be public on proof view</p>
+                              <p className="mt-4 font-mono text-sm text-[#00dbe9]">{t("uploadAfterRepairEvidence")}</p>
+                              <p className="mt-1 text-xs text-[#dbc2b0]/55">{t("uploadAfterRepairHint")}</p>
                             </div>
                           </div>
                         )}
@@ -431,7 +446,7 @@ export default function ContractorPage() {
                         className="flex flex-1 items-center justify-center gap-2 rounded border border-[#00dbe9] bg-[#00dbe9]/10 px-4 py-3 font-mono text-xs text-[#00dbe9] transition hover:bg-[#00dbe9]/15 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <Sparkles size={16} className={auditProcessing ? "animate-spin" : ""} />
-                        {auditProcessing ? "Scanning..." : audited ? "Audit Passed" : "Run AI Repair Audit"}
+                        {auditProcessing ? `${t("aiRepairAudit")}...` : audited ? t("ready") : t("runAiRepairAudit")}
                       </button>
                       <button
                         onClick={submitRepairProof}
@@ -439,7 +454,7 @@ export default function ContractorPage() {
                         className="btn-primary-shimmer flex flex-1 items-center justify-center gap-2 rounded bg-[#00eb88] px-4 py-3 font-mono text-xs font-semibold text-[#00210e] transition disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <ShieldCheck size={16} className={auditProcessing ? "animate-spin" : ""} />
-                        {auditProcessing ? "Auditing & Activating..." : "Submit Proof & Activate Warranty"}
+                        {auditProcessing ? `${t("aiRepairAudit")}...` : t("submitProofActivateWarranty")}
                       </button>
                     </div>
 
@@ -452,21 +467,21 @@ export default function ContractorPage() {
                     <div className="cp-cyber-card rounded-lg border-[#00dbe9]/20 bg-[#00dbe9]/10 p-6">
                       <div className="flex items-center gap-2 text-[#00dbe9]">
                         <Sparkles size={18} className={auditProcessing ? "animate-spin" : ""} />
-                        <p className="font-semibold">AI Before/After Audit Result</p>
+                        <p className="font-semibold">{t("aiRepairAudit")}</p>
                       </div>
 
                       {auditProcessing ? (
                         <div className="mt-4 space-y-3">
-                          <ProcessingStep label="Comparing citizen issue evidence with contractor repair proof" />
-                          <ProcessingStep label="Checking location, material match, and closure risk" />
-                          <ProcessingStep label="Preparing warranty activation event" />
+                          <ProcessingStep label={`${t("issueBefore")} + ${t("contractorProofAfter")}`} />
+                          <ProcessingStep label={`${t("mapLocation")} / ${t("repairIntegrity")}`} />
+                          <ProcessingStep label={t("warrantyActivated")} />
                         </div>
                       ) : (
                         <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-                          <Audit label="Material Match" value="95.4%" tone="emerald" />
-                          <Audit label="Repair Integrity" value="High" tone="emerald" />
-                          <Audit label="Geo-Variance" value="+/-0.5 m" tone="cyan" />
-                          <Audit label="Warranty" value="90 Days" tone="amber" />
+                          <Audit label={t("asset")} value="95.4%" tone="emerald" />
+                          <Audit label={t("repairIntegrity")} value="High" tone="emerald" />
+                          <Audit label={t("geoMatch")} value="+/-0.5 m" tone="cyan" />
+                          <Audit label={t("warranty")} value="90 Days" tone="amber" />
                         </div>
                       )}
 
@@ -474,23 +489,23 @@ export default function ContractorPage() {
                         <div className="mt-5 rounded border border-[#00eb88]/25 bg-[#00eb88]/10 p-4">
                           <div className="flex items-center gap-2 text-[#00eb88]">
                             <CheckCircle2 size={18} />
-                            <p className="font-semibold">Repair proof submitted and warranty activated</p>
+                            <p className="font-semibold">{t("repairSubmitted")} / {t("warrantyActivated")}</p>
                           </div>
                           <p className="mt-2 text-sm text-[#dbc2b0]">
-                            This case is now synced to Warranty Scanner and Public Proof.
+                            {t("syncedWarrantyRegistry")}. {t("publicProofTimeline")}.
                           </p>
                           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                             <Link
                               href="/warranty"
                               className="rounded border border-[#00eb88]/30 bg-[#00eb88]/10 px-4 py-2 text-center text-sm font-semibold text-[#00eb88]"
                             >
-                              View Warranty
+                              {t("warrantyScanner")}
                             </Link>
                             <Link
                               href={`/proof/${selectedReport.id}`}
                               className="rounded border border-[#00dbe9]/30 bg-[#00dbe9]/10 px-4 py-2 text-center text-sm font-semibold text-[#00dbe9]"
                             >
-                              View Public Proof
+                              {t("openPublicProof")}
                             </Link>
                           </div>
                         </div>
@@ -500,9 +515,9 @@ export default function ContractorPage() {
                 </>
               ) : (
                 <div className="cp-cyber-card rounded-lg p-8 text-center">
-                  <p className="text-xl font-semibold text-white">No raised issues in this city yet.</p>
+                  <p className="text-xl font-semibold text-white">{t("activeReports")}: {t("notActive")}</p>
                   <Link href="/report" className="mt-4 inline-flex rounded bg-[#ffc08d] px-5 py-3 font-semibold text-[#4c2700]">
-                    Raise a citizen report
+                    {t("reportIssue")}
                   </Link>
                 </div>
               )}
@@ -547,11 +562,15 @@ function EvidenceBox({
   image,
   imageName,
   fallback,
+  fallbackTitle,
+  fallbackDetail,
 }: {
   label: string;
   image?: string;
   imageName?: string;
   fallback: "pothole" | "patch";
+  fallbackTitle: string;
+  fallbackDetail: string;
 }) {
   return (
     <div className="relative min-h-72 overflow-hidden rounded-lg border border-white/10 bg-black/45">
@@ -575,21 +594,20 @@ function EvidenceBox({
       )}
       <div className="absolute inset-0 bg-black/25" />
       <div className="absolute bottom-3 left-3 right-3 rounded border border-white/10 bg-black/65 p-3">
-        <p className="font-semibold text-white">{imageName || "Generated civic issue preview"}</p>
-        <p className="mt-1 font-mono text-xs text-[#dbc2b0]/70">Visible to contractor and public proof view</p>
+        <p className="font-semibold text-white">{imageName || fallbackTitle}</p>
+        <p className="mt-1 font-mono text-xs text-[#dbc2b0]/70">{fallbackDetail}</p>
       </div>
     </div>
   );
 }
 
-function StatusBadge({ status }: { status: CivicReport["status"] }) {
-  const labels = {
-    OPEN: "Open",
-    PENDING_PROOF: "Needs Repair",
-    REPAIR_SUBMITTED: "Proof Pending",
-    UNDER_WARRANTY: "Warranty",
-    REPEAT_FAILURE: "Repeat",
-  };
+function StatusBadge({
+  status,
+  labels,
+}: {
+  status: CivicReport["status"];
+  labels: Record<CivicReport["status"], string>;
+}) {
   const colors = {
     OPEN: "border-[#ffb4ab]/30 bg-[#ffb4ab]/10 text-[#ffb4ab]",
     PENDING_PROOF: "border-[#00dbe9]/30 bg-[#00dbe9]/10 text-[#7df4ff]",

@@ -296,7 +296,7 @@ export default function ReportIssuePage() {
           >
             <ArrowLeft size={17} />
           </Link>
-          <BrandLogo size="sm" subtitle="Citizen proof intake node" />
+          <BrandLogo size="sm" subtitle={tr("citizenReport")} />
         </div>
 
         <div className="hidden items-center gap-3 md:flex">
@@ -304,7 +304,7 @@ export default function ReportIssuePage() {
             <Search size={14} className="mr-2 text-[#dbc2b0]/60" />
             <input
               className="w-full border-none bg-transparent p-0 font-mono text-xs text-[#e5e2e3] outline-none placeholder:text-[#dbc2b0]/45"
-              placeholder="Search ledgers..."
+              placeholder={tr("publicIssueHistory")}
             />
           </div>
           <button className="grid h-9 w-9 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0]/70 transition hover:text-[#00eb88]">
@@ -316,39 +316,39 @@ export default function ReportIssuePage() {
           <LanguageSelector compact />
           <ThemeToggle />
           <button className="rounded border border-[#ffc08d]/50 bg-[#ffc08d]/10 px-4 py-2 font-mono text-xs text-[#ffc08d] transition hover:bg-[#ffc08d]/20">
-            Connect Wallet
+            {tr("connectWallet")}
           </button>
         </div>
       </header>
 
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-[#ff9933]/15 bg-[linear-gradient(180deg,rgba(255,153,51,0.08),rgba(0,0,0,0.5)_22%,rgba(0,219,233,0.045))] px-4 pb-5 pt-20 shadow-[5px_0_24px_rgba(0,0,0,0.45)] backdrop-blur-2xl md:flex">
         <div className="mt-2 border-b border-white/10 px-2 pb-5">
-          <BrandLogo size="sm" subtitle="Civic proof intake" />
+          <BrandLogo size="sm" subtitle={tr("blockchainProof")} />
         </div>
 
         <nav className="mt-5 flex flex-1 flex-col gap-1">
-          <NavItem href="/" icon={<LayoutDashboard size={18} />} label="Command Center" />
-          <NavItem href="/proof/CP-004" icon={<BadgeCheck size={18} />} label="Verified Repairs" />
+          <NavItem href="/" icon={<LayoutDashboard size={18} />} label={tr("commandCenter")} />
+          <NavItem href="/proof/CP-004" icon={<BadgeCheck size={18} />} label={tr("verifiedRepairs")} />
           <NavItem
             href="/report"
             icon={<Camera size={18} />}
-            label="Active Reports"
+            label={tr("activeReports")}
             active
           />
-          <NavItem href="/warranty" icon={<ShieldCheck size={18} />} label="Urban Ledger" />
-          <NavItem href="/about" icon={<Gavel size={18} />} label="Governance" />
+          <NavItem href="/warranty" icon={<ShieldCheck size={18} />} label={tr("urbanLedger")} />
+          <NavItem href="/about" icon={<Gavel size={18} />} label={tr("governance")} />
         </nav>
 
         <Link
           href="/report"
           className="btn-primary-shimmer grid rounded bg-[#ffc08d] px-4 py-3 text-center font-mono text-xs font-semibold text-[#4c2700]"
         >
-          Submit Report
+          {tr("submitReport")}
         </Link>
 
         <div className="mt-5 border-t border-white/5 pt-4">
-          <NavItem href="/" icon={<Router size={15} />} label="System Status" small />
-          <NavItem href="/about" icon={<BookOpen size={15} />} label="Documentation" small />
+          <NavItem href="/" icon={<Router size={15} />} label={tr("systemStatus")} small />
+          <NavItem href="/about" icon={<BookOpen size={15} />} label={tr("documentation")} small />
         </div>
       </aside>
 
@@ -356,16 +356,16 @@ export default function ReportIssuePage() {
         <div className="mx-auto max-w-[1440px]">
           <header className="mb-7 flex items-end justify-between border-b border-white/5 pb-4">
             <div>
-              <p className="font-mono text-xs uppercase text-[#00dbe9]">Initiate verifiable infrastructure log</p>
+              <p className="font-mono text-xs uppercase text-[#00dbe9]">{tr("universalInfrastructureEvidence")}</p>
               <h1 className="mt-2 text-4xl font-semibold text-white sm:text-5xl">{tr("reportIssue")}</h1>
               <p className="mt-2 text-sm text-[#dbc2b0]">
-                Filing node: {selectedCity.name}, {selectedCity.state}. You can also type any exact
+                {tr("filingNode")}: {selectedCity.name}, {selectedCity.state}. You can also type any exact
                 landmark or GPS-backed address below.
               </p>
             </div>
             <div className="hidden items-center gap-2 sm:flex">
               <span className="pulse-indicator h-2 w-2 rounded-full bg-[#00eb88]" />
-              <span className="font-mono text-xs text-[#00eb88]">Node synced</span>
+              <span className="font-mono text-xs text-[#00eb88]">{tr("nodeSynced")}</span>
             </div>
           </header>
 
@@ -375,7 +375,7 @@ export default function ReportIssuePage() {
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <h2 className="flex items-center gap-2 text-2xl font-semibold text-[#00dbe9]">
                     <Camera size={22} />
-                    Universal Infrastructure Evidence
+                    {tr("universalInfrastructureEvidence")}
                   </h2>
                   <span className="rounded border border-white/10 bg-black/35 px-2 py-1 font-mono text-[10px] text-[#dbc2b0]">
                     MAX 5MB | IPFS READY
@@ -384,7 +384,7 @@ export default function ReportIssuePage() {
 
                 <div className="mb-5 rounded border border-[#00dbe9]/20 bg-[#00dbe9]/10 p-4">
                   <label className="mb-2 block font-mono text-xs uppercase text-[#00dbe9]">
-                    Demo City Coverage
+                    {tr("cityCoverage")}
                   </label>
                   <select
                     value={selectedCity.key}
@@ -425,10 +425,10 @@ export default function ReportIssuePage() {
                       {imageName ? <FileImage size={28} /> : <UploadCloud size={28} />}
                     </div>
                     <p className="mt-4 font-medium text-white">
-                      {imageName || "Drag and drop civic issue evidence"}
+                      {imageName || tr("uploadCivicEvidence")}
                     </p>
                     <p className="mt-1 font-mono text-xs text-[#dbc2b0]/65">
-                      or click to browse local device
+                      {tr("uploadClickBrowse")}
                     </p>
                   </div>
                 </label>
@@ -438,7 +438,7 @@ export default function ReportIssuePage() {
                 <div className="grid gap-6">
                   <div>
                     <label className="mb-3 block font-mono text-xs uppercase text-[#00dbe9]">
-                      Quick Demo Issue Types
+                      {tr("quickIssueTypes")}
                     </label>
                     <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
                       {issuePresets.map((preset) => {
@@ -551,7 +551,7 @@ export default function ReportIssuePage() {
 
                         <div className="rounded border border-white/10 bg-black/25 p-3">
                           <label className="mb-2 block font-mono text-[10px] uppercase text-[#dbc2b0]/60">
-                            Paste Google Maps link
+                            {tr("openGoogleMaps")}
                           </label>
                           <input
                             value={mapsLink}
@@ -564,7 +564,7 @@ export default function ReportIssuePage() {
                             onClick={applyGoogleMapsLink}
                             className="mt-2 w-full rounded border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-3 py-2 font-mono text-xs text-[#00dbe9] transition hover:bg-[#00dbe9]/15"
                           >
-                            Pin From Google Maps Link
+                            {tr("manualCoordinates")}
                           </button>
                         </div>
 
@@ -578,7 +578,7 @@ export default function ReportIssuePage() {
                   <div>
                     <div className="mb-2 flex items-center justify-between">
                       <label className="block font-mono text-xs uppercase text-[#00dbe9]">
-                        Technical Observation
+                        {tr("technicalObservation")}
                       </label>
                       <span className="font-mono text-xs text-[#dbc2b0]/55">
                         {description.length} / 1024 bytes
@@ -593,7 +593,7 @@ export default function ReportIssuePage() {
                         setSubmitted(false);
                       }}
                       className="input-recessed min-h-36 w-full resize-none rounded px-4 py-3 text-sm text-white"
-                      placeholder="Describe any civic infrastructure issue: road, drain, streetlight, garbage, water leakage, footpath..."
+                      placeholder={tr("reportIssuePlaceholder")}
                     />
                   </div>
                 </div>
@@ -605,10 +605,10 @@ export default function ReportIssuePage() {
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="flex items-center gap-2 font-mono text-xs uppercase text-[#00dbe9]">
                     <Sparkles size={15} />
-                    AI Pre-Verification
+                    {tr("aiPreVerification")}
                   </h3>
                   <span className="rounded bg-black/35 px-2 py-1 font-mono text-[10px] text-[#dbc2b0]/70">
-                    Unified civic AI
+                    {tr("aiIssueBrain")}
                   </span>
                 </div>
 
@@ -618,7 +618,7 @@ export default function ReportIssuePage() {
                     <div className="shimmer-bg h-4 w-1/2 rounded" />
                     <div className="shimmer-bg mt-2 h-4 w-full rounded" />
                     <p className="text-shimmer mt-3 font-mono text-xs font-semibold">
-                      Detecting asset type, severity, SLA and warranty risk...
+                      {tr("unifiedAnalysis")}...
                     </p>
                   </div>
                 ) : verified && aiResult ? (
@@ -629,16 +629,16 @@ export default function ReportIssuePage() {
                     </p>
                     <div className="mt-3 flex items-end justify-center gap-1">
                       <span className="text-4xl font-semibold text-white">{aiResult.confidence}</span>
-                      <span className="mb-1 font-mono text-xs text-[#00eb88]">% confidence</span>
+                      <span className="mb-1 font-mono text-xs text-[#00eb88]">{tr("aiConfidence")}</span>
                     </div>
                     <div className="mt-4 space-y-2">
-                      <AnalysisRow label="Asset" value={aiResult.assetType} />
-                      <AnalysisRow label="Severity" value={aiResult.severity} />
+                      <AnalysisRow label={tr("asset")} value={aiResult.assetType} />
+                      <AnalysisRow label={tr("severity")} value={aiResult.severity} />
                       <AnalysisRow label="SLA" value={`${aiResult.slaHours} hours`} />
-                      <AnalysisRow label="Duplicate Risk" value={aiResult.duplicateRisk} />
+                      <AnalysisRow label={tr("duplicateRisk")} value={aiResult.duplicateRisk} />
                     </div>
                     <div className="mt-4 rounded border border-white/10 bg-black/25 p-3">
-                      <p className="font-mono text-[10px] uppercase text-[#00dbe9]">AI Recommendation</p>
+                      <p className="font-mono text-[10px] uppercase text-[#00dbe9]">{tr("aiVerdict")}</p>
                       <p className="mt-2 text-sm leading-6 text-[#dbc2b0]">{aiResult.recommendedAction}</p>
                     </div>
                     <div className="mt-4 grid gap-2">
@@ -679,10 +679,10 @@ export default function ReportIssuePage() {
 
               <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
                 <div className="mb-5 flex items-center justify-between">
-                  <h3 className="font-mono text-xs uppercase text-[#dbc2b0]">Citizen Identity</h3>
+                  <h3 className="font-mono text-xs uppercase text-[#dbc2b0]">{tr("citizenIdentity")}</h3>
                   <span className="flex items-center gap-1 rounded border border-[#00eb88]/30 bg-[#00eb88]/10 px-2 py-1 font-mono text-[10px] text-[#00eb88]">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#00eb88]" />
-                    Connected
+                    {tr("active")}
                   </span>
                 </div>
                 <div className="flex items-center gap-4 border-b border-white/5 pb-4">
@@ -699,7 +699,7 @@ export default function ReportIssuePage() {
                 <div className="mt-4">
                   <div className="mb-1 flex justify-between">
                     <span className="font-mono text-[10px] uppercase text-[#dbc2b0]/60">
-                      Reputation score
+                    {tr("resolverReputationActive")}
                     </span>
                     <span className="font-mono text-sm text-[#ffc08d]">842.50</span>
                   </div>
@@ -716,11 +716,11 @@ export default function ReportIssuePage() {
                   className="royal-blue-glow flex w-full items-center justify-center gap-2 rounded border border-[#2A2D35] bg-[#1A1C23] px-4 py-4 font-mono text-xs font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ShieldCheck size={16} />
-                  {submitted ? "Proof Created" : tr("createProof")}
+                  {submitted ? tr("newProofCreated") : tr("createProof")}
                 </button>
                 {!verified && (
                   <p className="mt-3 text-center text-xs text-[#dbc2b0]/60">
-                    Unified AI analysis is required before signing.
+                    {tr("unifiedAnalysis")}. {tr("readyToSign")}.
                   </p>
                 )}
               </section>
@@ -729,11 +729,10 @@ export default function ReportIssuePage() {
                 <section className="cp-cyber-card rounded-lg border-[#00eb88]/30 bg-[#00eb88]/10 p-6">
                   <div className="flex items-center gap-2 text-[#00eb88]">
                     <CheckCircle2 size={18} />
-                    <p className="font-semibold">Proof Created</p>
+                    <p className="font-semibold">{tr("newProofCreated")}</p>
                   </div>
                   <p className="mt-3 text-sm text-[#dbc2b0]">
-                    Your latest report is now visible on the command center with a mock blockchain
-                    transaction.
+                    {tr("latestCitizenReport")} {tr("viewOnCommandCenter")}. {tr("blockchainTransaction")}.
                   </p>
                   {aiResult && (
                     <p className="mt-2 text-sm text-[#dbc2b0]">
@@ -747,7 +746,7 @@ export default function ReportIssuePage() {
                     href="/"
                     className="mt-4 inline-flex w-full items-center justify-center rounded border border-[#00eb88]/30 bg-[#00eb88]/10 px-4 py-2 text-sm font-semibold text-[#00eb88] transition hover:bg-[#00eb88]/20"
                   >
-                    View On Command Center
+                    {tr("viewOnCommandCenter")}
                   </Link>
                 </section>
               )}
@@ -762,7 +761,7 @@ export default function ReportIssuePage() {
             <div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4">
               <h3 className="flex items-center gap-2 font-mono text-xs uppercase text-[#00dbe9]">
                 <ShieldCheck size={16} />
-                Sign Transaction
+                {tr("signAndCreate")}
               </h3>
               <button
                 onClick={() => setSigning(false)}
@@ -779,7 +778,7 @@ export default function ReportIssuePage() {
               <div className="mb-4 h-1 w-full overflow-hidden rounded bg-[#201f20]">
                 <div className="shimmer-bg h-full w-full" />
               </div>
-              <p className="font-mono text-sm text-white">Awaiting signature from</p>
+              <p className="font-mono text-sm text-white">{tr("readyToSign")}</p>
               <p className="font-mono text-sm text-[#ffc08d]">{MOCK_WALLET_ADDRESS}</p>
             </div>
 
@@ -795,7 +794,7 @@ export default function ReportIssuePage() {
             <div className="rounded border border-[#00eb88]/20 bg-[#00eb88]/10 p-4">
               <div className="flex items-center gap-2 text-[#00eb88]">
                 <Wallet size={16} />
-                <p className="font-semibold">Proof Preview</p>
+                <p className="font-semibold">{tr("blockchainProof")}</p>
               </div>
               <p className="mt-2 text-sm text-[#dbc2b0]">
                 A public report record will be created for {location}.
@@ -816,7 +815,7 @@ export default function ReportIssuePage() {
                 }}
                 className="btn-primary-shimmer flex-1 rounded bg-[#ffc08d] px-4 py-2 text-sm font-semibold text-[#4c2700]"
               >
-                Sign and Create
+                {tr("signAndCreate")}
               </button>
             </div>
           </div>

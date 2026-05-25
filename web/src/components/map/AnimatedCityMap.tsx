@@ -1,5 +1,8 @@
+"use client";
+
 import type { DemoCity } from "@/src/lib/city-context";
 import type { CivicReport, ReportStatus } from "@/src/lib/mock-data";
+import { useLanguage } from "@/src/lib/use-language";
 
 type AnimatedCityMapProps = {
   reports: CivicReport[];
@@ -64,12 +67,20 @@ const mockOffsets = [
 ];
 
 export function AnimatedCityMap({ reports, city }: AnimatedCityMapProps) {
+  const { t } = useLanguage();
   const mapSpan = 0.028;
   const minLat = city.lat - mapSpan;
   const maxLat = city.lat + mapSpan;
   const minLng = city.lng - mapSpan;
   const maxLng = city.lng + mapSpan;
   const osmSrc = `https://www.openstreetmap.org/export/embed.html?bbox=${minLng}%2C${minLat}%2C${maxLng}%2C${maxLat}&layer=mapnik&marker=${city.lat}%2C${city.lng}`;
+  const statusLabels: Record<ReportStatus, string> = {
+    OPEN: t("openIssues"),
+    PENDING_PROOF: t("pendingProof"),
+    REPAIR_SUBMITTED: t("repairSubmitted"),
+    UNDER_WARRANTY: t("underWarranty"),
+    REPEAT_FAILURE: t("repeatFailure"),
+  };
 
   return (
     <div className="glass-panel relative min-h-[620px] flex-1 overflow-hidden rounded-md border border-white/10 bg-[#101014] shadow-[0_0_36px_rgba(0,0,0,0.55)]">
@@ -165,7 +176,7 @@ export function AnimatedCityMap({ reports, city }: AnimatedCityMapProps) {
               <div className="translate-y-1 rounded-md border border-white/10 bg-[#131314]/90 px-3 py-2 text-xs opacity-90 shadow-[0_0_18px_rgba(0,0,0,0.45)] backdrop-blur-md transition group-hover:-translate-y-1 group-hover:opacity-100">
                 <div className="flex items-center gap-2">
                   <span className={`font-mono font-bold ${tone.text}`}>{report.id}</span>
-                  <span className="text-[#dbc2b0]">{tone.label}</span>
+                  <span className="text-[#dbc2b0]">{statusLabels[report.status]}</span>
                 </div>
                 <p className="mt-1 max-w-44 truncate text-[#a38d7c]">{report.location}</p>
                 <p className="mt-1 font-mono text-[10px] text-[#dbc2b0]/50">
@@ -180,12 +191,12 @@ export function AnimatedCityMap({ reports, city }: AnimatedCityMapProps) {
       <div className="absolute bottom-0 left-0 right-0 z-10 h-44 bg-gradient-to-t from-black via-black/55 to-transparent" />
 
       <div className="absolute bottom-5 left-5 z-30 rounded-md border border-white/10 bg-[#131314]/85 p-4 text-xs text-[#dbc2b0] backdrop-blur-md">
-        <div className="mb-3 font-mono font-bold uppercase tracking-[0.18em] text-[#e5e2e3]">Signal Legend</div>
+        <div className="mb-3 font-mono font-bold uppercase tracking-[0.18em] text-[#e5e2e3]">{t("publicStatus")}</div>
         <div className="grid gap-2">
           {(Object.keys(pinTone) as ReportStatus[]).map((status) => (
             <div key={status} className="flex items-center gap-2">
               <span className={`h-2.5 w-2.5 rounded-full ${pinTone[status].dot}`} />
-              {pinTone[status].label}
+              {statusLabels[status]}
             </div>
           ))}
         </div>
@@ -193,10 +204,10 @@ export function AnimatedCityMap({ reports, city }: AnimatedCityMapProps) {
 
       <div className="absolute bottom-5 right-5 z-30 hidden rounded-md border border-[#00dbe9]/20 bg-[#050505]/70 p-4 text-right backdrop-blur-md md:block">
         <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#00dbe9]">
-          Civic Mesh
+          {t("liveCivicStream")}
         </p>
         <p className="mt-2 text-2xl font-black text-white">{reports.length}</p>
-        <p className="mt-1 text-xs text-[#dbc2b0]">mock reports around {city.primaryArea}</p>
+        <p className="mt-1 text-xs text-[#dbc2b0]">{t("activeReports")}: {city.primaryArea}</p>
       </div>
     </div>
   );
