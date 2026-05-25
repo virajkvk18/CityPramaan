@@ -41,7 +41,7 @@ const simpleFlow = [
     step: "03",
     title: "A proof record is created",
     detail:
-      "The report gets a public proof ID, evidence hash, timeline entry, and mock blockchain transaction so the issue cannot silently disappear.",
+      "The report gets a public proof ID, evidence hash, timeline entry, and verifiable blockchain-style record so the issue cannot silently disappear.",
     icon: Blocks,
   },
   {
@@ -135,13 +135,13 @@ const roleCards = [
     result: "They can prioritize urgent cases and monitor contractor performance.",
   },
   {
-    role: "Public / Judges",
+    role: "Public / Auditors",
     action: "Open the proof page and verify status, images, map location, hash, and timeline.",
-    result: "The project becomes transparent, demo-friendly, and easy to trust.",
+    result: "The repair process becomes transparent, inspectable, and easy to trust.",
   },
 ];
 
-const demoScenario = [
+const exampleScenario = [
   "A citizen notices a pothole near MP Nagar, Bhopal.",
   "They upload a photo and pin the exact location on the map.",
   "AI detects road damage, marks severity as high, and suggests patch repair.",
@@ -205,10 +205,10 @@ export default function AboutPage() {
               issue, repair, contractor proof, warranty, and status are all connected.
             </p>
             <div className="mt-6 rounded-xl border border-[#00eb88]/25 bg-[#00eb88]/10 p-4">
-              <p className="font-mono text-xs uppercase text-[#00eb88]">Hackathon pitch angle</p>
+              <p className="font-mono text-xs uppercase text-[#00eb88]">Why CityPramaan is different</p>
               <p className="mt-2 text-sm leading-6 text-zinc-300">
-                Not just upload pothole photo. The unique part is proof of resolution, repair
-                warranty, and public verification after the repair.
+                CityPramaan focuses on proof of resolution, repair warranty, and public
+                verification after the repair is completed.
               </p>
             </div>
           </aside>
@@ -240,7 +240,7 @@ export default function AboutPage() {
         <SectionHeader
           eyebrow="Simple example"
           title="Imagine a pothole gets reported"
-          detail="This is the story judges should understand in under one minute."
+          detail="This is the core civic workflow a city team can understand quickly."
         />
 
         <div className="cp-cyber-card cp-cyber-card-hover rounded-2xl p-6">
@@ -248,7 +248,7 @@ export default function AboutPage() {
             <div className="rounded-2xl border border-orange-400/20 bg-[linear-gradient(145deg,rgba(255,153,51,0.16),rgba(0,219,233,0.05))] p-5">
               <div className="flex items-center gap-2 text-orange-200">
                 <MapPinned size={20} />
-                <p className="font-semibold">Demo case: MP Nagar pothole</p>
+                <p className="font-semibold">Example case: MP Nagar pothole</p>
               </div>
               <p className="mt-4 text-sm leading-6 text-zinc-300">
                 A pothole is reported, repaired, and then watched under warranty. If it breaks again,
@@ -256,7 +256,7 @@ export default function AboutPage() {
               </p>
             </div>
             <ol className="grid gap-3 md:grid-cols-2">
-              {demoScenario.map((item, index) => (
+              {exampleScenario.map((item, index) => (
                 <li key={item} className="rounded-xl border border-white/10 bg-zinc-950/70 p-4">
                   <p className="font-mono text-xs text-[#00dbe9]">STEP {String(index + 1).padStart(2, "0")}</p>
                   <p className="mt-2 text-sm leading-6 text-zinc-300">{item}</p>
@@ -269,7 +269,7 @@ export default function AboutPage() {
         <SectionHeader
           eyebrow="Technology explained simply"
           title="What the complex words mean"
-          detail="These explanations are written for non-technical judges, teammates, and users."
+          detail="These explanations are written for citizens, officials, contractors, and public auditors."
         />
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -317,16 +317,16 @@ export default function AboutPage() {
         </div>
 
         <SectionHeader
-          eyebrow="Open the demo"
-          title="Explore every part of the MVP"
+          eyebrow="Open CityPramaan"
+          title="Explore the civic proof workflow"
           detail="These links show how the same issue travels through the whole product."
         />
 
         <div className="grid gap-4 lg:grid-cols-4">
-          <DemoLink href="/report" icon={<Camera size={18} />} title={t("citizenReport")} detail="Create a new public issue with photo, AI analysis, and map location." />
-          <DemoLink href="/contractor" icon={<BadgeCheck size={18} />} title={t("repairProof")} detail="Select a raised issue and upload contractor after-repair proof." />
-          <DemoLink href="/warranty" icon={<Radar size={18} />} title={t("warrantyScanner")} detail="See repaired, pending, and warranty-active issues in one public registry." />
-          <DemoLink href="/proof/CP-004" icon={<Blocks size={18} />} title={t("publicProof")} detail="Open the public proof timeline with before/after evidence and hash." />
+          <WorkflowLink href="/report" icon={<Camera size={18} />} title={t("citizenReport")} detail="Create a new public issue with photo, AI analysis, and map location." />
+          <WorkflowLink href="/contractor" icon={<BadgeCheck size={18} />} title={t("repairProof")} detail="Select a raised issue and upload contractor after-repair proof." />
+          <WorkflowLink href="/warranty" icon={<Radar size={18} />} title={t("warrantyScanner")} detail="See repaired, pending, and warranty-active issues in one public registry." />
+          <WorkflowLink href="/proof/CP-004" icon={<Blocks size={18} />} title={t("publicProof")} detail="Open the public proof timeline with before/after evidence and hash." />
         </div>
 
         <div className="mt-6 rounded-2xl border border-[#00eb88]/25 bg-[linear-gradient(145deg,rgba(0,235,136,0.12),rgba(255,153,51,0.08))] p-6">
@@ -341,7 +341,7 @@ export default function AboutPage() {
               <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
                 In the full version, this can connect to real smart contracts, IPFS storage, wallet
                 login, verified contractor identities, real AI image models, and city dashboards.
-                The MVP already demonstrates the core story: report, verify, repair, warranty, and
+                CityPramaan brings together the core story: report, verify, repair, warranty, and
                 public proof.
               </p>
             </div>
@@ -386,7 +386,7 @@ function ValueCard({ icon, label, value }: { icon: React.ReactNode; label: strin
   );
 }
 
-function DemoLink({
+function WorkflowLink({
   href,
   icon,
   title,
