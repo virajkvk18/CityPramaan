@@ -17,14 +17,17 @@ export function BrandLogo({
   subtitle,
 }: BrandLogoProps) {
   const { t } = useLanguage();
-  const markSize = size === "sm" ? "h-11 w-11 rounded-lg" : "h-14 w-14 rounded-xl";
-  const titleSize = size === "sm" ? "text-2xl" : "text-[29px]";
+  const markSize =
+    size === "sm"
+      ? "h-10 w-10 rounded-lg sm:h-11 sm:w-11"
+      : "h-11 w-11 rounded-lg sm:h-14 sm:w-14 sm:rounded-xl";
+  const titleSize = size === "sm" ? "text-xl sm:text-2xl" : "text-2xl sm:text-[29px]";
   const resolvedSubtitle = subtitle ?? `${t("publicProof")} · ${t("warrantyGuard")}`;
 
   return (
-    <div className={`flex items-center gap-3 ${className}`}>
+    <div className={`flex min-w-0 items-center gap-2 sm:gap-3 ${className}`}>
       <div
-        className={`cp-logo-mark group relative grid ${markSize} place-items-center overflow-hidden border border-[#ff9933]/55 bg-[#061015] shadow-[0_0_28px_rgba(255,153,51,0.18)]`}
+        className={`cp-logo-mark group relative grid shrink-0 ${markSize} place-items-center overflow-hidden border border-[#ff9933]/55 bg-[#061015] shadow-[0_0_28px_rgba(255,153,51,0.18)]`}
       >
         <div className="absolute inset-1 rounded-lg border border-[#00dbe9]/25" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_18%,rgba(0,235,136,0.24),transparent_22%),radial-gradient(circle_at_20%_84%,rgba(255,153,51,0.22),transparent_24%)]" />
@@ -45,11 +48,11 @@ export function BrandLogo({
       </div>
 
       {showText && (
-        <div className="flex flex-col gap-0.5">
+        <div className="flex min-w-0 flex-col gap-0.5">
           <span className={`${titleSize} font-black leading-none tracking-tight text-white`}>
             City<span className="cp-brand-text">Pramaan</span>
           </span>
-          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-[#dbc2b0]">
+          <span className="hidden max-w-[180px] truncate font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-[#dbc2b0] sm:block md:max-w-none">
             {resolvedSubtitle}
           </span>
         </div>

@@ -39,7 +39,7 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={toggleTheme}
-      className="theme-toggle inline-flex h-10 items-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-3 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#dbc2b0] transition hover:border-[#00dbe9]/45 hover:bg-[#00dbe9]/10 hover:text-[#7df4ff]"
+      className="theme-toggle inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-2 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#dbc2b0] transition hover:border-[#00dbe9]/45 hover:bg-[#00dbe9]/10 hover:text-[#7df4ff] sm:h-10 sm:px-3"
       aria-label={`Switch to ${isBright ? "dark" : "bright"} theme`}
     >
       <Icon size={15} />

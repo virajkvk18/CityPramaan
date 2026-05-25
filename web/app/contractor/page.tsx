@@ -218,8 +218,8 @@ export default function ContractorPage() {
       <div className="bg-holo-grid pointer-events-none fixed inset-0" />
       <div className="stitch-cityline pointer-events-none fixed bottom-0 left-0 right-0 h-44 opacity-20" />
 
-      <header className="fixed top-0 z-50 hidden h-16 w-full items-center justify-between border-b border-[#ff9933]/15 bg-[#030507]/75 px-8 shadow-[0_0_30px_rgba(0,219,233,0.08)] backdrop-blur-xl md:flex">
-        <div className="flex items-center gap-4">
+      <header className="fixed top-0 z-50 flex min-h-16 w-full flex-wrap items-center justify-between gap-3 border-b border-[#ff9933]/15 bg-[#030507]/75 px-3 py-3 shadow-[0_0_30px_rgba(0,219,233,0.08)] backdrop-blur-xl md:h-16 md:flex-nowrap md:px-8 md:py-0">
+        <div className="flex min-w-0 items-center gap-3 md:gap-4">
           <Link
             href="/"
             className="grid h-9 w-9 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0] transition hover:border-[#00dbe9]/60 hover:text-[#00dbe9]"
@@ -229,16 +229,16 @@ export default function ContractorPage() {
           </Link>
           <BrandLogo size="sm" subtitle={t("contractorRepairAudit")} />
         </div>
-        <div className="flex items-center gap-3">
-          <button className="grid h-9 w-9 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0]/70 transition hover:text-[#00eb88]">
+        <div className="flex min-w-0 items-center gap-2 md:gap-3">
+          <button className="hidden h-9 w-9 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0]/70 transition hover:text-[#00eb88] sm:grid">
             <Bell size={16} />
           </button>
-          <button className="grid h-9 w-9 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0]/70 transition hover:text-[#00eb88]">
+          <button className="hidden h-9 w-9 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0]/70 transition hover:text-[#00eb88] sm:grid">
             <Settings size={16} />
           </button>
           <ThemeToggle />
           <LanguageSelector compact />
-          <button className="rounded border border-[#ffc08d]/50 bg-[#ffc08d]/10 px-4 py-2 font-mono text-xs text-[#ffc08d] transition hover:bg-[#ffc08d]/20">
+          <button className="hidden rounded border border-[#ffc08d]/50 bg-[#ffc08d]/10 px-4 py-2 font-mono text-xs text-[#ffc08d] transition hover:bg-[#ffc08d]/20 sm:block">
             {t("connectWallet")}
           </button>
         </div>
@@ -270,18 +270,18 @@ export default function ContractorPage() {
         </div>
       </aside>
 
-      <section className="relative z-10 min-h-screen px-4 pb-10 pt-6 md:ml-64 md:px-8 md:pt-20">
+      <section className="relative z-10 min-h-screen px-4 pb-10 pt-24 md:ml-64 md:px-8 md:pt-20">
         <div className="mx-auto max-w-[1440px]">
           <div className="mb-7 flex flex-col justify-between gap-4 border-b border-white/5 pb-4 sm:flex-row sm:items-end">
             <div>
-              <Link href="/" className="mb-4 inline-flex items-center gap-2 text-sm text-[#dbc2b0] md:hidden">
+              <Link href="/" className="hidden">
                 <ArrowLeft size={16} />
                 {t("backToCommandCenter")}
               </Link>
               <p className="font-mono text-xs uppercase text-[#00dbe9]">
                 {t("repairProof")} | {selectedCity.name} {t("nodeSynced")}
               </p>
-              <h1 className="mt-2 text-4xl font-semibold text-white sm:text-5xl">
+              <h1 className="mt-2 text-3xl font-semibold text-white sm:text-5xl">
                 {t("contractorRepairAudit")}
               </h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-[#dbc2b0]">

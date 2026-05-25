@@ -312,8 +312,8 @@ export default function ReportIssuePage() {
       <div className="bg-holo-grid pointer-events-none fixed inset-0" />
       <div className="stitch-cityline pointer-events-none fixed bottom-0 left-0 right-0 h-44 opacity-20" />
 
-      <header className="fixed top-0 z-50 flex h-16 w-full items-center justify-between border-b border-[#ff9933]/15 bg-[#030507]/75 px-4 shadow-[0_0_30px_rgba(0,219,233,0.08)] backdrop-blur-xl md:px-8">
-        <div className="flex items-center gap-3">
+      <header className="fixed top-0 z-50 flex min-h-16 w-full flex-wrap items-center justify-between gap-3 border-b border-[#ff9933]/15 bg-[#030507]/75 px-3 py-3 shadow-[0_0_30px_rgba(0,219,233,0.08)] backdrop-blur-xl md:h-16 md:flex-nowrap md:px-8 md:py-0">
+        <div className="flex min-w-0 items-center gap-3">
           <Link
             href="/"
             className="grid h-9 w-9 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0] transition hover:border-[#00dbe9]/60 hover:text-[#00dbe9]"
@@ -377,12 +377,12 @@ export default function ReportIssuePage() {
         </div>
       </aside>
 
-      <section className="relative z-10 min-h-screen px-4 pb-10 pt-20 md:ml-64 md:px-8">
+      <section className="relative z-10 min-h-screen px-4 pb-10 pt-24 md:ml-64 md:px-8 md:pt-20">
         <div className="mx-auto max-w-[1440px]">
-          <header className="mb-7 flex items-end justify-between border-b border-white/5 pb-4">
+          <header className="mb-7 flex flex-col gap-3 border-b border-white/5 pb-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="font-mono text-xs uppercase text-[#00dbe9]">{tr("universalInfrastructureEvidence")}</p>
-              <h1 className="mt-2 text-4xl font-semibold text-white sm:text-5xl">{tr("reportIssue")}</h1>
+              <h1 className="mt-2 text-3xl font-semibold text-white sm:text-5xl">{tr("reportIssue")}</h1>
               <p className="mt-2 text-sm text-[#dbc2b0]">
                 {tr("filingNode")}: {selectedCity.name}, {selectedCity.state}. You can also type any exact
                 landmark or GPS-backed address below.
@@ -465,7 +465,7 @@ export default function ReportIssuePage() {
                     <label className="mb-3 block font-mono text-xs uppercase text-[#00dbe9]">
                       {tr("quickIssueTypes")}
                     </label>
-                    <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
                       {issuePresets.map((preset) => {
                         const Icon = preset.icon;
 

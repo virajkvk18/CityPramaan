@@ -264,13 +264,13 @@ export default function ProofTimelinePage() {
       <div className="bg-holo-grid pointer-events-none fixed inset-0" />
       <div className="stitch-cityline pointer-events-none fixed bottom-0 left-0 right-0 h-44 opacity-20" />
 
-      <header className="relative z-10 flex h-16 items-center justify-between border-b border-[#ff9933]/15 bg-[#030507]/75 px-6 shadow-[0_0_30px_rgba(0,219,233,0.08)] backdrop-blur-xl">
-        <Link href="/" className="flex items-center gap-2 text-sm text-zinc-300 hover:text-white">
+      <header className="relative z-10 flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-[#ff9933]/15 bg-[#030507]/75 px-4 py-3 shadow-[0_0_30px_rgba(0,219,233,0.08)] backdrop-blur-xl sm:h-16 sm:flex-nowrap sm:px-6 sm:py-0">
+        <Link href="/" className="flex min-w-0 items-center gap-2 text-sm text-zinc-300 hover:text-white">
           <ArrowLeft size={16} />
-          {t("backToCommandCenter")}
+          <span className="hidden sm:inline">{t("backToCommandCenter")}</span>
         </Link>
 
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <ThemeToggle />
           <LanguageSelector compact />
           <BrandLogo size="sm" subtitle={t("publicProof")} />

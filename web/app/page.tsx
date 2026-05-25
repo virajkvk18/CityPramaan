@@ -101,26 +101,26 @@ export default function Home() {
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_14%_8%,rgba(255,153,51,0.16),transparent_24%),radial-gradient(circle_at_82%_12%,rgba(0,219,233,0.14),transparent_28%),radial-gradient(circle_at_48%_94%,rgba(0,235,136,0.08),transparent_30%)]" />
       <div className="pointer-events-none fixed inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:34px_34px] opacity-70" />
 
-      <header className="fixed left-0 right-0 top-0 z-50 flex h-20 items-center justify-between border-b border-[#ff9933]/15 bg-[#030507]/75 px-5 shadow-[0_0_34px_rgba(0,219,233,0.08)] backdrop-blur-2xl lg:px-10">
-        <Link href="/" className="group flex items-center gap-4">
-          <BrandLogo />
+      <header className="fixed left-0 right-0 top-0 z-50 flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-[#ff9933]/15 bg-[#030507]/75 px-3 py-3 shadow-[0_0_34px_rgba(0,219,233,0.08)] backdrop-blur-2xl sm:h-20 sm:flex-nowrap sm:px-5 lg:px-10">
+        <Link href="/" className="group flex min-w-0 items-center gap-3">
+          <BrandLogo className="min-w-0" />
         </Link>
 
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <Link
             href="/about"
             className="hidden rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.2em] text-[#ffdcc2] transition hover:border-[#00dbe9]/35 hover:bg-[#00dbe9]/10 hover:text-[#7df4ff] md:inline-flex"
           >
             {t("about")}
           </Link>
-          <button className="grid h-10 w-10 place-items-center rounded-md border border-white/10 bg-white/[0.04] text-[#dbc2b0] transition hover:border-[#00dbe9]/40 hover:text-[#7df4ff] hover:shadow-[0_0_18px_rgba(0,219,233,0.16)]">
+          <button className="hidden h-10 w-10 place-items-center rounded-md border border-white/10 bg-white/[0.04] text-[#dbc2b0] transition hover:border-[#00dbe9]/40 hover:text-[#7df4ff] hover:shadow-[0_0_18px_rgba(0,219,233,0.16)] sm:grid">
             <Bell size={18} />
           </button>
           <ThemeToggle />
           <LanguageSelector compact />
           <button
             onClick={walletConnected ? disconnectMockWallet : connectMockWallet}
-            className={`relative overflow-hidden rounded-sm border px-5 py-3 font-mono text-xs font-bold uppercase tracking-[0.2em] transition ${
+            className={`relative max-w-[128px] overflow-hidden truncate rounded-sm border px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.08em] transition sm:max-w-none sm:px-5 sm:py-3 sm:text-xs sm:tracking-[0.2em] ${
               walletConnected
                 ? "border-[#00eb88]/45 bg-[#00eb88]/12 text-[#5bffa1] shadow-[0_0_24px_rgba(0,235,136,0.14)]"
                 : "border-[#ffc08d]/60 bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] text-[#4c2700] shadow-[0_0_26px_rgba(255,153,51,0.2)]"
@@ -132,7 +132,7 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="grid min-h-screen grid-cols-1 pt-20 xl:grid-cols-[320px_1fr_400px]">
+      <section className="grid min-h-screen grid-cols-1 pt-24 sm:pt-20 xl:grid-cols-[320px_1fr_400px]">
         <aside className="hidden border-r border-[#ff9933]/15 bg-[linear-gradient(180deg,rgba(255,153,51,0.08),rgba(0,0,0,0.5)_22%,rgba(0,219,233,0.045))] p-5 shadow-[8px_0_40px_rgba(0,0,0,0.35)] backdrop-blur-xl xl:flex xl:flex-col">
           <nav className="space-y-3">
             {navItems.map((item) => {
@@ -205,7 +205,7 @@ export default function Home() {
           )}
         </aside>
 
-        <section className="cp-dashboard-canvas relative overflow-hidden border-r border-white/10 p-5 lg:p-8">
+        <section className="cp-dashboard-canvas relative overflow-hidden border-r border-white/10 p-4 sm:p-5 lg:p-8">
           <div className="absolute inset-0 stitch-bg-grid opacity-80" />
           <div className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-[#00dbe9]/55 to-transparent" />
           <div className="relative z-10 flex h-full min-h-[calc(100vh-5rem)] flex-col">
@@ -214,7 +214,7 @@ export default function Home() {
                 <p className="font-mono text-xs font-bold uppercase tracking-[0.24em] text-[#00dbe9]">
                   {t("commandCenterSubtitle")}
                 </p>
-                <h2 className="mt-2 max-w-xl text-4xl font-black leading-tight tracking-tight text-white">
+                <h2 className="mt-2 max-w-xl text-3xl font-black leading-tight tracking-tight text-white sm:text-4xl">
                   {selectedCity.name} {t("commandCenter")}
                 </h2>
                 <p className="mt-2 text-sm text-[#dbc2b0]">
@@ -223,7 +223,7 @@ export default function Home() {
                 </p>
               </div>
 
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap gap-2 sm:gap-3">
                 <CitySelector value={selectedCity.key} />
                 <CommandLink href="/contractor" label={t("contractorView")} icon={<Building2 size={16} />} tone="cyan" />
                 <CommandLink href="/pending" label={t("pendingProof")} icon={<ScanSearch size={16} />} tone="glass" />
@@ -330,7 +330,7 @@ export default function Home() {
           </div>
         </section>
 
-        <aside className="max-h-none overflow-y-auto bg-[#181615]/95 p-5 backdrop-blur-xl xl:max-h-screen">
+        <aside className="max-h-none overflow-y-auto bg-[#181615]/95 p-4 backdrop-blur-xl sm:p-5 xl:max-h-screen">
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
               <div
@@ -520,7 +520,7 @@ function CommandLink({
   return (
     <Link
       href={href}
-      className={`flex items-center gap-2 rounded-md border px-5 py-3 text-sm font-semibold transition ${tones[tone]}`}
+      className={`flex flex-1 items-center justify-center gap-2 rounded-md border px-3 py-2 text-xs font-semibold transition sm:flex-none sm:px-5 sm:py-3 sm:text-sm ${tones[tone]}`}
     >
       {icon}
       {label}
@@ -551,7 +551,7 @@ function CitySelector({ value }: { value: CityKey }) {
 function FilterChip({ label, color, active }: { label: string; color: string; active?: boolean }) {
   return (
     <button
-      className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition ${
+      className={`flex items-center gap-2 rounded-full border px-3 py-2 text-xs transition sm:px-4 sm:text-sm ${
         active
           ? "border-[#ffc08d]/50 bg-[#ffc08d]/10 text-[#ffc08d] shadow-[0_0_18px_rgba(255,192,141,0.1)]"
           : "border-white/15 bg-white/[0.04] text-[#e5e2e3] hover:border-white/30"

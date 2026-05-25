@@ -22,7 +22,7 @@ export function LanguageSelector({ compact = false }: { compact?: boolean }) {
 
   return (
     <label
-      className={`flex items-center gap-2 rounded border border-[#00dbe9]/30 bg-[#00dbe9]/10 text-[#7df4ff] ${
+      className={`flex min-w-0 shrink-0 items-center gap-2 rounded border border-[#00dbe9]/30 bg-[#00dbe9]/10 text-[#7df4ff] ${
         compact ? "px-2 py-2" : "px-3 py-2"
       }`}
     >
@@ -35,7 +35,9 @@ export function LanguageSelector({ compact = false }: { compact?: boolean }) {
       <select
         value={languageSnapshot}
         onChange={(event) => setSelectedLanguageKey(event.target.value as LanguageKey)}
-        className="bg-transparent font-mono text-xs font-bold text-[#7df4ff] outline-none"
+        className={`min-w-0 bg-transparent font-mono text-xs font-bold text-[#7df4ff] outline-none ${
+          compact ? "max-w-20 sm:max-w-none" : ""
+        }`}
         aria-label={translate(languageSnapshot, "language")}
       >
         {indianLanguages.map((language) => (
