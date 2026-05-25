@@ -110,6 +110,7 @@ export default function ReportIssuePage() {
   const [verified, setVerified] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [signing, setSigning] = useState(false);
+  const [proofCreating, setProofCreating] = useState(false);
   const [aiProcessing, setAiProcessing] = useState(false);
   const [aiResult, setAiResult] = useState<InfrastructureAnalysis | null>(null);
   const googleMapsUrl = buildGoogleMapsUrl(latitude, longitude);
@@ -204,63 +205,77 @@ export default function ReportIssuePage() {
   }
 
   function createProof() {
-    const result =
-      aiResult ??
-      analyzeInfrastructureIssue({
-        description,
-        imageName,
+    if (submitted || proofCreating) {
+      return;
+    }
+
+    setProofCreating(true);
+    try {
+      const result =
+        aiResult ??
+        analyzeInfrastructureIssue({
+          description,
+          imageName,
+          location,
+          cityName: selectedCity.name,
+        });
+
+      const now = new Date().toISOString();
+      const reportId = createLocalReportId();
+
+      saveLocalReport({
+        id: reportId,
+        cityKey: selectedCity.key,
+        title: `${result.issueType} awaiting repair in ${selectedCity.name}`,
+        ward: selectedCity.repairWard,
+        status: "PENDING_PROOF",
+        severity: result.severity,
+        confidence: result.confidence,
+        contractor: "Awaiting assignment",
+        txHash: "0x7bd9...42fa",
+        warrantyDaysLeft: null,
         location,
-        cityName: selectedCity.name,
+        latitude,
+        longitude,
+        mapUrl: googleMapsUrl,
+        issueCategory: result.category,
+        assetType: result.assetType,
+        aiSummary: result.publicSummary,
+        recommendedAction: result.recommendedAction,
+        slaHours: result.slaHours,
+        createdAt: now,
+        updatedAt: now,
+        issueImageName: imageName || "citizen-issue-evidence.jpg",
+        issueImageDataUrl: imageDataUrl,
+        evidenceHash: `0x${Array.from(`${reportId}-${now}`)
+          .map((char) => char.charCodeAt(0).toString(16))
+          .join("")
+          .slice(0, 12)}...${reportId.replace("CP-", "")}`,
+        history: [
+          {
+            label: "Citizen report created",
+            detail: `${result.issueType} submitted from ${location}.`,
+            time: new Date(now).toLocaleString(),
+            tx: "0x7bd9...42fa",
+          },
+          {
+            label: "AI verified civic issue",
+            detail: `${result.category} classified with ${result.confidence}% confidence and ${result.severity} severity.`,
+            time: new Date(now).toLocaleString(),
+            tx: "0x19bb...45aa",
+          },
+        ],
       });
 
-    const now = new Date().toISOString();
-    const reportId = createLocalReportId();
-
-    saveLocalReport({
-      id: reportId,
-      cityKey: selectedCity.key,
-      title: `${result.issueType} awaiting repair in ${selectedCity.name}`,
-      ward: selectedCity.repairWard,
-      status: "PENDING_PROOF",
-      severity: result.severity,
-      confidence: result.confidence,
-      contractor: "Awaiting assignment",
-      txHash: "0x7bd9...42fa",
-      warrantyDaysLeft: null,
-      location,
-      latitude,
-      longitude,
-      mapUrl: googleMapsUrl,
-      issueCategory: result.category,
-      assetType: result.assetType,
-      aiSummary: result.publicSummary,
-      recommendedAction: result.recommendedAction,
-      slaHours: result.slaHours,
-      createdAt: now,
-      updatedAt: now,
-      issueImageName: imageName || "citizen-issue-evidence.jpg",
-      issueImageDataUrl: imageDataUrl,
-      evidenceHash: `0x${Array.from(`${reportId}-${now}`)
-        .map((char) => char.charCodeAt(0).toString(16))
-        .join("")
-        .slice(0, 12)}...${reportId.replace("CP-", "")}`,
-      history: [
-        {
-          label: "Citizen report created",
-          detail: `${result.issueType} submitted from ${location}.`,
-          time: new Date(now).toLocaleString(),
-          tx: "0x7bd9...42fa",
-        },
-        {
-          label: "AI verified civic issue",
-          detail: `${result.category} classified with ${result.confidence}% confidence and ${result.severity} severity.`,
-          time: new Date(now).toLocaleString(),
-          tx: "0x19bb...45aa",
-        },
-      ],
-    });
-
-    setSubmitted(true);
+      setAiResult(result);
+      setVerified(true);
+      setSubmitted(true);
+      setSigning(false);
+    } catch {
+      setLocationMessage("Could not create proof record. Try a smaller image or submit again.");
+    } finally {
+      setProofCreating(false);
+    }
   }
 
   function chooseCity(cityKey: CityKey) {
@@ -278,6 +293,7 @@ export default function ReportIssuePage() {
     setVerified(false);
     setAiResult(null);
     setSubmitted(false);
+    setProofCreating(false);
   }
 
   return (
@@ -710,12 +726,13 @@ export default function ReportIssuePage() {
 
               <section className="cp-cyber-card rounded-lg p-6">
                 <button
+                  type="button"
                   onClick={() => setSigning(true)}
-                  disabled={!aiResult || submitted}
+                  disabled={aiProcessing || submitted || proofCreating}
                   className="royal-blue-glow flex w-full items-center justify-center gap-2 rounded border border-[#2A2D35] bg-[#1A1C23] px-4 py-4 font-mono text-xs font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ShieldCheck size={16} />
-                  {submitted ? tr("newProofCreated") : tr("createProof")}
+                  {proofCreating ? `${tr("createProof")}...` : submitted ? tr("newProofCreated") : tr("createProof")}
                 </button>
                 {!verified && (
                   <p className="mt-3 text-center text-xs text-[#dbc2b0]/60">
@@ -755,16 +772,18 @@ export default function ReportIssuePage() {
       </section>
 
       {signing && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#050505]/82 p-4 backdrop-blur-xl">
-          <div className="cp-cyber-card w-full max-w-md rounded-lg border-[#00dbe9]/40 p-7 shadow-[0_0_34px_rgba(0,219,233,0.16)]">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-[#050505]/82 p-4 backdrop-blur-xl">
+          <div className="cp-cyber-card pointer-events-auto relative z-[1000] w-full max-w-md rounded-lg border-[#00dbe9]/40 p-7 shadow-[0_0_34px_rgba(0,219,233,0.16)]">
             <div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4">
               <h3 className="flex items-center gap-2 font-mono text-xs uppercase text-[#00dbe9]">
                 <ShieldCheck size={16} />
                 {tr("signAndCreate")}
               </h3>
               <button
+                type="button"
                 onClick={() => setSigning(false)}
                 className="grid h-8 w-8 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0] transition hover:text-[#ffb4ab]"
+                aria-label="Close signing request"
               >
                 <X size={15} />
               </button>
@@ -787,7 +806,7 @@ export default function ReportIssuePage() {
               <SignRow label="Issue" value={aiResult?.issueType ?? "Infrastructure issue"} />
               <SignRow label="Proof Tag" value={aiResult?.proofTag ?? "CIVIC_ASSET_PROOF"} />
               <SignRow label="Network" value="Base Sepolia" />
-              <SignRow label="Gas" value="Free MVP simulation" />
+              <SignRow label="Gas" value="No testnet gas required" />
             </div>
 
             <div className="rounded border border-[#00eb88]/20 bg-[#00eb88]/10 p-4">
@@ -802,19 +821,19 @@ export default function ReportIssuePage() {
 
             <div className="mt-5 flex gap-3">
               <button
+                type="button"
                 onClick={() => setSigning(false)}
                 className="flex-1 rounded border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
               >
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  createProof();
-                  setSigning(false);
-                }}
-                className="btn-primary-shimmer flex-1 rounded bg-[#ffc08d] px-4 py-2 text-sm font-semibold text-[#4c2700]"
+                type="button"
+                onClick={createProof}
+                disabled={proofCreating}
+                className="relative z-10 flex-1 rounded bg-[#ffc08d] px-4 py-2 text-sm font-semibold text-[#4c2700] shadow-[0_0_22px_rgba(255,153,51,0.22)] transition hover:bg-[#ffdcc2] disabled:cursor-wait disabled:opacity-70"
               >
-                {tr("signAndCreate")}
+                {proofCreating ? `${tr("signAndCreate")}...` : tr("signAndCreate")}
               </button>
             </div>
           </div>
