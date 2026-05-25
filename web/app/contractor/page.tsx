@@ -107,6 +107,7 @@ export default function ContractorPage() {
 
   function submitRepairProof() {
     if (!selectedReport) {
+      setActionMessage("Select a report first, then upload after-repair proof.");
       return;
     }
 
@@ -438,6 +439,7 @@ export default function ContractorPage() {
 
                     <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                       <button
+                        type="button"
                         onClick={runRepairAudit}
                         disabled={!repairImage || auditProcessing}
                         className="flex flex-1 items-center justify-center gap-2 rounded border border-[#00dbe9] bg-[#00dbe9]/10 px-4 py-3 font-mono text-xs text-[#00dbe9] transition hover:bg-[#00dbe9]/15 disabled:cursor-not-allowed disabled:opacity-40"
@@ -446,9 +448,10 @@ export default function ContractorPage() {
                         {auditProcessing ? `${t("aiRepairAudit")}...` : audited ? t("ready") : t("runAiRepairAudit")}
                       </button>
                       <button
+                        type="button"
                         onClick={submitRepairProof}
-                        disabled={!selectedReport || auditProcessing}
-                        className="btn-primary-shimmer flex flex-1 items-center justify-center gap-2 rounded bg-[#00eb88] px-4 py-3 font-mono text-xs font-semibold text-[#00210e] transition disabled:cursor-not-allowed disabled:opacity-40"
+                        disabled={auditProcessing}
+                        className="btn-primary-shimmer relative z-20 flex flex-1 items-center justify-center gap-2 rounded bg-[#00eb88] px-4 py-3 font-mono text-xs font-semibold text-[#00210e] transition disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <ShieldCheck size={16} className={auditProcessing ? "animate-spin" : ""} />
                         {auditProcessing ? `${t("aiRepairAudit")}...` : "Submit Proof for Approval"}

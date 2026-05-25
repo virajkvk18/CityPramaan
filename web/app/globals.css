@@ -64,6 +64,7 @@ body {
   position: absolute;
   inset: -80% auto -80% -45%;
   width: 42%;
+  pointer-events: none;
   transform: rotate(30deg);
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.38), transparent);
   animation: cp-shimmer 3s linear infinite;
