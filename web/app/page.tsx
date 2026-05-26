@@ -223,7 +223,7 @@ export default function Home() {
                 </p>
               </div>
 
-              <div className="flex flex-wrap gap-2 sm:gap-3">
+              <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:gap-3">
                 <CitySelector value={selectedCity.key} />
                 <CommandLink href="/contractor" label={t("contractorView")} icon={<Building2 size={16} />} tone="cyan" />
                 <CommandLink href="/pending" label={t("pendingProof")} icon={<ScanSearch size={16} />} tone="glass" />
@@ -236,7 +236,7 @@ export default function Home() {
                 />
                 <Link
                   href="/report"
-                  className="relative overflow-hidden rounded-sm bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] px-5 py-3 font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#4c2700] shadow-[0_0_24px_rgba(255,153,51,0.2)] hover:shadow-[0_0_30px_rgba(255,153,51,0.3)]"
+                  className="relative col-span-2 flex min-h-12 items-center justify-center overflow-hidden rounded-sm bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] px-5 py-3 text-center font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#4c2700] shadow-[0_0_24px_rgba(255,153,51,0.2)] hover:shadow-[0_0_30px_rgba(255,153,51,0.3)] sm:col-auto"
                 >
                   <span className="stitch-shimmer" />
                   {t("reportIssue")}
@@ -520,22 +520,22 @@ function CommandLink({
   return (
     <Link
       href={href}
-      className={`flex flex-1 items-center justify-center gap-2 rounded-md border px-3 py-2 text-xs font-semibold transition sm:flex-none sm:px-5 sm:py-3 sm:text-sm ${tones[tone]}`}
+      className={`flex min-h-14 items-center justify-center gap-2 rounded-md border px-2 py-2 text-center text-xs font-semibold leading-tight transition sm:min-h-0 sm:flex-none sm:px-5 sm:py-3 sm:text-sm ${tones[tone]}`}
     >
-      {icon}
-      {label}
+      <span className="shrink-0">{icon}</span>
+      <span className="min-w-0 break-words">{label}</span>
     </Link>
   );
 }
 
 function CitySelector({ value }: { value: CityKey }) {
   return (
-    <label className="flex items-center gap-2 rounded-md border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-3 py-2 text-sm text-[#7df4ff]">
+    <label className="col-span-2 flex min-h-14 w-full items-center gap-2 rounded-md border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-3 py-2 text-sm text-[#7df4ff] sm:col-auto sm:w-auto">
       <MapPin size={16} />
       <select
         value={value}
         onChange={(event) => setSelectedCityKey(event.target.value as CityKey)}
-        className="bg-transparent font-mono text-xs font-bold uppercase tracking-[0.12em] text-[#7df4ff] outline-none"
+        className="min-w-0 flex-1 bg-transparent font-mono text-xs font-bold uppercase tracking-[0.12em] text-[#7df4ff] outline-none sm:flex-none"
         aria-label="Select demo city"
       >
         {demoCities.map((city) => (
