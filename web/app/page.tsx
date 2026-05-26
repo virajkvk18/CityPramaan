@@ -101,12 +101,12 @@ export default function Home() {
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_14%_8%,rgba(255,153,51,0.16),transparent_24%),radial-gradient(circle_at_82%_12%,rgba(0,219,233,0.14),transparent_28%),radial-gradient(circle_at_48%_94%,rgba(0,235,136,0.08),transparent_30%)]" />
       <div className="pointer-events-none fixed inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:34px_34px] opacity-70" />
 
-      <header className="fixed left-0 right-0 top-0 z-50 flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-[#ff9933]/15 bg-[#030507]/75 px-3 py-3 shadow-[0_0_34px_rgba(0,219,233,0.08)] backdrop-blur-2xl sm:h-20 sm:flex-nowrap sm:px-5 lg:px-10">
+      <header className="fixed left-0 right-0 top-0 z-50 flex min-h-16 flex-col items-stretch gap-3 border-b border-[#ff9933]/15 bg-[#030507]/85 px-3 py-3 shadow-[0_0_34px_rgba(0,219,233,0.08)] backdrop-blur-2xl sm:h-20 sm:flex-row sm:items-center sm:justify-between sm:px-5 lg:px-10">
         <Link href="/" className="group flex min-w-0 items-center gap-3">
           <BrandLogo className="min-w-0" />
         </Link>
 
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+        <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:gap-3">
           <Link
             href="/about"
             className="hidden rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.2em] text-[#ffdcc2] transition hover:border-[#00dbe9]/35 hover:bg-[#00dbe9]/10 hover:text-[#7df4ff] md:inline-flex"
@@ -120,7 +120,7 @@ export default function Home() {
           <LanguageSelector compact />
           <button
             onClick={walletConnected ? disconnectMockWallet : connectMockWallet}
-            className={`relative max-w-[128px] overflow-hidden truncate rounded-sm border px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.08em] transition sm:max-w-none sm:px-5 sm:py-3 sm:text-xs sm:tracking-[0.2em] ${
+            className={`relative min-h-9 max-w-[136px] overflow-hidden truncate rounded-sm border px-3 py-2 text-center font-mono text-[10px] font-bold uppercase tracking-[0.08em] transition sm:min-h-0 sm:max-w-none sm:px-5 sm:py-3 sm:text-xs sm:tracking-[0.2em] ${
               walletConnected
                 ? "border-[#00eb88]/45 bg-[#00eb88]/12 text-[#5bffa1] shadow-[0_0_24px_rgba(0,235,136,0.14)]"
                 : "border-[#ffc08d]/60 bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] text-[#4c2700] shadow-[0_0_26px_rgba(255,153,51,0.2)]"
@@ -132,7 +132,7 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="grid min-h-screen grid-cols-1 pt-24 sm:pt-20 xl:grid-cols-[320px_1fr_400px]">
+      <section className="grid min-h-screen grid-cols-1 pb-24 pt-36 sm:pb-0 sm:pt-20 xl:grid-cols-[320px_1fr_400px]">
         <aside className="hidden border-r border-[#ff9933]/15 bg-[linear-gradient(180deg,rgba(255,153,51,0.08),rgba(0,0,0,0.5)_22%,rgba(0,219,233,0.045))] p-5 shadow-[8px_0_40px_rgba(0,0,0,0.35)] backdrop-blur-xl xl:flex xl:flex-col">
           <nav className="space-y-3">
             {navItems.map((item) => {
@@ -209,15 +209,15 @@ export default function Home() {
           <div className="absolute inset-0 stitch-bg-grid opacity-80" />
           <div className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-[#00dbe9]/55 to-transparent" />
           <div className="relative z-10 flex h-full min-h-[calc(100vh-5rem)] flex-col">
-            <div className="mb-6 flex flex-col gap-5 2xl:flex-row 2xl:items-end 2xl:justify-between">
+            <div className="mb-5 flex flex-col gap-4 sm:mb-6 sm:gap-5 2xl:flex-row 2xl:items-end 2xl:justify-between">
               <div>
-                <p className="font-mono text-xs font-bold uppercase tracking-[0.24em] text-[#00dbe9]">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#00dbe9] sm:text-xs sm:tracking-[0.24em]">
                   {t("commandCenterSubtitle")}
                 </p>
-                <h2 className="mt-2 max-w-xl text-3xl font-black leading-tight tracking-tight text-white sm:text-4xl">
+                <h2 className="mt-2 max-w-xl text-[2rem] font-black leading-[1.05] tracking-tight text-white sm:text-4xl">
                   {selectedCity.name} {t("commandCenter")}
                 </h2>
-                <p className="mt-2 text-sm text-[#dbc2b0]">
+                <p className="mt-2 text-sm leading-6 text-[#dbc2b0]">
                   Demo node: {selectedCity.primaryArea}, {selectedCity.state}. Switch cities to
                   show CityPramaan works beyond one municipal area.
                 </p>
@@ -244,7 +244,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="mb-4 grid grid-cols-2 gap-2 sm:mb-5 sm:gap-3 lg:grid-cols-4">
               <PulseStat
                 icon={<Gauge size={17} />}
                 label={t("activeReports")}
@@ -275,7 +275,7 @@ export default function Home() {
               />
             </div>
 
-            <div className="mb-5 flex flex-wrap gap-2">
+            <div className="mb-4 flex gap-2 overflow-x-auto pb-1 sm:mb-5 sm:flex-wrap sm:overflow-visible">
               <FilterChip label={t("openIssues")} color="bg-[#ffb4ab]" />
               <FilterChip label={t("pendingProof")} color="bg-[#00dbe9]" />
               <FilterChip label={t("repairSubmitted")} color="bg-[#ff9933]" />
@@ -417,6 +417,14 @@ export default function Home() {
           </div>
         </aside>
       </section>
+
+      <nav className="fixed inset-x-3 bottom-3 z-50 grid grid-cols-5 overflow-hidden rounded-2xl border border-[#ff9933]/20 bg-[#030507]/90 shadow-[0_0_34px_rgba(0,219,233,0.12)] backdrop-blur-2xl sm:hidden">
+        <MobileNavLink href="/" label="Home" icon={<Gauge size={17} />} active />
+        <MobileNavLink href="/report" label="Report" icon={<AlertTriangle size={17} />} />
+        <MobileNavLink href="/pending" label="Review" icon={<ScanSearch size={17} />} />
+        <MobileNavLink href="/warranty" label="Ledger" icon={<ShieldCheck size={17} />} />
+        <MobileNavLink href={`/proof/${selected.id}`} label="Proof" icon={<Blocks size={17} />} />
+      </nav>
     </main>
   );
 }
@@ -451,15 +459,15 @@ function PulseStat({
   };
 
   return (
-    <div className={`cp-pulse-stat rounded-md border p-3 ${tones[tone]}`}>
+    <div className={`cp-pulse-stat min-h-[142px] rounded-md border p-3 ${tones[tone]}`}>
       <div className="flex items-center justify-between gap-3">
         <span className="grid h-8 w-8 place-items-center rounded-sm border border-current/25 bg-black/20">
           {icon}
         </span>
         <span className="h-2 w-2 rounded-full bg-current shadow-[0_0_12px_currentColor]" />
       </div>
-      <p className="mt-3 font-mono text-[9px] font-bold uppercase tracking-[0.16em] opacity-80">{label}</p>
-      <p className="mt-1 text-xl font-black tracking-tight text-white">{value}</p>
+      <p className="mt-3 font-mono text-[9px] font-bold uppercase tracking-[0.14em] opacity-80 sm:tracking-[0.16em]">{label}</p>
+      <p className="mt-1 text-[1.45rem] font-black leading-tight tracking-tight text-white sm:text-xl">{value}</p>
       <p className="mt-1 text-[11px] leading-4 text-[#dbc2b0]">{detail}</p>
     </div>
   );
@@ -520,7 +528,7 @@ function CommandLink({
   return (
     <Link
       href={href}
-      className={`flex min-h-14 items-center justify-center gap-2 rounded-md border px-2 py-2 text-center text-xs font-semibold leading-tight transition sm:min-h-0 sm:flex-none sm:px-5 sm:py-3 sm:text-sm ${tones[tone]}`}
+      className={`flex min-h-14 items-center justify-center gap-2 rounded-md border px-2 py-2 text-center text-[12px] font-semibold leading-tight transition sm:min-h-0 sm:flex-none sm:px-5 sm:py-3 sm:text-sm ${tones[tone]}`}
     >
       <span className="shrink-0">{icon}</span>
       <span className="min-w-0 break-words">{label}</span>
@@ -560,6 +568,32 @@ function FilterChip({ label, color, active }: { label: string; color: string; ac
       <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
       {label}
     </button>
+  );
+}
+
+function MobileNavLink({
+  href,
+  label,
+  icon,
+  active = false,
+}: {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  active?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`flex min-h-16 flex-col items-center justify-center gap-1 border-r border-white/5 px-1 text-center font-mono text-[10px] font-bold uppercase tracking-[0.08em] last:border-r-0 ${
+        active
+          ? "bg-[#ffc08d]/12 text-[#ffc08d]"
+          : "text-[#dbc2b0]/72 active:bg-white/[0.05]"
+      }`}
+    >
+      {icon}
+      <span>{label}</span>
+    </Link>
   );
 }
 
