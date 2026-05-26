@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useSyncExternalStore } from "react";
 import {
+  Activity,
   AlertTriangle,
   ArrowRight,
   BadgeCheck,
@@ -12,6 +13,7 @@ import {
   FileImage,
   Gauge,
   MapPin,
+  RadioTower,
   RotateCcw,
   ScanSearch,
   ShieldAlert,
@@ -211,39 +213,65 @@ export default function Home() {
           <div className="absolute inset-0 stitch-bg-grid opacity-80" />
           <div className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-[#00dbe9]/55 to-transparent" />
           <div className="relative z-10 flex h-full min-h-[calc(100vh-5rem)] flex-col">
-            <div className="mb-5 flex flex-col gap-4 sm:mb-6 sm:gap-5 2xl:flex-row 2xl:items-end 2xl:justify-between">
-              <div>
-                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#00dbe9] sm:text-xs sm:tracking-[0.24em]">
-                  {t("commandCenterSubtitle")}
-                </p>
-                <h2 className="mt-2 max-w-xl text-[2rem] font-black leading-[1.05] tracking-tight text-white sm:text-4xl">
-                  {selectedCity.name} {t("commandCenter")}
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-[#dbc2b0]">
-                  Demo node: {selectedCity.primaryArea}, {selectedCity.state}. Switch cities to
-                  show CityPramaan works beyond one municipal area.
-                </p>
-              </div>
+            <div className="cp-command-hero relative mb-5 overflow-hidden rounded-2xl border border-[#ff9933]/15 bg-[linear-gradient(135deg,rgba(255,153,51,0.09),rgba(0,219,233,0.055),rgba(0,0,0,0.18))] p-4 shadow-[0_18px_70px_rgba(0,0,0,0.22)] sm:mb-6 sm:p-5">
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#ffc08d]/60 to-transparent" />
+              <div className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full border border-[#00dbe9]/18" />
+              <div className="relative flex flex-col gap-4 sm:gap-5 2xl:flex-row 2xl:items-end 2xl:justify-between">
+                <div>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-[#00dbe9]/20 bg-[#00dbe9]/8 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#00dbe9]">
+                    <RadioTower size={13} />
+                    {t("commandCenterSubtitle")}
+                  </div>
+                  <h2 className="mt-3 max-w-xl text-[2rem] font-black leading-[1.05] tracking-tight text-white sm:text-4xl">
+                    {selectedCity.name} {t("commandCenter")}
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-[#dbc2b0]">
+                    Demo node: {selectedCity.primaryArea}, {selectedCity.state}. Switch cities to
+                    show CityPramaan works beyond one municipal area.
+                  </p>
+                </div>
 
-              <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:gap-3">
-                <CitySelector value={selectedCity.key} />
-                <CommandLink href="/contractor" label={t("contractorView")} icon={<Building2 size={16} />} tone="cyan" />
-                <CommandLink href="/pending" label={t("pendingProof")} icon={<ScanSearch size={16} />} tone="glass" />
-                <CommandLink href="/warranty" label={t("warrantyScanner")} icon={<ScanSearch size={16} />} tone="gold" />
-                <CommandLink
-                  href={`/proof/${selected.id}`}
-                  label={t("publicProof")}
-                  icon={<Blocks size={16} />}
-                  tone="glass"
-                />
-                <Link
-                  href="/report"
-                  className="relative col-span-2 flex min-h-12 items-center justify-center overflow-hidden rounded-sm bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] px-5 py-3 text-center font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#4c2700] shadow-[0_0_24px_rgba(255,153,51,0.2)] hover:shadow-[0_0_30px_rgba(255,153,51,0.3)] sm:col-auto"
-                >
-                  <span className="stitch-shimmer" />
-                  {t("reportIssue")}
-                </Link>
+                <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end sm:gap-3">
+                  <CitySelector value={selectedCity.key} />
+                  <CommandLink href="/contractor" label={t("contractorView")} icon={<Building2 size={16} />} tone="cyan" />
+                  <CommandLink href="/pending" label={t("pendingProof")} icon={<ScanSearch size={16} />} tone="glass" />
+                  <CommandLink href="/warranty" label={t("warrantyScanner")} icon={<ScanSearch size={16} />} tone="gold" />
+                  <CommandLink
+                    href={`/proof/${selected.id}`}
+                    label={t("publicProof")}
+                    icon={<Blocks size={16} />}
+                    tone="glass"
+                  />
+                  <Link
+                    href="/report"
+                    className="relative col-span-2 flex min-h-12 items-center justify-center overflow-hidden rounded-sm bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] px-5 py-3 text-center font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#4c2700] shadow-[0_0_24px_rgba(255,153,51,0.2)] hover:shadow-[0_0_30px_rgba(255,153,51,0.3)] sm:col-auto"
+                  >
+                    <span className="stitch-shimmer" />
+                    {t("reportIssue")}
+                  </Link>
+                </div>
               </div>
+            </div>
+
+            <div className="mb-4 grid gap-2 sm:mb-5 sm:grid-cols-3">
+              <CommandSignal
+                icon={<Activity size={16} />}
+                label="Live sync"
+                value={`${activeDashboardReports.length} civic pins`}
+                tone="cyan"
+              />
+              <CommandSignal
+                icon={<Clock3 size={16} />}
+                label="SLA watch"
+                value={`${selected.slaHours ?? 24}h response`}
+                tone="amber"
+              />
+              <CommandSignal
+                icon={<ShieldCheck size={16} />}
+                label="Trust layer"
+                value={`${214 + localCityReports.length} proofs indexed`}
+                tone="emerald"
+              />
             </div>
 
             <div className="mb-4 grid grid-cols-2 gap-2 sm:mb-5 sm:gap-3 lg:grid-cols-4">
@@ -481,7 +509,7 @@ export default function Home() {
         <MobileNavLink href="/" label="Home" icon={<Gauge size={17} />} active />
         <MobileNavLink href="/report" label="Report" icon={<AlertTriangle size={17} />} />
         <MobileNavLink href="/pending" label="Review" icon={<ScanSearch size={17} />} />
-        <MobileNavLink href="/warranty" label="Ledger" icon={<ShieldCheck size={17} />} />
+        <MobileNavLink href="/warranty" label="Warranty" icon={<ShieldCheck size={17} />} />
         <MobileNavLink href={`/proof/${selected.id}`} label="Proof" icon={<Blocks size={17} />} />
       </nav>
     </main>
@@ -562,6 +590,38 @@ function TrustSignal({
           {label}
         </span>
         <span className="mt-1 block text-sm font-semibold text-[#e5e2e3]">{value}</span>
+      </span>
+    </div>
+  );
+}
+
+function CommandSignal({
+  icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  tone: "cyan" | "amber" | "emerald";
+}) {
+  const tones = {
+    cyan: "border-[#00dbe9]/25 bg-[#00dbe9]/8 text-[#7df4ff]",
+    amber: "border-[#ffc08d]/25 bg-[#ffc08d]/8 text-[#ffdcc2]",
+    emerald: "border-[#00eb88]/25 bg-[#00eb88]/8 text-[#5bffa1]",
+  };
+
+  return (
+    <div className={`cp-command-signal flex items-center gap-3 rounded-xl border px-4 py-3 ${tones[tone]}`}>
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-current/20 bg-black/25">
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block font-mono text-[10px] font-bold uppercase tracking-[0.18em] opacity-75">
+          {label}
+        </span>
+        <span className="mt-1 block truncate text-sm font-semibold text-[#e5e2e3]">{value}</span>
       </span>
     </div>
   );
