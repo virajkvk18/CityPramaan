@@ -4,13 +4,17 @@ import Link from "next/link";
 import { useMemo, useSyncExternalStore } from "react";
 import {
   AlertTriangle,
+  ArrowRight,
   BadgeCheck,
   Blocks,
   Building2,
+  Clock3,
+  FileImage,
   Gauge,
   MapPin,
   RotateCcw,
   ScanSearch,
+  ShieldAlert,
   ShieldCheck,
   Sparkles,
   Wallet,
@@ -329,38 +333,95 @@ export default function Home() {
         </section>
 
         <aside className="max-h-none overflow-y-auto bg-[#181615]/95 p-4 backdrop-blur-xl sm:p-5 xl:max-h-screen">
-          <div className="mb-5 flex items-start justify-between gap-4">
-            <div>
-              <div
-                className={`inline-flex items-center gap-2 rounded-sm border px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-[0.16em] ${
-                  isNewLocalReport
-                    ? "border-[#00dbe9]/30 bg-[#00dbe9]/10 text-[#7df4ff]"
-                    : "border-[#ffb4ab]/30 bg-[#ffb4ab]/10 text-[#ffb4ab]"
-                }`}
-              >
-                {isNewLocalReport ? <ShieldCheck size={14} /> : <AlertTriangle size={14} />}
-                {isNewLocalReport ? t("newProof") : t("highPriority")}
+          <section className="relative overflow-hidden rounded-2xl border border-[#ffb4ab]/30 bg-[radial-gradient(circle_at_14%_10%,rgba(255,180,171,0.18),transparent_28%),linear-gradient(145deg,rgba(255,153,51,0.12),rgba(217,70,239,0.08),rgba(0,0,0,0.3))] p-5 shadow-[0_0_36px_rgba(255,77,109,0.12)]">
+            <div className="absolute right-0 top-0 h-24 w-24 rounded-bl-full bg-[#ffb4ab]/10 blur-sm" />
+            <div className="relative">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.16em] ${
+                    isNewLocalReport
+                      ? "border-[#00dbe9]/30 bg-[#00dbe9]/10 text-[#7df4ff]"
+                      : "border-[#ffb4ab]/35 bg-[#ffb4ab]/10 text-[#ffb4ab]"
+                  }`}
+                >
+                  {isNewLocalReport ? <ShieldCheck size={14} /> : <ShieldAlert size={14} />}
+                  {isNewLocalReport ? t("newProof") : t("highPriority")}
+                </div>
+                <span className="inline-flex items-center gap-2 rounded-full border border-[#00eb88]/25 bg-[#00eb88]/10 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#5bffa1]">
+                  <span className="h-2 w-2 rounded-full bg-[#00eb88] shadow-[0_0_12px_rgba(0,235,136,0.8)]" />
+                  Live
+                </span>
               </div>
-              <h3 className="mt-4 text-2xl font-black tracking-tight text-white">
+
+              <h3 className="mt-4 text-2xl font-black leading-tight tracking-tight text-white">
                 {isNewLocalReport ? t("newProofCreated") : t("repeatFailureDetected")}
               </h3>
-              <p className="mt-2 flex items-center gap-2 text-sm text-[#dbc2b0]">
-                <MapPin size={16} />
+              <p className="mt-2 flex items-start gap-2 text-sm leading-6 text-[#dbc2b0]">
+                <MapPin size={16} className="mt-1 shrink-0 text-[#ffc08d]" />
                 {selected.location}
               </p>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <InfoCard label={t("severity")} value={selected.severity} />
-            <InfoCard label={t("aiConfidence")} value={`${selected.confidence}%`} accent="text-[#00eb88]" />
-            <InfoCard label={t("ward")} value={selected.ward} />
-            <InfoCard
-              label={t("warranty")}
-              value={selected.warrantyDaysLeft === null ? t("notActive") : `${selected.warrantyDaysLeft} days`}
-              accent="text-[#ffc08d]"
-            />
-          </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <IncidentChip label={selected.issueCategory ?? "ROAD_DAMAGE"} tone="amber" />
+                <IncidentChip label={selected.status.replaceAll("_", " ")} tone="rose" />
+                <IncidentChip label={`Ward ${selected.ward}`} tone="cyan" />
+              </div>
+
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <InfoCard label={t("severity")} value={selected.severity} accent="text-[#ffb4ab]" />
+                <InfoCard label={t("aiConfidence")} value={`${selected.confidence}%`} accent="text-[#00eb88]" />
+                <InfoCard label="SLA" value={`${selected.slaHours ?? 24} hrs`} accent="text-[#ffc08d]" />
+                <InfoCard
+                  label={t("warranty")}
+                  value={selected.warrantyDaysLeft === null ? t("notActive") : `${selected.warrantyDaysLeft} days`}
+                  accent="text-[#7df4ff]"
+                />
+              </div>
+
+              <div className="mt-5 rounded-xl border border-white/10 bg-black/30 p-4">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#dbc2b0]/70">
+                    AI escalation score
+                  </span>
+                  <span className="font-mono text-xs font-bold text-[#ffb4ab]">{selected.confidence}%</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-[linear-gradient(90deg,#ff9933,#ff4d6d,#d946ef)] shadow-[0_0_18px_rgba(255,77,109,0.45)]"
+                    style={{ width: `${selected.confidence}%` }}
+                  />
+                </div>
+                <p className="mt-3 text-xs leading-5 text-[#dbc2b0]/75">
+                  {isNewLocalReport
+                    ? "New report is waiting for contractor proof and owner-side tracking."
+                    : "Warranty memory matched this location with an earlier repair record. Re-audit is recommended."}
+                </p>
+              </div>
+
+              <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                <Link
+                  href={`/warranty?issue=${selected.id}#issue-progress`}
+                  className="group flex items-center justify-between gap-3 rounded-lg border border-[#ffc08d]/35 bg-[#ffc08d]/10 px-4 py-3 text-sm font-semibold text-[#ffdcc2] transition hover:bg-[#ffc08d]/15"
+                >
+                  <span className="flex items-center gap-2">
+                    <Clock3 size={16} />
+                    Track progress
+                  </span>
+                  <ArrowRight size={15} className="transition group-hover:translate-x-1" />
+                </Link>
+                <Link
+                  href={`/proof/${selected.id}`}
+                  className="group flex items-center justify-between gap-3 rounded-lg border border-[#00dbe9]/30 bg-[#00dbe9]/10 px-4 py-3 text-sm font-semibold text-[#7df4ff] transition hover:bg-[#00dbe9]/15"
+                >
+                  <span className="flex items-center gap-2">
+                    <FileImage size={16} />
+                    Public proof
+                  </span>
+                  <ArrowRight size={15} className="transition group-hover:translate-x-1" />
+                </Link>
+              </div>
+            </div>
+          </section>
 
           <div className="mt-6 rounded-md border border-[#d946ef]/40 bg-[linear-gradient(145deg,rgba(217,70,239,0.18),rgba(0,219,233,0.045))] p-5 shadow-[0_0_26px_rgba(217,70,239,0.12)]">
             <div className="mb-4 flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.18em] text-[#f0abfc]">
@@ -531,6 +592,20 @@ function CommandLink({
       <span className="shrink-0">{icon}</span>
       <span className="min-w-0 break-words">{label}</span>
     </Link>
+  );
+}
+
+function IncidentChip({ label, tone }: { label: string; tone: "amber" | "rose" | "cyan" }) {
+  const tones = {
+    amber: "border-[#ffc08d]/30 bg-[#ffc08d]/10 text-[#ffc08d]",
+    rose: "border-[#ffb4ab]/30 bg-[#ffb4ab]/10 text-[#ffb4ab]",
+    cyan: "border-[#00dbe9]/30 bg-[#00dbe9]/10 text-[#7df4ff]",
+  };
+
+  return (
+    <span className={`rounded-full border px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] ${tones[tone]}`}>
+      {label}
+    </span>
   );
 }
 
