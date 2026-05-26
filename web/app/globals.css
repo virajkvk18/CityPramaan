@@ -468,69 +468,6 @@ label:has(select) {
   isolation: isolate;
 }
 
-.cp-command-hero {
-  isolation: isolate;
-}
-
-.cp-command-hero::before {
-  animation: cp-hero-sweep 8s ease-in-out infinite;
-  background: linear-gradient(90deg, transparent, rgba(255, 192, 141, 0.2), rgba(0, 219, 233, 0.14), transparent);
-  content: "";
-  inset: 0;
-  opacity: 0.58;
-  pointer-events: none;
-  position: absolute;
-  transform: translateX(-100%);
-  z-index: 0;
-}
-
-.cp-command-hero::after {
-  background:
-    radial-gradient(circle at 12% 18%, rgba(255, 153, 51, 0.2), transparent 22%),
-    radial-gradient(circle at 88% 18%, rgba(0, 219, 233, 0.16), transparent 24%);
-  content: "";
-  inset: 0;
-  pointer-events: none;
-  position: absolute;
-  z-index: 0;
-}
-
-.cp-command-hero > * {
-  position: relative;
-  z-index: 1;
-}
-
-.cp-command-signal {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    0 16px 38px rgba(0, 0, 0, 0.12);
-  min-height: 74px;
-  overflow: hidden;
-  position: relative;
-  transition:
-    border-color 0.25s ease,
-    box-shadow 0.25s ease,
-    transform 0.25s ease;
-}
-
-.cp-command-signal::after {
-  background: linear-gradient(90deg, transparent, currentColor, transparent);
-  bottom: 0;
-  content: "";
-  height: 1px;
-  left: 12%;
-  opacity: 0.28;
-  position: absolute;
-  right: 12%;
-}
-
-.cp-command-signal:hover {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.09),
-    0 0 26px color-mix(in srgb, currentColor 16%, transparent);
-  transform: translateY(-2px);
-}
-
 .cp-command-frame::before,
 .cp-command-frame::after {
   border-color: rgba(0, 219, 233, 0.7);
@@ -761,17 +698,6 @@ label:has(select) {
   }
   to {
     transform: translateX(420%) rotate(28deg);
-  }
-}
-
-@keyframes cp-hero-sweep {
-  0%,
-  42% {
-    transform: translateX(-105%);
-  }
-  72%,
-  100% {
-    transform: translateX(105%);
   }
 }
 
@@ -1321,17 +1247,6 @@ html[data-theme="bright"] .cp-pulse-stat {
   box-shadow:
     inset 0 0 24px rgba(255, 255, 255, 0.32),
     0 14px 40px rgba(15, 71, 86, 0.09) !important;
-}
-
-html[data-theme="bright"] .cp-command-hero,
-html[data-theme="bright"] .cp-command-signal {
-  background-color: rgba(255, 255, 255, 0.8) !important;
-  border-color: rgba(0, 117, 138, 0.18) !important;
-  box-shadow: 0 16px 44px rgba(15, 71, 86, 0.08) !important;
-}
-
-html[data-theme="bright"] .cp-command-hero::before {
-  background: linear-gradient(90deg, transparent, rgba(255, 153, 51, 0.18), rgba(0, 117, 138, 0.14), transparent) !important;
 }
 
 html[data-theme="bright"] .cp-live-strip {
