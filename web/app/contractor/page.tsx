@@ -250,7 +250,7 @@ export default function ContractorPage() {
         <nav className="mt-8 flex flex-1 flex-col gap-1">
           <NavItem href="/" icon={<LayoutDashboard size={18} />} label={t("commandCenter")} />
           <NavItem href="/contractor" icon={<BadgeCheck size={18} />} label={t("verifiedRepairs")} active />
-          <NavItem href="/report" icon={<Camera size={18} />} label={t("activeReports")} />
+          <NavItem href="/report" icon={<Camera size={18} />} label={t("reportIssue")} />
           <NavItem href="/pending" icon={<ShieldCheck size={18} />} label={t("pendingProof")} />
           <NavItem href="/warranty" icon={<BarChart3 size={18} />} label={t("warrantyScanner")} />
         </nav>

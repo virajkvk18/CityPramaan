@@ -146,7 +146,7 @@ export default function PendingApprovalPage() {
           <NavItem href="/pending" icon={<ScanSearch size={18} />} label={t("pendingProof")} active />
           <NavItem href="/contractor" icon={<BadgeCheck size={18} />} label={t("contractorView")} />
           <NavItem href="/warranty" icon={<Wallet size={18} />} label={t("warrantyScanner")} />
-          <NavItem href="/report" icon={<Camera size={18} />} label={t("activeReports")} />
+          <NavItem href="/report" icon={<Camera size={18} />} label={t("reportIssue")} />
         </nav>
       </aside>
 

@@ -50,7 +50,7 @@ const timelineDefaultKeys: TranslationKey[] = [
 const navItems = [
   { labelKey: "commandCenter" as const, icon: Gauge, href: "/", active: true },
   { labelKey: "verifiedRepairs" as const, icon: BadgeCheck, href: "/proof/CP-004" },
-  { labelKey: "activeReports" as const, icon: AlertTriangle, href: "/report" },
+  { labelKey: "reportIssue" as const, icon: AlertTriangle, href: "/report" },
   { labelKey: "warrantyScanner" as const, icon: Wallet, href: "/warranty" },
   { labelKey: "pendingProof" as const, icon: ScanSearch, href: "/pending" },
 ];

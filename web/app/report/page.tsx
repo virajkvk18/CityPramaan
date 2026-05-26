@@ -355,7 +355,7 @@ export default function ReportIssuePage() {
           <NavItem
             href="/report"
             icon={<Camera size={18} />}
-            label={tr("activeReports")}
+            label={tr("reportIssue")}
             active
           />
           <NavItem href="/warranty" icon={<ShieldCheck size={18} />} label={tr("warrantyScanner")} />
