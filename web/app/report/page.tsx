@@ -358,7 +358,7 @@ export default function ReportIssuePage() {
             label={tr("activeReports")}
             active
           />
-          <NavItem href="/warranty" icon={<ShieldCheck size={18} />} label={tr("urbanLedger")} />
+          <NavItem href="/warranty" icon={<ShieldCheck size={18} />} label={tr("warrantyScanner")} />
           <NavItem href="/pending" icon={<FileImage size={18} />} label={tr("pendingProof")} />
         </nav>
 
