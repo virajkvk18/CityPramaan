@@ -8,7 +8,6 @@ import {
   AlertTriangle,
   ArrowLeft,
   BadgeCheck,
-  Bell,
   BookOpen,
   CalendarClock,
   ExternalLink,
@@ -24,6 +23,7 @@ import {
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
+import { NotificationBell } from "@/src/components/layout/NotificationBell";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { demoCities, getCityByKey, type CityKey } from "@/src/lib/city-context";
 import { getCitySnapshot, setSelectedCityKey, subscribeCity } from "@/src/lib/city-storage";
@@ -33,6 +33,11 @@ import { translate } from "@/src/lib/language-context";
 import { getLanguageSnapshot, subscribeLanguage } from "@/src/lib/language-storage";
 
 export default function WarrantyScannerPage() {
+  const linkedIssueId = useSyncExternalStore(
+    subscribeUrl,
+    getIssueIdFromUrl,
+    () => ""
+  );
   const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => "bhopal");
   const languageSnapshot = useSyncExternalStore(
     subscribeLanguage,
@@ -60,10 +65,12 @@ export default function WarrantyScannerPage() {
       ["UNDER_WARRANTY", "REPEAT_FAILURE", "REPAIR_SUBMITTED", "PENDING_PROOF", "OPEN", "CLOSED"].includes(report.status)
     )
     .sort(sortWarrantyReports);
-  const [selectedReportId, setSelectedReportId] = useState(warrantyReports[0]?.id ?? "");
+  const [selectedReportId, setSelectedReportId] = useState("");
   const [scanning, setScanning] = useState(false);
   const selectedReport =
-    warrantyReports.find((report) => report.id === selectedReportId) ?? warrantyReports[0];
+    warrantyReports.find((report) => report.id === selectedReportId) ??
+    warrantyReports.find((report) => report.id === linkedIssueId) ??
+    warrantyReports[0];
 
   function scanForFailure() {
     setScanning(true);
@@ -88,9 +95,7 @@ export default function WarrantyScannerPage() {
           <BrandLogo size="sm" subtitle={tr("warrantyScanner")} />
         </div>
         <div className="flex min-w-0 items-center gap-2 md:gap-3">
-          <button className="hidden h-9 w-9 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0]/70 transition hover:text-[#00eb88] sm:grid">
-            <Bell size={16} />
-          </button>
+          <NotificationBell />
           <button className="hidden h-9 w-9 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0]/70 transition hover:text-[#00eb88] sm:grid">
             <Settings size={16} />
           </button>
@@ -279,6 +284,8 @@ export default function WarrantyScannerPage() {
                     )}
                   </section>
 
+                  <IssueProgressPanel report={selectedReport} />
+
                   <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
                     <div className="mb-5 flex flex-col justify-between gap-3 border-b border-white/5 pb-4 sm:flex-row sm:items-end">
                       <h3 className="flex items-center gap-2 font-mono text-xs uppercase text-[#ffc08d]">
@@ -386,6 +393,18 @@ export default function WarrantyScannerPage() {
   );
 }
 
+function subscribeUrl() {
+  return () => {};
+}
+
+function getIssueIdFromUrl() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return new URLSearchParams(window.location.search).get("issue") ?? "";
+}
+
 function NavItem({
   href,
   icon,
@@ -445,6 +464,87 @@ function WarrantyBadge({
     >
       {closed ? closedText : active ? activeText : pending ? pendingText : notActiveText}
     </span>
+  );
+}
+
+function IssueProgressPanel({ report }: { report: CivicReport }) {
+  const steps = [
+    {
+      label: "Report raised",
+      detail: report.createdAt ? new Date(report.createdAt).toLocaleDateString() : "Citizen issue recorded",
+      done: true,
+    },
+    {
+      label: "AI verified",
+      detail: `${report.confidence}% confidence | ${report.severity} severity`,
+      done: true,
+    },
+    {
+      label: "Contractor proof uploaded",
+      detail: report.repairImageName || report.repairImageDataUrl ? "After-repair evidence attached" : "Waiting for repair proof",
+      done: Boolean(report.repairImageName || report.repairImageDataUrl || report.repairProofAt),
+    },
+    {
+      label: "Issuer approved",
+      detail:
+        report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE" || report.status === "CLOSED"
+          ? "Repair accepted by issue owner"
+          : "Pending owner review",
+      done: report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE" || report.status === "CLOSED",
+    },
+    {
+      label: "Warranty active",
+      detail:
+        report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE" || report.status === "CLOSED"
+          ? `${report.warrantyDaysLeft ?? report.warrantyPeriodDays ?? 90} days monitoring`
+          : "Activates after approval",
+      done: report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE" || report.status === "CLOSED",
+    },
+  ];
+  const completed = steps.filter((step) => step.done).length;
+
+  return (
+    <section id="issue-progress" className="cp-cyber-card cp-cyber-card-hover scroll-mt-24 rounded-lg p-6">
+      <div className="mb-5 flex flex-col justify-between gap-3 border-b border-white/5 pb-4 sm:flex-row sm:items-end">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.18em] text-[#00dbe9]">
+            Notification Linked Progress
+          </p>
+          <h3 className="mt-2 text-2xl font-semibold text-white">Issue progress for {report.id}</h3>
+          <p className="mt-2 text-sm leading-6 text-[#dbc2b0]">
+            This is the same lifecycle citizens see after clicking a bell notification.
+          </p>
+        </div>
+        <span className="rounded border border-[#00eb88]/25 bg-[#00eb88]/10 px-3 py-2 font-mono text-xs font-bold text-[#00eb88]">
+          {completed}/{steps.length} steps complete
+        </span>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-5">
+        {steps.map((step, index) => (
+          <div
+            key={step.label}
+            className={`relative rounded-lg border p-4 ${
+              step.done
+                ? "border-[#00eb88]/30 bg-[#00eb88]/10"
+                : "border-white/10 bg-black/25"
+            }`}
+          >
+            <div
+              className={`mb-3 grid h-8 w-8 place-items-center rounded-full border font-mono text-xs font-bold ${
+                step.done
+                  ? "border-[#00eb88]/40 bg-[#00eb88]/15 text-[#00eb88]"
+                  : "border-[#dbc2b0]/20 bg-white/[0.04] text-[#dbc2b0]/60"
+              }`}
+            >
+              {index + 1}
+            </div>
+            <p className="text-sm font-semibold text-white">{step.label}</p>
+            <p className="mt-2 text-xs leading-5 text-[#dbc2b0]/75">{step.detail}</p>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

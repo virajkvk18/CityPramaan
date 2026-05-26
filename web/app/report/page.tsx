@@ -9,7 +9,6 @@ import {
   AlertTriangle,
   ArrowLeft,
   BadgeCheck,
-  Bell,
   BookOpen,
   Camera,
   CheckCircle2,
@@ -33,6 +32,7 @@ import {
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
+import { NotificationBell } from "@/src/components/layout/NotificationBell";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import {
   demoCities,
@@ -332,9 +332,7 @@ export default function ReportIssuePage() {
               placeholder={tr("publicIssueHistory")}
             />
           </div>
-          <button className="grid h-9 w-9 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0]/70 transition hover:text-[#00eb88]">
-            <Bell size={16} />
-          </button>
+          <NotificationBell />
           <button className="grid h-9 w-9 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0]/70 transition hover:text-[#00eb88]">
             <Settings size={16} />
           </button>

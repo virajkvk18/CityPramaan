@@ -5,7 +5,6 @@ import { useMemo, useSyncExternalStore } from "react";
 import {
   AlertTriangle,
   BadgeCheck,
-  Bell,
   Blocks,
   Building2,
   Gauge,
@@ -18,6 +17,7 @@ import {
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
+import { NotificationBell } from "@/src/components/layout/NotificationBell";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { AnimatedCityMap } from "@/src/components/map/AnimatedCityMap";
 import { ChainProofCard } from "@/src/components/proof/ChainProofCard";
@@ -113,9 +113,7 @@ export default function Home() {
           >
             {t("about")}
           </Link>
-          <button className="hidden h-10 w-10 place-items-center rounded-md border border-white/10 bg-white/[0.04] text-[#dbc2b0] transition hover:border-[#00dbe9]/40 hover:text-[#7df4ff] hover:shadow-[0_0_18px_rgba(0,219,233,0.16)] sm:grid">
-            <Bell size={18} />
-          </button>
+          <NotificationBell />
           <ThemeToggle />
           <LanguageSelector compact />
           <button
