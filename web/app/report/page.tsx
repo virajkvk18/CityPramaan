@@ -29,6 +29,7 @@ import {
   Wallet,
   Wrench,
   X,
+  Zap,
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
@@ -70,6 +71,11 @@ const issuePresets = [
     label: "Night dark zone",
     icon: Moon,
     text: "Streetlight is not working at night and the lane has become unsafe for pedestrians.",
+  },
+  {
+    label: "Transformer outage",
+    icon: Zap,
+    text: "Transformer failed after heavy rainfall and homes nearby have no electricity. Citizens need restoration ETA and progress updates.",
   },
   {
     label: "Garbage blackspot",
@@ -250,6 +256,18 @@ export default function ReportIssuePage() {
         slaHours: result.slaHours,
         createdAt: now,
         updatedAt: now,
+        utilityRestoration:
+          result.category === "POWER_OUTAGE"
+            ? {
+                cause: "Weather casualty / suspected transformer or feeder fault",
+                affectedArea: `${selectedCity.primaryArea} residential pocket`,
+                estimatedRestoration: "4-6 hours",
+                progressStage: "Fault reported",
+                department: "Electricity Maintenance",
+                citizenUpdate:
+                  "Outage reported and awaiting utility crew acknowledgement. Restoration ETA must stay visible to citizens.",
+              }
+            : undefined,
         issueImageName: imageName || "citizen-issue-evidence.jpg",
         issueImageDataUrl: imageDataUrl,
         evidenceHash: `0x${Array.from(`${reportId}-${now}`)
@@ -269,6 +287,17 @@ export default function ReportIssuePage() {
             time: new Date(now).toLocaleString(),
             tx: "0x19bb...45aa",
           },
+          ...(result.category === "POWER_OUTAGE"
+            ? [
+                {
+                  label: "Restoration ETA required",
+                  detail:
+                    "Power outage report requires public progress updates: fault acknowledged, crew dispatched, repair in progress, power restored.",
+                  time: new Date(now).toLocaleString(),
+                  tx: "0xeta...pwr",
+                },
+              ]
+            : []),
         ],
       });
 

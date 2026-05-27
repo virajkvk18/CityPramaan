@@ -96,6 +96,7 @@ export default function Home() {
   );
   const selected = activeLocalReports[0] ?? activeDashboardReports[0] ?? cityReports[3];
   const isNewLocalReport = selected.status === "PENDING_PROOF";
+  const isPowerIncident = selected.issueCategory === "POWER_OUTAGE";
   const timelineEvents = isNewLocalReport
     ? [t("citizenReport"), t("aiPreVerification"), t("newProof"), t("awaitingContractorAssignment")]
     : timelineDefaultKeys.map((key) => t(key));
@@ -345,7 +346,7 @@ export default function Home() {
                   }`}
                 >
                   {isNewLocalReport ? <ShieldCheck size={14} /> : <ShieldAlert size={14} />}
-                  {isNewLocalReport ? t("newProof") : t("highPriority")}
+                  {isPowerIncident ? "Utility outage" : isNewLocalReport ? t("newProof") : t("highPriority")}
                 </div>
                 <span className="inline-flex items-center gap-2 rounded-full border border-[#00eb88]/25 bg-[#00eb88]/10 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#5bffa1]">
                   <span className="h-2 w-2 rounded-full bg-[#00eb88] shadow-[0_0_12px_rgba(0,235,136,0.8)]" />
@@ -354,7 +355,11 @@ export default function Home() {
               </div>
 
               <h3 className="mt-4 text-2xl font-black leading-tight tracking-tight text-white">
-                {isNewLocalReport ? t("newProofCreated") : t("repeatFailureDetected")}
+                {isPowerIncident
+                  ? "Transformer outage / power failure"
+                  : isNewLocalReport
+                    ? t("newProofCreated")
+                    : t("repeatFailureDetected")}
               </h3>
               <p className="mt-2 flex items-start gap-2 text-sm leading-6 text-[#dbc2b0]">
                 <MapPin size={16} className="mt-1 shrink-0 text-[#ffc08d]" />
@@ -372,8 +377,14 @@ export default function Home() {
                 <InfoCard label={t("aiConfidence")} value={`${selected.confidence}%`} accent="text-[#00eb88]" />
                 <InfoCard label="SLA" value={`${selected.slaHours ?? 24} hrs`} accent="text-[#ffc08d]" />
                 <InfoCard
-                  label={t("warranty")}
-                  value={selected.warrantyDaysLeft === null ? t("notActive") : `${selected.warrantyDaysLeft} days`}
+                  label={isPowerIncident ? "Restoration ETA" : t("warranty")}
+                  value={
+                    isPowerIncident
+                      ? selected.utilityRestoration?.estimatedRestoration ?? `${selected.slaHours ?? 6} hrs`
+                      : selected.warrantyDaysLeft === null
+                        ? t("notActive")
+                        : `${selected.warrantyDaysLeft} days`
+                  }
                   accent="text-[#7df4ff]"
                 />
               </div>
@@ -393,8 +404,12 @@ export default function Home() {
                 </div>
                 <p className="mt-3 text-xs leading-5 text-[#dbc2b0]/75">
                   {isNewLocalReport
-                    ? "New report is waiting for contractor proof and owner-side tracking."
-                    : "Warranty memory matched this location with an earlier repair record. Re-audit is recommended."}
+                    ? isPowerIncident
+                      ? "New outage report is waiting for electricity crew update and restoration proof."
+                      : "New report is waiting for contractor proof and owner-side tracking."
+                    : isPowerIncident
+                      ? selected.utilityRestoration?.citizenUpdate ?? "Utility casualty is being tracked with public restoration progress."
+                      : "Warranty memory matched this location with an earlier repair record. Re-audit is recommended."}
                 </p>
               </div>
 
@@ -435,8 +450,12 @@ export default function Home() {
             </div>
             <p className="text-sm leading-6 text-[#e5e2e3]/85">
               {isNewLocalReport
-                ? "AI detected critical road damage and matched it to a previous warranty zone."
-                : "Visual signature mismatch detected. Current damage matches pre-repair state with high confidence."}
+                ? isPowerIncident
+                  ? "AI classified this as a critical transformer / feeder outage requiring public restoration ETA."
+                  : "AI detected critical road damage and matched it to a previous warranty zone."
+                : isPowerIncident
+                  ? "Utility restoration tracker keeps fault acknowledgement, crew dispatch, and power restored status visible."
+                  : "Visual signature mismatch detected. Current damage matches pre-repair state with high confidence."}
             </p>
           </div>
 

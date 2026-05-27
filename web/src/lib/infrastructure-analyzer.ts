@@ -1,6 +1,7 @@
 export type InfrastructureCategory =
   | "ROAD_DAMAGE"
   | "DRAIN_BLOCKAGE"
+  | "POWER_OUTAGE"
   | "DARK_ZONE"
   | "GARBAGE_BLACKSPOT"
   | "WATER_LEAKAGE"
@@ -65,10 +66,41 @@ const issueProfiles: Record<
     recommendedAction: "Assign drainage crew and require before/after cleaning evidence.",
     signals: ["Drain obstruction risk", "Monsoon readiness impact", "Public health risk"],
   },
+  POWER_OUTAGE: {
+    issueType: "Power Outage / Transformer Failure",
+    assetType: "Distribution Transformer / Feeder Line",
+    keywords: [
+      "transformer",
+      "electricity",
+      "power cut",
+      "power outage",
+      "no power",
+      "no electricity",
+      "light gone",
+      "lights gone",
+      "feeder",
+      "substation",
+      "wire",
+      "electric pole",
+      "storm",
+      "heavy rainfall",
+      "rainfall",
+      "blackout",
+      "fuse",
+      "voltage",
+    ],
+    severity: "Critical",
+    confidence: 95,
+    slaHours: 6,
+    proofTag: "POWER_RESTORATION_PROOF",
+    recommendedAction:
+      "Escalate to electricity maintenance, publish restoration ETA, and require restoration proof before closure.",
+    signals: ["Household electricity affected", "Weather casualty / feeder fault risk", "Restoration ETA required"],
+  },
   DARK_ZONE: {
     issueType: "Streetlight Dark Zone",
     assetType: "Streetlight / Safety Corridor",
-    keywords: ["dark", "night", "streetlight", "light", "lamp", "unsafe", "women safety", "blackout"],
+    keywords: ["dark", "night", "streetlight", "lamp", "unsafe", "women safety"],
     severity: "High",
     confidence: 91,
     slaHours: 18,
@@ -149,7 +181,7 @@ export function analyzeInfrastructureIssue({
     severity: hasRepeatSignal && profile.severity === "High" ? "Critical" : profile.severity,
     confidence,
     slaHours: profile.slaHours,
-    warrantyRequired: ["ROAD_DAMAGE", "DRAIN_BLOCKAGE", "DARK_ZONE", "WATER_LEAKAGE"].includes(category),
+    warrantyRequired: ["ROAD_DAMAGE", "DRAIN_BLOCKAGE", "POWER_OUTAGE", "DARK_ZONE", "WATER_LEAKAGE"].includes(category),
     duplicateRisk: hasRepeatSignal ? "High repeat/warranty breach risk" : "Low duplicate risk",
     publicSummary: `${profile.issueType} reported near ${location}, ${cityName}. AI recommends public proof tracking and SLA monitoring.`,
     recommendedAction: profile.recommendedAction,

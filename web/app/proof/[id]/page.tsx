@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Sparkles,
   UserCheck,
+  Zap,
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
@@ -407,6 +408,8 @@ export default function ProofTimelinePage() {
                 "CityPramaan keeps the case open until repair evidence and warranty proof are visible."}
             </p>
           </div>
+
+          {report.utilityRestoration && <UtilityRestorationCard report={report} />}
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
             <div className="flex items-center gap-2">
@@ -806,6 +809,48 @@ function MiniState({
     <div className="flex items-center justify-between rounded-lg border border-white/10 bg-zinc-950/60 px-3 py-2">
       <span className="text-sm text-zinc-300">{label}</span>
       <span className={done ? "text-emerald-300" : "text-orange-300"}>{done ? synced : pending}</span>
+    </div>
+  );
+}
+
+function UtilityRestorationCard({ report }: { report: CivicReport }) {
+  const restoration = report.utilityRestoration;
+
+  if (!restoration) {
+    return null;
+  }
+
+  const restored = report.status === "UNDER_WARRANTY" || report.status === "CLOSED";
+
+  return (
+    <div className="rounded-2xl border border-[#ffc08d]/25 bg-[#ffc08d]/10 p-5">
+      <div className="flex items-center gap-2 text-[#ffdcc2]">
+        <Zap size={18} />
+        <p className="font-medium">Power restoration status</p>
+      </div>
+
+      <p className="mt-3 text-sm leading-6 text-zinc-300">
+        This issue affects public electricity supply. CityPramaan keeps the restoration ETA
+        and progress visible so citizens do not depend only on phone-call updates.
+      </p>
+
+      <div className="mt-4 space-y-3">
+        <Score label="Current stage" value={restoration.progressStage} />
+        <Score label="Estimated restoration" value={restoration.estimatedRestoration} />
+        <Score label="Affected area" value={restoration.affectedArea} />
+        <Score label="Department" value={restoration.department} />
+      </div>
+
+      <p className="mt-4 rounded-lg border border-[#ffc08d]/20 bg-zinc-950/55 p-3 text-sm leading-6 text-[#ffdcc2]">
+        {restoration.citizenUpdate}
+      </p>
+
+      <div className="mt-4 rounded-lg border border-white/10 bg-zinc-950/55 p-3">
+        <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Public status</p>
+        <p className={restored ? "mt-1 font-semibold text-emerald-300" : "mt-1 font-semibold text-orange-300"}>
+          {restored ? "Power restored and monitoring active" : "Casualty / restoration in progress"}
+        </p>
+      </div>
     </div>
   );
 }

@@ -85,6 +85,7 @@ export default function PendingApprovalPage() {
     }
 
     const now = new Date();
+    const isPowerOutage = report.issueCategory === "POWER_OUTAGE";
     const warrantyDays = 90;
     const warrantyExpiresAt = new Date(now.getTime() + warrantyDays * 24 * 60 * 60 * 1000);
     const updated = appendReportEvent(
@@ -96,10 +97,21 @@ export default function PendingApprovalPage() {
         warrantyPeriodDays: warrantyDays,
         warrantyActivatedAt: now.toISOString(),
         warrantyExpiresAt: warrantyExpiresAt.toISOString(),
+        utilityRestoration: report.utilityRestoration
+          ? {
+              ...report.utilityRestoration,
+              estimatedRestoration: "Restored",
+              progressStage: "Power restored",
+              citizenUpdate:
+                "Power restoration has been approved by the issuer. Public monitoring remains active for repeat outage reports.",
+            }
+          : undefined,
       },
       {
-        label: "Repair approved by report issuer",
-        detail: `${warrantyDays}-day warranty activated after issuer reviewed contractor proof and AI audit.`,
+        label: isPowerOutage ? "Power restored and approved by issuer" : "Repair approved by report issuer",
+        detail: isPowerOutage
+          ? `${warrantyDays}-day restoration monitoring activated after issuer reviewed utility proof and public status update.`
+          : `${warrantyDays}-day warranty activated after issuer reviewed contractor proof and AI audit.`,
         time: now.toLocaleString(),
         tx: `0xb928...${report.id.replace("CP-", "")}ce`,
       }

@@ -44,6 +44,14 @@ export type CivicReport = {
   closedAt?: string;
   closureNote?: string;
   publicFeedback?: CivicReportFeedback[];
+  utilityRestoration?: {
+    cause: string;
+    affectedArea: string;
+    estimatedRestoration: string;
+    progressStage: string;
+    department: string;
+    citizenUpdate: string;
+  };
   repairAudit?: {
     materialMatch: string;
     repairIntegrity: string;
@@ -95,6 +103,59 @@ export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY):
       recommendedAction: "Assign contractor and collect after-repair evidence.",
       slaHours: 72,
       createdAt: "2026-05-23T10:12:00.000Z",
+    },
+    {
+      id: "CP-005",
+      cityKey: city.key,
+      title: `Transformer outage after heavy rainfall near ${city.primaryArea}`,
+      ward: city.repairWard,
+      status: "OPEN",
+      severity: "Critical",
+      confidence: 95,
+      contractor: "Electricity restoration crew",
+      txHash: "0xee91...44ac",
+      warrantyDaysLeft: null,
+      location: formatCityLocation(city, city.primaryArea),
+      latitude: city.lat - 0.004,
+      longitude: city.lng - 0.006,
+      mapUrl: buildGoogleMapsUrl(city.lat - 0.004, city.lng - 0.006),
+      issueCategory: "POWER_OUTAGE",
+      assetType: "Distribution Transformer / Feeder Line",
+      aiSummary:
+        "Weather-linked transformer or feeder failure reported. Citizens need restoration ETA and progress updates.",
+      recommendedAction:
+        "Escalate to electricity maintenance, publish restoration ETA, and require power restoration proof before closure.",
+      slaHours: 6,
+      createdAt: "2026-05-24T06:35:00.000Z",
+      utilityRestoration: {
+        cause: "Heavy rainfall / suspected transformer trip",
+        affectedArea: `${city.primaryArea} residential pocket`,
+        estimatedRestoration: "4-6 hours",
+        progressStage: "Repair crew dispatched",
+        department: "Electricity Maintenance",
+        citizenUpdate:
+          "Fault has been acknowledged. Crew is checking transformer and feeder line before restoration.",
+      },
+      history: [
+        {
+          label: "Power outage reported",
+          detail: `Citizens near ${city.primaryArea} reported no electricity after heavy rainfall.`,
+          time: "24 May 2026, 06:35",
+          tx: "0xee91...44ac",
+        },
+        {
+          label: "Weather casualty triaged",
+          detail: "AI classified the case as transformer / feeder outage with critical public impact.",
+          time: "24 May 2026, 06:37",
+          tx: "0x19bb...pwr5",
+        },
+        {
+          label: "Repair crew dispatched",
+          detail: "Electricity maintenance crew assigned. Estimated restoration is 4-6 hours.",
+          time: "24 May 2026, 06:45",
+          tx: "0xcrew...pwr5",
+        },
+      ],
     },
     {
       id: "CP-002",

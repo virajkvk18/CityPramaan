@@ -163,15 +163,18 @@ export default function ContractorPage() {
   function submitProofForApproval(report: CivicReport) {
     const now = new Date();
     const tx = `0x93ac...${report.id.replace("CP-", "")}fd`;
+    const isPowerOutage = report.issueCategory === "POWER_OUTAGE";
     const repairAudit = {
-      materialMatch: "95.4%",
-      repairIntegrity: "High",
+      materialMatch: isPowerOutage ? "Restoration signal verified" : "95.4%",
+      repairIntegrity: isPowerOutage ? "Power Restored" : "High",
       geoVariance: "+/-0.5 m",
-      beforeAfterDelta: "84% visible damage reduction",
-      closureConfidence: "92.7%",
-      visibleDamageRemaining: "Low",
+      beforeAfterDelta: isPowerOutage ? "Outage area restored" : "84% visible damage reduction",
+      closureConfidence: isPowerOutage ? "94.1%" : "92.7%",
+      visibleDamageRemaining: isPowerOutage ? "No active outage signal" : "Low",
       recommendation:
-        "AI compared the citizen issue photo with contractor repair proof. The damaged surface appears filled, GPS variance is low, and the case is ready for citizen owner verification.",
+        isPowerOutage
+          ? "Utility restoration proof indicates the transformer / feeder fault is resolved. Case is ready for issuer confirmation and public restoration update."
+          : "AI compared the citizen issue photo with contractor repair proof. The damaged surface appears filled, GPS variance is low, and the case is ready for citizen owner verification.",
     };
     const updated = appendReportEvent(
       {
@@ -187,11 +190,22 @@ export default function ContractorPage() {
         repairImageDataUrl,
         repairTxHash: tx,
         txHash: report.txHash || tx,
+        utilityRestoration: report.utilityRestoration
+          ? {
+              ...report.utilityRestoration,
+              estimatedRestoration: "Pending issuer confirmation",
+              progressStage: "Restoration proof submitted",
+              citizenUpdate:
+                "Repair crew has uploaded restoration proof. Issuer approval will confirm power restoration and activate monitoring.",
+            }
+          : undefined,
         repairAudit,
       },
       {
-        label: "Repair proof submitted",
-        detail: `${selectedCity.contractor} uploaded after-repair proof for ${report.location}. Waiting for report issuer approval before warranty activation.`,
+        label: isPowerOutage ? "Power restoration proof submitted" : "Repair proof submitted",
+        detail: isPowerOutage
+          ? `${selectedCity.contractor} uploaded transformer / feeder restoration proof for ${report.location}. Waiting for issuer confirmation.`
+          : `${selectedCity.contractor} uploaded after-repair proof for ${report.location}. Waiting for report issuer approval before warranty activation.`,
         time: now.toLocaleString(),
         tx,
       }

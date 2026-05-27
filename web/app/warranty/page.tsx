@@ -20,6 +20,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   Sparkles,
+  Zap,
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
@@ -286,6 +287,10 @@ export default function WarrantyScannerPage() {
 
                   <IssueProgressPanel report={selectedReport} />
 
+                  {selectedReport.utilityRestoration && (
+                    <UtilityRestorationPanel report={selectedReport} />
+                  )}
+
                   <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
                     <div className="mb-5 flex flex-col justify-between gap-3 border-b border-white/5 pb-4 sm:flex-row sm:items-end">
                       <h3 className="flex items-center gap-2 font-mono text-xs uppercase text-[#ffc08d]">
@@ -468,39 +473,71 @@ function WarrantyBadge({
 }
 
 function IssueProgressPanel({ report }: { report: CivicReport }) {
-  const steps = [
-    {
-      label: "Report raised",
-      detail: report.createdAt ? new Date(report.createdAt).toLocaleDateString() : "Citizen issue recorded",
-      done: true,
-    },
-    {
-      label: "AI verified",
-      detail: `${report.confidence}% confidence | ${report.severity} severity`,
-      done: true,
-    },
-    {
-      label: "Contractor proof uploaded",
-      detail: report.repairImageName || report.repairImageDataUrl ? "After-repair evidence attached" : "Waiting for repair proof",
-      done: Boolean(report.repairImageName || report.repairImageDataUrl || report.repairProofAt),
-    },
-    {
-      label: "Issuer approved",
-      detail:
-        report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE" || report.status === "CLOSED"
-          ? "Repair accepted by issue owner"
-          : "Pending owner review",
-      done: report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE" || report.status === "CLOSED",
-    },
-    {
-      label: "Warranty active",
-      detail:
-        report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE" || report.status === "CLOSED"
-          ? `${report.warrantyDaysLeft ?? report.warrantyPeriodDays ?? 90} days monitoring`
-          : "Activates after approval",
-      done: report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE" || report.status === "CLOSED",
-    },
-  ];
+  const isPowerOutage = report.issueCategory === "POWER_OUTAGE";
+  const approved =
+    report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE" || report.status === "CLOSED";
+  const hasRepairProof = Boolean(report.repairImageName || report.repairImageDataUrl || report.repairProofAt);
+  const crewProgress = Boolean(
+    report.utilityRestoration?.progressStage &&
+      !report.utilityRestoration.progressStage.toLowerCase().includes("fault reported")
+  );
+  const steps = isPowerOutage
+    ? [
+        {
+          label: "Outage reported",
+          detail: report.createdAt ? new Date(report.createdAt).toLocaleDateString() : "Citizen power issue recorded",
+          done: true,
+        },
+        {
+          label: "Fault triaged",
+          detail: `${report.confidence}% confidence | ${report.utilityRestoration?.cause ?? report.severity}`,
+          done: true,
+        },
+        {
+          label: "Crew / restoration progress",
+          detail: report.utilityRestoration?.progressStage ?? "Waiting for electricity crew update",
+          done: crewProgress || hasRepairProof,
+        },
+        {
+          label: "Power restored proof",
+          detail: hasRepairProof ? "Restoration proof uploaded" : "Waiting for restoration proof",
+          done: hasRepairProof,
+        },
+        {
+          label: "Issuer confirmed",
+          detail: approved
+            ? "Power restoration accepted and monitoring active"
+            : "Pending issuer / area confirmation",
+          done: approved,
+        },
+      ]
+    : [
+        {
+          label: "Report raised",
+          detail: report.createdAt ? new Date(report.createdAt).toLocaleDateString() : "Citizen issue recorded",
+          done: true,
+        },
+        {
+          label: "AI verified",
+          detail: `${report.confidence}% confidence | ${report.severity} severity`,
+          done: true,
+        },
+        {
+          label: "Contractor proof uploaded",
+          detail: hasRepairProof ? "After-repair evidence attached" : "Waiting for repair proof",
+          done: hasRepairProof,
+        },
+        {
+          label: "Issuer approved",
+          detail: approved ? "Repair accepted by issue owner" : "Pending owner review",
+          done: approved,
+        },
+        {
+          label: "Warranty active",
+          detail: approved ? `${report.warrantyDaysLeft ?? report.warrantyPeriodDays ?? 90} days monitoring` : "Activates after approval",
+          done: approved,
+        },
+      ];
   const completed = steps.filter((step) => step.done).length;
 
   return (
@@ -543,6 +580,44 @@ function IssueProgressPanel({ report }: { report: CivicReport }) {
             <p className="mt-2 text-xs leading-5 text-[#dbc2b0]/75">{step.detail}</p>
           </div>
         ))}
+      </div>
+    </section>
+  );
+}
+
+function UtilityRestorationPanel({ report }: { report: CivicReport }) {
+  const restoration = report.utilityRestoration;
+
+  if (!restoration) {
+    return null;
+  }
+
+  return (
+    <section className="cp-cyber-card cp-cyber-card-hover rounded-lg border-[#ffc08d]/20 bg-[#ffc08d]/5 p-6">
+      <div className="mb-5 flex flex-col justify-between gap-3 border-b border-white/5 pb-4 sm:flex-row sm:items-end">
+        <div>
+          <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.18em] text-[#ffc08d]">
+            <Zap size={15} />
+            Power restoration tracker
+          </p>
+          <h3 className="mt-2 text-2xl font-semibold text-white">Transformer / feeder resolution status</h3>
+          <p className="mt-2 text-sm leading-6 text-[#dbc2b0]">
+            Citizens can see why power failed, who is handling it, and when restoration is expected.
+          </p>
+        </div>
+        <span className="rounded border border-[#00dbe9]/25 bg-[#00dbe9]/10 px-3 py-2 font-mono text-xs font-bold text-[#7df4ff]">
+          ETA: {restoration.estimatedRestoration}
+        </span>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <Info label="Cause" value={restoration.cause} />
+        <Info label="Affected area" value={restoration.affectedArea} />
+        <Info label="Department" value={restoration.department} />
+        <Info label="Current stage" value={restoration.progressStage} />
+      </div>
+      <div className="mt-4 rounded border border-[#ffc08d]/20 bg-black/30 p-4 text-sm leading-6 text-[#ffdcc2]">
+        {restoration.citizenUpdate}
       </div>
     </section>
   );
