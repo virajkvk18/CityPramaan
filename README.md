@@ -1,628 +1,439 @@
 <div align="center">
 
-![Header](https://capsule-render.vercel.app/api?type=waving&color=0:00d4aa,100:3b82f6&height=200&section=header&text=CityPramaan&fontSize=72&fontColor=ffffff&fontAlignY=38&desc=Proof%20of%20Repair%20for%20Accountable%20Cities&descAlignY=58&descSize=20&animation=fadeIn)
+![Header](https://capsule-render.vercel.app/api?type=waving&color=0:ff9933,50:00dbe9,100:00eb88&height=210&section=header&text=CityPramaan&fontSize=72&fontColor=ffffff&fontAlignY=38&desc=Proof%20of%20Repair%20for%20Accountable%20Cities&descAlignY=58&descSize=20&animation=fadeIn)
 
-[![Typing SVG](https://readme-typing-svg.demolab.com?font=Fira+Code&size=22&duration=3000&pause=800&color=00D4AA&center=true&vCenter=true&multiline=false&width=700&lines=Turning+civic+complaints+into+tamper-proof+proof;Blockchain+%2B+AI+%2B+Civic+Accountability;Web3+powered+repair+verification+for+Indian+cities;No+more+faked+closures.+No+more+poor+repairs.)](https://git.io/typing-svg)
+[![Typing SVG](https://readme-typing-svg.demolab.com?font=Fira+Code&size=21&duration=3000&pause=900&color=00DBE9&center=true&vCenter=true&width=850&lines=AI-powered+civic+issue+reporting;Blockchain-backed+proof+of+repair;Contractor+proof+approval+and+warranty+tracking;Public+repair+history+for+accountable+cities)](https://git.io/typing-svg)
 
-<br/>
+<br />
 
-[![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org)
-[![Solidity](https://img.shields.io/badge/Solidity-363636?style=for-the-badge&logo=solidity&logoColor=white)](https://soliditylang.org)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=nextdotjs)](https://nextjs.org)
+[![React](https://img.shields.io/badge/React-19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
-[![Gemini](https://img.shields.io/badge/Gemini_API-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev)
-[![IPFS](https://img.shields.io/badge/IPFS-65C2CB?style=for-the-badge&logo=ipfs&logoColor=white)](https://ipfs.tech)
-[![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![Vercel](https://img.shields.io/badge/Vercel-Deployed-000000?style=for-the-badge&logo=vercel)](https://vercel.com)
 
-<br/>
+<br />
 
-[![GitHub Stars](https://img.shields.io/github/stars/virajkvk18/CityPramaan?style=flat-square&color=00d4aa&labelColor=0b1120)](https://github.com/virajkvk18/CityPramaan/stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/virajkvk18/CityPramaan?style=flat-square&color=3b82f6&labelColor=0b1120)](https://github.com/virajkvk18/CityPramaan/forks)
-[![License](https://img.shields.io/badge/License-MIT-f59e0b?style=flat-square&labelColor=0b1120)](LICENSE)
-[![Hackathon](https://img.shields.io/badge/Track-Smart_Cities_%2F_Web3_%2F_AI-00d4aa?style=flat-square&labelColor=0b1120)](#)
-[![Status](https://img.shields.io/badge/Status-MVP_%2F_Prototype-3b82f6?style=flat-square&labelColor=0b1120)](#)
+[![Status](https://img.shields.io/badge/Status-Functional_MVP-00eb88?style=flat-square&labelColor=0b1120)](#current-mvp-status)
+[![Track](https://img.shields.io/badge/Track-Smart_Cities_%2F_Web3_%2F_AI-00dbe9?style=flat-square&labelColor=0b1120)](#)
+[![GitHub Stars](https://img.shields.io/github/stars/virajkvk18/CityPramaan?style=flat-square&color=ff9933&labelColor=0b1120)](https://github.com/virajkvk18/CityPramaan/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/virajkvk18/CityPramaan?style=flat-square&color=00dbe9&labelColor=0b1120)](https://github.com/virajkvk18/CityPramaan/forks)
 
-<br/>
+<br />
 
-> **CityPramaan** turns civic complaints into **tamper-proof, blockchain-backed public proof of repair** — making faked closures impossible and contractor negligence permanently visible.
+> **CityPramaan** is an AI + Web3 civic accountability platform where a public infrastructure issue is not just reported. It is verified, repaired, approved, warrantied, and permanently visible as public proof.
 
-<br/>
+<br />
 
-[🚀 Live Demo](#) · [📹 Demo Video](#) · [📊 Pitch Deck](#) · [🐛 Report Bug](https://github.com/virajkvk18/CityPramaan/issues) · [💡 Request Feature](https://github.com/virajkvk18/CityPramaan/issues)
+[Live Demo](#) . [Pitch Deck](#) . [Report Bug](https://github.com/virajkvk18/CityPramaan/issues) . [Request Feature](https://github.com/virajkvk18/CityPramaan/issues)
 
 </div>
 
-<br/>
+---
+
+## Table of Contents
+
+- [The Problem](#the-problem)
+- [The Solution](#the-solution)
+- [What Makes CityPramaan Different](#what-makes-citypramaan-different)
+- [Current MVP Status](#current-mvp-status)
+- [Core Workflow](#core-workflow)
+- [Platform Modules](#platform-modules)
+- [AI and Web3 Role](#ai-and-web3-role)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [MVP Demo Flow](#mvp-demo-flow)
+- [Future Production Roadmap](#future-production-roadmap)
+- [Getting Started](#getting-started)
+- [Repository Structure](#repository-structure)
+- [Author](#author)
 
 ---
 
-## 📋 Table of Contents
+## The Problem
 
-<details>
-<summary>Click to expand</summary>
+Most civic complaint systems stop at a weak flow:
 
-- [🌆 The Problem](#-the-problem)
-- [💡 The Solution](#-the-solution)
-- [✨ Key Features](#-key-features)
-- [🔄 Proof Timeline](#-proof-timeline)
-- [🏗 Architecture](#-architecture)
-- [⚙ Tech Stack](#-tech-stack)
-- [📜 Smart Contract](#-smart-contract)
-- [📊 Platform Modules](#-platform-modules)
-- [🆚 Why CityPramaan](#-why-citypramaan)
-- [🌍 Real-World Impact](#-real-world-impact)
-- [🚀 Getting Started](#-getting-started)
-- [🔑 Environment Variables](#-environment-variables)
-- [⛓ Blockchain Setup](#-blockchain-setup)
-- [📁 Repository Structure](#-repository-structure)
-- [🔭 Future Scope](#-future-scope)
-- [👤 Author](#-author)
+```text
+Citizen reports issue  --->  Admin marks closed
+```
 
-</details>
+The real problem is the missing proof between those two steps.
+
+| Gap in existing systems | What happens in reality |
+| --- | --- |
+| No public repair proof | Citizens cannot verify if the work was actually done |
+| Fake or weak closure | Issues can be marked solved without visible evidence |
+| No contractor accountability | The contractor's repair quality is not publicly traceable |
+| No warranty memory | The same pothole or drainage issue can fail again with no penalty trail |
+| No public audit history | Past reports, repair photos, and status changes are not easy to verify |
+
+Cities do not only need complaint tracking. They need **proof of resolution**.
 
 ---
 
-## 🌆 The Problem
+## The Solution
 
-<div align="center">
+**CityPramaan** creates a connected proof lifecycle for civic infrastructure issues.
 
+```text
+Citizen Report
+   -> AI Issue Analysis
+   -> Evidence Hash / Blockchain Proof
+   -> Contractor Repair Proof
+   -> Pending Issuer Approval
+   -> Warranty Activation
+   -> Public Proof Timeline
+   -> Closure or Under-Warranty Reopen
 ```
-  REPORTED ──────────────────────── CLOSED
-      ↑                                ↑
-  (citizen files)              (admin clicks button)
 
-         ⚠ What happened in between? Nobody knows.
-```
+Citizens can report infrastructure issues such as road damage, drainage blockage, garbage blackspots, streetlight dark zones, water leakage, and footpath damage. Contractors upload after-repair proof. The report issuer approves the proof. Warranty gets activated. The public can view the complete repair history.
 
-</div>
+The platform is designed around one simple idea:
 
-Most civic complaint platforms operate with just **two states** — *Reported* and *Closed*. This creates a massive accountability gap:
-
-| Pain Point | Reality |
-|---|---|
-| 🕳 **Fake Closures** | Complaints marked resolved with zero evidence of repair |
-| 🔁 **Repeat Failures** | The same pothole refilled and broken again within days |
-| 🏗 **Invisible Contractors** | No public record of who repaired what, or how well |
-| 💸 **Money Drain** | Poor-quality repairs waste public funds with no accountability |
-| 📵 **No Audit Trail** | Citizens cannot verify if any repair ever actually happened |
-
-> **Cities don't just need complaint tracking. They need proof that repairs happened — and lasted.**
+> Every public repair should have a public proof trail.
 
 ---
 
-## 💡 The Solution
+## What Makes CityPramaan Different
 
-<div align="center">
-
-![Solution Banner](https://capsule-render.vercel.app/api?type=rect&color=0:00d4aa20,100:3b82f620&height=3&section=header)
-
-</div>
-
-**CityPramaan** is a **Web3 + AI civic repair accountability platform** that creates a transparent, tamper-proof proof-of-repair network for cities.
-
-```
-Citizen Reports Issue
-        │
-        ▼
-AI Verifies Damage  ──────────────────────────►  Evidence Hash / IPFS Upload
-        │                                                      │
-        ▼                                                      ▼
-Smart Contract Record  ◄──────────────────────  Public City Map Pin
-        │
-        ▼
-Contractor Repair Proof
-        │
-        ▼
-AI Before/After Comparison
-        │
-        ▼
-Warranty Monitoring  ──────────────────────────►  Repeat Failure Detection
-        │
-        ▼
-Public Proof Timeline  (Permanent · Auditable · Tamper-Proof)
-```
+| Normal complaint app | CityPramaan |
+| --- | --- |
+| Focuses on reporting | Focuses on verified resolution |
+| Status can be changed internally | Status is shown as a public proof timeline |
+| Repair image may not be visible | Before/after repair proof is visible to the public |
+| No warranty tracking | Warranty scanner tracks repeat failures |
+| No contractor memory | Contractor proof and quality history are linked to each issue |
+| Closed issue disappears | Closed issue stays in public history |
+| Public cannot verify progress | Public can open each issue and inspect proof, status, and feedback |
 
 ---
 
-## ✨ Key Features
+## Current MVP Status
 
-<details>
-<summary><b>📍 Citizen Civic Reporting</b></summary>
+The current repository contains a **functional web MVP** built with Next.js. It already demonstrates the end-to-end product workflow with synced state across pages.
 
-<br/>
+### Working in the MVP
 
-Citizens can report civic issues with full context:
+- Command Center dashboard with city selector and civic issue map
+- Clickable map issue pins that open the full public report detail page
+- Citizen report flow with issue type, severity, location, image upload, and proof creation
+- Browser-side SHA-256 style evidence/proof concept for uploaded files
+- Contractor dashboard to select reported issues and upload after-repair proof
+- Pending Approval page where the report issuer can review contractor repair proof
+- Warranty Scanner / Urban Ledger showing repair warranty state and issue history
+- Public Proof page for full report details, timeline, images, AI verdict, feedback, and closure
+- Notifications panel that links users to reported issue progress
+- Multilingual UI foundation for English and major Indian regional languages
+- Dark/bright theme toggle
+- Mobile-oriented layout improvements
+- Demo wallet connection flow for Web3-style signing
+- Local synced state using browser storage for fast MVP demonstration
 
-- 📌 **Location** — GPS-tagged map pin
-- 📷 **Photo Evidence** — Before-repair image uploaded to IPFS
-- 🏷 **Category** — Pothole, Drainage, Streetlight, Water Leakage, Garbage, and more
-- ⚡ **Severity Level** — Low / Medium / High / Critical
-- 🏙 **City & Area Details** — Ward and zone-level tagging
+### MVP Data Model
 
-</details>
-
-<details>
-<summary><b>🤖 AI Damage Verification</b></summary>
-
-<br/>
-
-Powered by **Gemini API** and **Groq API** with open-source vision models:
-
-- 🔍 Image-based civic damage detection
-- 📊 Automated severity scoring
-- 🔁 Duplicate issue detection
-- 🖼 Before/After repair comparison
-- 📝 AI-generated civic report summaries
-
-</details>
-
-<details>
-<summary><b>⬡ Blockchain Proof Records</b></summary>
-
-<br/>
-
-Every verified civic issue becomes an **immutable on-chain record**:
-
-- 🔗 Evidence hash stored on-chain
-- ⏱ Full timestamp history
-- 🏗 Contractor ID and warranty state
-- 🔐 Tamper-proof status transitions
-- 🔁 Repeat failure flags
-
-Deployed on **Base Sepolia** and **Polygon Amoy** testnets.
-
-</details>
-
-<details>
-<summary><b>🗂 IPFS-Based Evidence Storage</b></summary>
-
-<br/>
-
-Decentralized evidence storage via **IPFS / Pinata**:
-
-| Evidence Type | Storage |
-|---|---|
-| Citizen complaint image | IPFS (Pinata pinned) |
-| Before-repair photo | IPFS hash on-chain |
-| Contractor after-repair photo | IPFS + proof hash |
-| Geo-tagged metadata | Supabase + on-chain |
-
-</details>
-
-<details>
-<summary><b>🏗 Contractor Accountability</b></summary>
-
-<br/>
-
-Contractors are tracked through every repair:
-
-- Upload after-repair photo proof
-- AI compares before and after automatically
-- Warranty responsibility enforced on-chain
-- Reputation score built from verified history
-- Repeat failure history permanently visible
-
-</details>
-
-<details>
-<summary><b>🔍 Warranty Breach Scanner</b></summary>
-
-<br/>
-
-CityPramaan introduces a **civic repair warranty system**:
-
-If the same issue appears again near the repaired location within the warranty period, the platform **auto-flags it as a repeat failure** — exposing poor-quality repairs, contractor negligence, and high-risk civic zones.
-
-</details>
+The MVP uses mock civic records and browser local storage so the entire workflow can be tested without paid APIs or backend setup. This keeps the demo lightweight while still showing the real product logic.
 
 ---
 
-## 🔄 Proof Timeline
+## Core Workflow
 
-Every civic issue moves through a **10-stage cryptographically sealed lifecycle**:
-
-```
- ┌─────────────────────────────────────────────────────────────────────┐
- │                    CITYPRAMAAN PROOF TIMELINE                       │
- ├─────┬───────────────────────────────────────────────────────────────┤
- │  01 │  🟦  Citizen reports issue (geo-tagged photo uploaded)        │
- │  02 │  🟨  AI verifies damage (severity score generated)            │
- │  03 │  🟩  Blockchain proof record created (evidence hash on-chain) │
- │  04 │  🟦  Civic admin reviews report                               │
- │  05 │  🟨  Contractor assigned (ID recorded on-chain)               │
- │  06 │  🟦  Contractor uploads repair proof (IPFS + hash on-chain)   │
- │  07 │  🟩  AI verifies before-after repair quality                  │
- │  08 │  🟢  Warranty period starts (smart contract timer set)        │
- │  09 │  🔴  Repeat issue detected OR cleared (auto-scan)             │
- │  10 │  ✅  Public closure proof generated (permanent audit trail)   │
- └─────┴───────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    A["Citizen reports issue"] --> B["AI analyzes issue type, severity, confidence"]
+    B --> C["Create proof record"]
+    C --> D["Issue appears on Command Center map"]
+    D --> E["Contractor selects issue"]
+    E --> F["Contractor uploads after-repair proof"]
+    F --> G["Pending Approval page"]
+    G --> H["Report issuer approves repair"]
+    H --> I["Warranty activates"]
+    I --> J["Public Proof timeline updated"]
+    J --> K{"Issue solved?"}
+    K -->|Yes| L["Issue closed and removed from active map"]
+    K -->|No / repeats| M["Public raises under-warranty repeat issue"]
+    M --> D
 ```
 
 ---
 
-## 🏗 Architecture
+## Platform Modules
+
+### 1. Command Center
+
+The main city operations dashboard.
+
+- Shows active civic issues on a map
+- Displays issue status, severity, AI confidence, SLA, and warranty state
+- Lets users switch city context
+- Opens full issue details from map pins
+- Highlights high-priority repeat failures
+
+### 2. Report Issue
+
+Citizen-facing issue creation flow.
+
+- Select civic issue type
+- Upload issue photo
+- Pick or confirm location
+- Generate AI-style analysis
+- Create blockchain proof request
+- Sync the new report across the platform
+
+### 3. Contractor View
+
+Repair execution dashboard.
+
+- Contractor can see reported issues
+- Select the exact issue to repair
+- View issue photo and report metadata
+- Upload after-repair proof
+- Submit proof for issuer approval
+
+### 4. Pending Approval
+
+Issuer review workflow.
+
+- Shows reports waiting for repair approval
+- Displays before image and contractor after image
+- Shows mock AI repair audit
+- Lets report issuer approve repair proof
+- Moves approved issue into warranty state
+
+### 5. Warranty Scanner
+
+Public repair warranty registry.
+
+- Shows city-wise repair history
+- Displays pending, active, closed, and repeat failure cases
+- Tracks whether warranty is active
+- Supports under-warranty repeat issue flow
+
+### 6. Public Proof Page
+
+The public audit record for every issue.
+
+- Full issue details
+- Location and status
+- Before/after evidence
+- AI verdict and confidence stats
+- Proof timeline
+- Public feedback
+- Issuer closure action
+- City report history
+
+---
+
+## AI and Web3 Role
+
+### AI Layer
+
+In the MVP, AI is simulated to show the intended product workflow. In the full version, AI will be used for:
+
+- Detecting issue category from uploaded image
+- Estimating severity and urgency
+- Generating a civic issue summary
+- Comparing before and after repair images
+- Detecting weak repair quality
+- Flagging repeat failures under warranty
+
+### Blockchain / Web3 Layer
+
+In the MVP, wallet and proof signing are demonstrated through a mock Web3 flow. In the full version, blockchain will be used for:
+
+- Storing evidence hash for citizen reports
+- Storing repair proof hash for contractor submissions
+- Recording timestamped status transitions
+- Creating a tamper-proof public proof timeline
+- Linking warranty activation and repeat failures to the same issue ID
+- Making repair history transparent and hard to manipulate
+
+### Why Wallet?
+
+The wallet represents identity and signing authority.
+
+- Citizen wallet signs report creation
+- Contractor wallet signs repair proof submission
+- Issuer/admin wallet signs approval and warranty activation
+- Public can verify that actions came from accountable participants
+
+---
+
+## Architecture
 
 ```mermaid
 graph TD
-    A[👤 Citizen] -->|Submit Report| W[CityPramaan Web App\nNext.js + React + Tailwind]
-    B[🏗 Contractor] -->|Upload Repair Proof| W
-    C[🏛 Civic Admin] -->|Review & Assign| W
-    D[👁 Public Viewer] -->|View Audit Dashboard| W
+    Citizen["Citizen"] --> Report["Report Issue Page"]
+    Report --> AI["AI Analysis Layer"]
+    Report --> Proof["Proof Creation Flow"]
+    Proof --> Store["Local MVP Store / Future Backend"]
+    Store --> Command["Command Center Map"]
+    Store --> Contractor["Contractor View"]
+    Contractor --> Repair["Repair Proof Upload"]
+    Repair --> Pending["Pending Approval"]
+    Pending --> Warranty["Warranty Scanner"]
+    Warranty --> Public["Public Proof Page"]
+    Public --> Feedback["Public Feedback / Closure / Reopen"]
+    Feedback --> Store
 
-    W --> AI[🤖 AI Verification Layer\nGemini API · Groq · Vision Models]
-    AI -->|Image Analysis| AI
-    AI -->|Severity Score| AI
-    AI -->|Before-After Compare| AI
-
-    W --> DB[(🗄 Supabase\nPostgreSQL)]
-    W --> IPFS[📦 IPFS / Pinata\nDecentralized Storage]
-
-    AI --> SC[⬡ Smart Contract\nSolidity on Base Sepolia / Polygon Amoy]
-    IPFS -->|Proof Hash| SC
-
-    SC --> MAP[🗺 Public Civic Map\nOpenStreetMap]
-    SC --> TL[📋 Public Proof Timeline]
-    SC --> WS[🔍 Warranty Scanner]
-
-    style W fill:#131f35,color:#00d4aa,stroke:#00d4aa
-    style SC fill:#131f35,color:#f59e0b,stroke:#f59e0b
-    style AI fill:#131f35,color:#3b82f6,stroke:#3b82f6
-    style IPFS fill:#131f35,color:#a78bfa,stroke:#a78bfa
+    Proof -. "Future" .-> Chain["Smart Contract"]
+    Repair -. "Future" .-> IPFS["IPFS Evidence Storage"]
+    Chain -. "Future" .-> Public
+    IPFS -. "Future" .-> Public
 ```
 
 ---
 
-## ⚙ Tech Stack
+## Tech Stack
 
-<div align="center">
+### Current MVP
 
-### Frontend
+| Layer | Technology |
+| --- | --- |
+| Frontend | Next.js 16, React 19, TypeScript |
+| Styling | Tailwind CSS, custom glassmorphism UI, responsive layouts |
+| Icons | Lucide React |
+| Map | OpenStreetMap embed with custom civic issue overlay |
+| State | Browser localStorage + React sync stores |
+| Deployment | Vercel |
 
-![Next.js](https://img.shields.io/badge/Next.js-000?style=for-the-badge&logo=nextdotjs)
-![React](https://img.shields.io/badge/React-20232a?style=for-the-badge&logo=react&logoColor=61DAFB)
-![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
-![Framer Motion](https://img.shields.io/badge/Framer_Motion-0055FF?style=for-the-badge&logo=framer&logoColor=white)
+### Planned Production Integrations
 
-### Backend & Database
-
-![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
-
-### Web3 & Blockchain
-
-![Solidity](https://img.shields.io/badge/Solidity-363636?style=for-the-badge&logo=solidity&logoColor=white)
-![Hardhat](https://img.shields.io/badge/Hardhat-F7DF1E?style=for-the-badge&logo=hardhat&logoColor=black)
-![ethers.js](https://img.shields.io/badge/ethers.js-6651FF?style=for-the-badge)
-![Base](https://img.shields.io/badge/Base_Sepolia-0052FF?style=for-the-badge&logo=coinbase&logoColor=white)
-![Polygon](https://img.shields.io/badge/Polygon_Amoy-8247E5?style=for-the-badge&logo=polygon&logoColor=white)
-
-### AI / GenAI
-
-![Google Gemini](https://img.shields.io/badge/Gemini_API-4285F4?style=for-the-badge&logo=google&logoColor=white)
-![Groq](https://img.shields.io/badge/Groq_API-FF6C37?style=for-the-badge)
-
-### Storage & Deployment
-
-![IPFS](https://img.shields.io/badge/IPFS-65C2CB?style=for-the-badge&logo=ipfs&logoColor=white)
-![Pinata](https://img.shields.io/badge/Pinata-E4007C?style=for-the-badge)
-![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
-
-</div>
+| Layer | Suggested Tooling |
+| --- | --- |
+| Smart contracts | Solidity, Hardhat, OpenZeppelin |
+| Testnet | Polygon Amoy or Base Sepolia |
+| Wallet | wagmi, RainbowKit, MetaMask |
+| Evidence storage | IPFS / Pinata |
+| Database | Supabase PostgreSQL |
+| AI vision | Gemini Vision / Groq / open-source image classifier |
+| Maps | Google Maps API or OpenStreetMap with GPS coordinates |
 
 ---
 
-## 📜 Smart Contract
+## MVP Demo Flow
 
-The `CityPramaan` Solidity contract stores every civic proof record on-chain.
+Use this flow during a demo:
 
-```solidity
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
-
-contract CityPramaan {
-
-    enum ReportStatus {
-        Reported,               // Citizen submitted
-        Verified,               // AI confirmed damage
-        Assigned,               // Contractor assigned
-        RepairSubmitted,        // Contractor uploaded proof
-        RepairVerified,         // AI confirmed before-after
-        WarrantyActive,         // Warranty timer running
-        RepeatFailureDetected,  // Same issue recurred
-        Closed                  // Public proof generated
-    }
-
-    struct CivicReport {
-        uint256      reportId;
-        string       location;
-        string       issueType;
-        string       evidenceHash;          // IPFS CID — complaint image
-        string       repairProofHash;       // IPFS CID — after-repair photo
-        address      reporter;
-        address      contractor;
-        uint256      createdAt;
-        uint256      repairedAt;
-        uint256      warrantyEndsAt;
-        ReportStatus status;
-        bool         repeatFailureDetected;
-    }
-
-    mapping(uint256 => CivicReport) public reports;
-
-    event ReportCreated(uint256 indexed reportId, address reporter);
-    event StatusUpdated(uint256 indexed reportId, ReportStatus newStatus);
-    event RepeatFailureDetected(uint256 indexed reportId);
-}
-```
-
-### Contract Status Flow
-
-```
-Reported ──► Verified ──► Assigned ──► RepairSubmitted
-                                              │
-                              ┌───────────────▼───────────────┐
-                              │         RepairVerified         │
-                              └───────────────┬───────────────┘
-                                              │
-                                      WarrantyActive
-                                      ╱             ╲
-                        RepeatFailure              Closed
-                        Detected                (Proof Public)
-```
+1. Open the **Command Center** and show active issues on the map.
+2. Click a map pin to open the full **Public Proof** report page.
+3. Go to **Report Issue** and create a new civic report with image and location.
+4. Return to the **Command Center** and show the new report synced on the map.
+5. Open **Contractor View**, select that issue, and upload after-repair proof.
+6. Open **Pending Approval** and approve the contractor proof.
+7. Open **Warranty Scanner** and show warranty activation.
+8. Open the **Public Proof** page and show the final proof timeline.
+9. Add public feedback or raise an under-warranty repeat issue if needed.
+10. Close the issue and show that it moves out of the active map but remains in history.
 
 ---
 
-## 📊 Platform Modules
+## Future Production Roadmap
 
-<details>
-<summary><b>1. 🏠 Citizen Portal</b></summary>
-
-| Capability | Details |
-|---|---|
-| Submit civic issue | Location + photo + category + severity |
-| Track complaint status | Real-time status from smart contract |
-| View proof timeline | Full 10-stage audit trail |
-| Map view | OpenStreetMap with issue pins |
-
-</details>
-
-<details>
-<summary><b>2. 🤖 AI Verification Engine</b></summary>
-
-| Capability | Model Used |
-|---|---|
-| Detect civic issue from image | Gemini Vision / Groq |
-| Score damage severity | Vision model inference |
-| Detect duplicate complaints | Embedding similarity |
-| Compare before-after repair | Side-by-side vision analysis |
-| Generate report summary | Gemini Flash |
-
-</details>
-
-<details>
-<summary><b>3. 🏛 Civic Admin Dashboard</b></summary>
-
-| Capability | Details |
-|---|---|
-| View city-level reports | Aggregated map + table view |
-| Assign contractors | On-chain assignment transaction |
-| Monitor high-risk zones | Repeat failure heatmap |
-| Track repair timelines | Smart contract event history |
-| Validate repair evidence | AI-assisted before/after review |
-
-</details>
-
-<details>
-<summary><b>4. 🔧 Contractor Dashboard</b></summary>
-
-| Capability | Details |
-|---|---|
-| View assigned tasks | Linked to wallet address |
-| Upload after-repair proof | IPFS + on-chain hash |
-| Track warranty obligations | Smart contract timer |
-| Reputation score | Computed from verified repairs |
-
-</details>
-
-<details>
-<summary><b>5. 🌐 Public Audit Dashboard</b></summary>
-
-| Capability | Details |
-|---|---|
-| Map-based civic issues | All issues city-wide visible |
-| Blockchain proof timeline | Immutable 10-stage record |
-| Repeat failure detection | Auto-flagged on warranty breach |
-| Contractor accountability | Public reputation history |
-
-</details>
+- Real AI image detection for potholes, drainage, garbage, streetlight dark zones, water leakage, and footpath damage
+- Real GPS/map location picker with reverse geocoding
+- IPFS upload for issue and repair images
+- Smart contract deployment for proof hash, status transition, warranty, and repeat failure events
+- Wallet-based identity for citizens, contractors, and issuers
+- Supabase backend for persistent multi-user data
+- Contractor reputation score and ward-level repair quality analytics
+- Public open data dashboard for city performance
+- WhatsApp/mobile reporting interface
+- Admin dashboard for municipal staff
+- Real-time notification system
 
 ---
 
-## 🆚 Why CityPramaan
-
-| Feature | 🔴 Existing Apps | 🟢 CityPramaan |
-|---|---|---|
-| Complaint lifecycle | Stops at tracking | Full proof-of-repair lifecycle |
-| Closure verification | Can be faked silently | Requires verifiable repair proof |
-| Repair history | Editable / deletable | Blockchain-backed, immutable |
-| Warranty tracking | None | On-chain warranty monitoring |
-| Contractor accountability | Invisible | Reputation score + history |
-| Public transparency | Minimal | Open civic audit dashboard |
-| Evidence storage | Centralized, deletable | Decentralized IPFS + on-chain hash |
-| Repeat failure detection | None | Auto-flagged by warranty scanner |
-
----
-
-## 🌍 Real-World Impact
-
-```
-🔎  Radical Transparency    — Every repair step publicly visible and permanently auditable
-🤝  Contractor Trust        — Reputation built on verified repair quality, not self-reports
-💰  Save Public Money       — Warranty enforcement stops cheap, failing repairs
-🏙  Smart City Governance   — Ward-wise civic performance and repeat failure zone analytics
-🗳  Citizen Empowerment     — Anyone can verify if their complaint was actually fixed
-```
-
-**Example Use Case — Bhopal, MP Nagar Zone 1:**
-
-> A citizen finds a pothole and submits a photo with location. CityPramaan verifies damage with AI, creates an evidence hash, stores proof on IPFS, and records the complaint on-chain. The issue appears on the public map. After repair, the contractor uploads proof. AI compares before and after. A warranty period begins. If the pothole recurs — CityPramaan flags it as a repeat failure automatically.
-
----
-
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
-- Node.js `v18+`
-- npm or yarn
-- MetaMask wallet (for Web3 features)
-- Supabase account
-- Pinata account (IPFS)
-- Gemini API key
+- Node.js 18+
+- npm
 
-### 1. Clone the Repository
+### Clone the repository
 
 ```bash
 git clone https://github.com/virajkvk18/CityPramaan.git
 cd CityPramaan
 ```
 
-### 2. Install Frontend Dependencies
+### Install and run the web app
 
 ```bash
 cd web
 npm install
-```
-
-### 3. Configure Environment Variables
-
-```bash
-cp .env.example .env.local
-# Fill in your keys (see Environment Variables section below)
-```
-
-### 4. Run the Development Server
-
-```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open:
 
----
-
-## 🔑 Environment Variables
-
-Create a `.env.local` file inside the `web/` folder:
-
-```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-
-# Pinata / IPFS
-NEXT_PUBLIC_PINATA_GATEWAY=your_pinata_gateway
-PINATA_API_KEY=your_pinata_api_key
-PINATA_SECRET_API_KEY=your_pinata_secret_key
-
-# WalletConnect
-NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=your_walletconnect_id
-
-# AI APIs
-GEMINI_API_KEY=your_gemini_api_key
-GROQ_API_KEY=your_groq_api_key
-
-# Smart Contract
-NEXT_PUBLIC_CONTRACT_ADDRESS=your_deployed_contract_address
-NEXT_PUBLIC_CHAIN_ID=84532
+```text
+http://localhost:3000
 ```
 
----
-
-## ⛓ Blockchain Setup
+### Production build
 
 ```bash
-# Navigate to contracts folder
-cd contracts
-npm install
-
-# Compile smart contracts
-npx hardhat compile
-
-# Run tests
-npx hardhat test
-
-# Deploy to Base Sepolia
-npx hardhat run scripts/deploy.ts --network baseSepolia
-
-# Deploy to Polygon Amoy
-npx hardhat run scripts/deploy.ts --network polygonAmoy
+cd web
+npm run lint
+npm run build
 ```
-
-Copy the deployed contract address into `NEXT_PUBLIC_CONTRACT_ADDRESS` in your `.env.local`.
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
-```
+```text
 CityPramaan/
-│
-├── web/                          # Next.js frontend application
-│   ├── app/                      # App router pages
-│   ├── components/               # Reusable UI components
-│   ├── lib/                      # Utility functions & API clients
-│   ├── public/                   # Static assets
-│   ├── .env.local                # Environment variables (not committed)
-│   ├── next.config.ts
-│   ├── tailwind.config.ts
-│   └── tsconfig.json
-│
-├── contracts/                    # Solidity smart contracts
-│   ├── contracts/
-│   │   └── CityPramaan.sol       # Main proof-of-repair contract
-│   ├── scripts/
-│   │   └── deploy.ts             # Deployment script
-│   ├── test/                     # Contract test suite
-│   └── hardhat.config.ts
-│
-├── docs/                         # Documentation
-│   ├── architecture.md
-│   ├── flow.md
-│   └── pitch-deck.pdf
-│
-├── README.md
-└── .gitignore
+  contracts/
+    .gitkeep
+  docs/
+  web/
+    app/
+      about/
+      contractor/
+      pending/
+      proof/[id]/
+      report/
+      warranty/
+      page.tsx
+      layout.tsx
+      globals.css
+    src/
+      components/
+        layout/
+        map/
+        proof/
+      lib/
+        city-context.ts
+        language-context.ts
+        mock-data.ts
+        report-storage.ts
+        wallet-storage.ts
+    public/
+    package.json
+    tsconfig.json
+  README.md
 ```
 
 ---
 
-## 🔭 Future Scope
+## Project Pitch
 
-- [ ] 📡 Real GPS-based location verification
-- [ ] 🏛 Live municipal complaint system integration
-- [ ] 🤖 AI-powered fraud detection for fake repair proofs
-- [ ] 🏆 Contractor leaderboard by city and ward
-- [ ] 📊 Ward-wise civic performance score dashboard
-- [ ] 🎁 Citizen reward system for verified reports
-- [ ] 💬 WhatsApp complaint bot integration
-- [ ] 📱 Mobile app for citizens and contractors
-- [ ] 🌐 Expansion to 10+ Indian cities
-- [ ] 🏙 Integration with municipal dashboards (Smart City Mission)
+**CityPramaan is not just a complaint app.** It is a proof-of-repair network for cities.
+
+It solves the accountability gap after a civic issue is reported by making every important step visible:
+
+```text
+Report -> Proof -> Repair -> Approval -> Warranty -> Public History
+```
+
+This makes it useful for citizens, contractors, city officials, and the general public.
 
 ---
 
-## 🏆 Hackathon Track
-
-```
-Primary Track  : Smart Cities / Civic Tech
-Secondary Tracks: Web3 · Blockchain · AI / GenAI · Full-Stack
-```
-
----
-
-## 👤 Author
+## Author
 
 <div align="center">
 
@@ -630,7 +441,7 @@ Secondary Tracks: Web3 · Blockchain · AI / GenAI · Full-Stack
 
 [![GitHub](https://img.shields.io/badge/GitHub-virajkvk18-181717?style=for-the-badge&logo=github)](https://github.com/virajkvk18)
 
-*Building civic-tech, AI, and Web3 solutions for India.*
+Building civic-tech, AI, and Web3 solutions for accountable cities.
 
 </div>
 
@@ -638,10 +449,8 @@ Secondary Tracks: Web3 · Blockchain · AI / GenAI · Full-Stack
 
 <div align="center">
 
-![Footer](https://capsule-render.vercel.app/api?type=waving&color=0:3b82f6,100:00d4aa&height=120&section=footer&animation=fadeIn)
+![Footer](https://capsule-render.vercel.app/api?type=waving&color=0:00eb88,50:00dbe9,100:ff9933&height=120&section=footer&animation=fadeIn)
 
-**CityPramaan** — *Civic repairs should be provable, not promisable.*
-
-⭐ Star this repo if you believe in accountable cities.
+**CityPramaan** - Civic repairs should be provable, not promisable.
 
 </div>
