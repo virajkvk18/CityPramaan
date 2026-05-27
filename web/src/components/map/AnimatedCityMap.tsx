@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { DemoCity } from "@/src/lib/city-context";
 import type { CivicReport, ReportStatus } from "@/src/lib/mock-data";
 import { useLanguage } from "@/src/lib/use-language";
@@ -178,8 +179,10 @@ export function AnimatedCityMap({ reports, city }: AnimatedCityMapProps) {
           const y = clamp((1 - (lat - minLat) / (maxLat - minLat)) * 100, 12, 88);
 
           return (
-            <div
+            <Link
               key={`${report.id}-${city.key}`}
+              href={`/proof/${report.id}`}
+              aria-label={`Open full report details for ${report.id}: ${report.title}`}
               className="sensor-flicker group absolute flex -translate-x-1/2 -translate-y-1/2 cursor-pointer flex-col items-center"
               style={{ left: `${x}%`, top: `${y}%`, animationDelay: `${index * 0.22}s` }}
             >
@@ -194,8 +197,11 @@ export function AnimatedCityMap({ reports, city }: AnimatedCityMapProps) {
                 <p className="mt-1 font-mono text-[10px] text-[#dbc2b0]/50">
                   {lat.toFixed(4)}, {lng.toFixed(4)}
                 </p>
+                <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-[#00dbe9]">
+                  Open full report
+                </p>
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>
