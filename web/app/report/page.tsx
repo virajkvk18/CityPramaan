@@ -3,7 +3,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   Accessibility,
   AlertTriangle,
@@ -94,6 +94,67 @@ const issuePresets = [
   },
 ];
 
+function getNearestCity(latitude: number, longitude: number) {
+  return demoCities
+    .map((city) => ({
+      city,
+      distance: getDistanceKm(latitude, longitude, city.lat, city.lng),
+    }))
+    .sort((first, second) => first.distance - second.distance)[0].city;
+}
+
+function getDistanceKm(fromLat: number, fromLng: number, toLat: number, toLng: number) {
+  const earthRadiusKm = 6371;
+  const latDelta = toRadians(toLat - fromLat);
+  const lngDelta = toRadians(toLng - fromLng);
+  const startLat = toRadians(fromLat);
+  const endLat = toRadians(toLat);
+  const a =
+    Math.sin(latDelta / 2) * Math.sin(latDelta / 2) +
+    Math.cos(startLat) * Math.cos(endLat) * Math.sin(lngDelta / 2) * Math.sin(lngDelta / 2);
+
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function toRadians(value: number) {
+  return (value * Math.PI) / 180;
+}
+
+async function reverseGeocodeArea(latitude: number, longitude: number) {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+      {
+        headers: {
+          Accept: "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      return "";
+    }
+
+    const data = (await response.json()) as {
+      display_name?: string;
+      address?: Record<string, string | undefined>;
+    };
+    const address = data.address ?? {};
+    const areaParts = [
+      address.road,
+      address.neighbourhood,
+      address.suburb,
+      address.city_district,
+      address.city ?? address.town ?? address.village,
+      address.state,
+    ].filter(Boolean);
+
+    return areaParts.length ? areaParts.join(", ") : data.display_name ?? "";
+  } catch {
+    return "";
+  }
+}
+
 export default function ReportIssuePage() {
   const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => "bhopal");
   const languageSnapshot = useSyncExternalStore(
@@ -109,7 +170,8 @@ export default function ReportIssuePage() {
   const [latitude, setLatitude] = useState(selectedCity.lat);
   const [longitude, setLongitude] = useState(selectedCity.lng);
   const [mapsLink, setMapsLink] = useState("");
-  const [locationMessage, setLocationMessage] = useState("Default city coordinate selected.");
+  const [locationMessage, setLocationMessage] = useState("Waiting for browser location permission...");
+  const [locationDetecting, setLocationDetecting] = useState(true);
   const [description, setDescription] = useState(
     "Large pothole appeared again near the same repaired road segment."
   );
@@ -122,6 +184,7 @@ export default function ReportIssuePage() {
   const [aiResult, setAiResult] = useState<InfrastructureAnalysis | null>(null);
   const googleMapsUrl = buildGoogleMapsUrl(latitude, longitude);
   const googleMapsEmbedUrl = `https://maps.google.com/maps?q=${latitude},${longitude}&z=16&output=embed`;
+  const autoLocationRequested = useRef(false);
 
   function runAiVerification() {
     setVerified(false);
@@ -156,43 +219,96 @@ export default function ReportIssuePage() {
   }
 
   function pinManualLocation(nextLatitude = latitude, nextLongitude = longitude) {
-    const pinnedLocation = `${selectedCity.primaryArea}, ${selectedCity.name} (${nextLatitude.toFixed(
+    const nearestCity = getNearestCity(nextLatitude, nextLongitude);
+    const pinnedLocation = `${nearestCity.primaryArea}, ${nearestCity.name} (${nextLatitude.toFixed(
       5
     )}, ${nextLongitude.toFixed(5)})`;
 
+    setSelectedCityKey(nearestCity.key);
     setLatitude(nextLatitude);
     setLongitude(nextLongitude);
     setLocation(pinnedLocation);
-    setLocationMessage("Google Maps pin updated from manual coordinates.");
+    setLocationMessage(`Manual coordinates pinned. Nearest CityPramaan city context: ${nearestCity.name}.`);
     setSubmitted(false);
     setProofError("");
   }
 
-  function useCurrentGps() {
-    if (!navigator.geolocation) {
-      setLocationMessage("GPS is not available in this browser. Enter coordinates manually.");
+  const applyRealCoordinates = useCallback(async (
+    nextLatitude: number,
+    nextLongitude: number,
+    source: "auto" | "manual"
+  ) => {
+    const nearestCity = getNearestCity(nextLatitude, nextLongitude);
+
+    setSelectedCityKey(nearestCity.key);
+    setLatitude(nextLatitude);
+    setLongitude(nextLongitude);
+    setLocation(`Live GPS location (${nextLatitude.toFixed(5)}, ${nextLongitude.toFixed(5)})`);
+    setLocationMessage("Live GPS coordinates captured. Detecting area name...");
+    setSubmitted(false);
+    setProofError("");
+
+    const detectedArea = await reverseGeocodeArea(nextLatitude, nextLongitude);
+
+    if (detectedArea) {
+      setLocation(`${detectedArea} (${nextLatitude.toFixed(5)}, ${nextLongitude.toFixed(5)})`);
+      setLocationMessage(
+        `Real location detected from browser ${source === "auto" ? "permission" : "GPS"}: ${detectedArea}. Nearest supported CityPramaan city: ${nearestCity.name}.`
+      );
       return;
     }
 
-    setLocationMessage("Requesting GPS permission...");
+    setLocationMessage(
+      `Real GPS locked at ${nextLatitude.toFixed(5)}, ${nextLongitude.toFixed(5)}. Area lookup failed, but exact coordinates are saved. Nearest supported CityPramaan city: ${nearestCity.name}.`
+    );
+  }, []);
+
+  const requestBrowserLocation = useCallback((source: "auto" | "manual") => {
+    if (!navigator.geolocation) {
+      setLocationMessage("GPS is not available in this browser. Enter coordinates manually.");
+      setLocationDetecting(false);
+      return;
+    }
+
+    setLocationDetecting(true);
+    setLocationMessage(
+      source === "auto"
+        ? "Requesting real browser location permission..."
+        : "Requesting live GPS permission..."
+    );
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const nextLatitude = Number(position.coords.latitude.toFixed(6));
         const nextLongitude = Number(position.coords.longitude.toFixed(6));
 
-        setLatitude(nextLatitude);
-        setLongitude(nextLongitude);
-        setLocation(`GPS pinned location (${nextLatitude.toFixed(5)}, ${nextLongitude.toFixed(5)})`);
-        setLocationMessage("Live GPS location pinned and ready for proof.");
-        setSubmitted(false);
-        setProofError("");
+        void applyRealCoordinates(nextLatitude, nextLongitude, source).finally(() =>
+          setLocationDetecting(false)
+        );
       },
-      () => {
-        setLocationMessage("GPS permission was blocked. Use manual coordinates or Google Maps link.");
+      (error) => {
+        setLocationDetecting(false);
+        setLocationMessage(
+          error.code === error.PERMISSION_DENIED
+            ? "Location permission was blocked. CityPramaan cannot auto-detect your area without browser permission."
+            : "Could not read live GPS right now. Try again, or paste a Google Maps link."
+        );
       },
       { enableHighAccuracy: true, timeout: 8000 }
     );
+  }, [applyRealCoordinates]);
+
+  function useCurrentGps() {
+    requestBrowserLocation("manual");
   }
+
+  useEffect(() => {
+    if (autoLocationRequested.current) {
+      return;
+    }
+
+    autoLocationRequested.current = true;
+    requestBrowserLocation("auto");
+  }, [requestBrowserLocation]);
 
   function applyGoogleMapsLink() {
     const decodedLink = decodeURIComponent(mapsLink);
@@ -208,10 +324,15 @@ export default function ReportIssuePage() {
 
     const nextLatitude = Number(coordinateMatch[1]);
     const nextLongitude = Number(coordinateMatch[2]);
+    const nearestCity = getNearestCity(nextLatitude, nextLongitude);
 
-    pinManualLocation(nextLatitude, nextLongitude);
+    setSelectedCityKey(nearestCity.key);
+    setLatitude(nextLatitude);
+    setLongitude(nextLongitude);
     setLocation(`Google Maps pinned location (${nextLatitude.toFixed(5)}, ${nextLongitude.toFixed(5)})`);
-    setLocationMessage("Google Maps link parsed and pinned to this report.");
+    setLocationMessage(`Google Maps link parsed. Nearest CityPramaan city context: ${nearestCity.name}.`);
+    setSubmitted(false);
+    setProofError("");
   }
 
   function createProof() {
@@ -587,10 +708,11 @@ export default function ReportIssuePage() {
                         <button
                           type="button"
                           onClick={useCurrentGps}
+                          disabled={locationDetecting}
                           className="radar-pulse flex w-full items-center justify-center gap-2 rounded border border-[#00eb88] bg-[#00eb88]/5 px-4 py-3 font-mono text-xs text-[#00eb88] transition hover:bg-[#00eb88]/10"
                         >
-                          <LocateFixed size={16} />
-                          {tr("useCurrentGps")}
+                          <LocateFixed size={16} className={locationDetecting ? "animate-spin" : ""} />
+                          {locationDetecting ? "Detecting real location..." : tr("useCurrentGps")}
                         </button>
 
                         <button
