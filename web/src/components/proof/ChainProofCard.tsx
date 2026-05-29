@@ -49,7 +49,10 @@ export function ChainProofCard({ compact = false, proofData }: ChainProofCardPro
 
       <div className="mt-3 rounded-lg border border-white/10 bg-zinc-950/60 px-3 py-2">
         <p className="text-xs text-zinc-500">{t("blockchainTransaction")}</p>
-        <p className="mt-1 break-all text-xs font-medium text-emerald-300">{displayProof.txHash}</p>
+        {/* FIX: truncate instead of break-all to prevent overflow */}
+        <p className="mt-1 truncate text-xs font-medium text-emerald-300" title={displayProof.txHash}>
+          {displayProof.txHash}
+        </p>
       </div>
     </div>
   );
@@ -66,11 +69,15 @@ function ProofRow({
 }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-zinc-950/60 px-3 py-2">
-      <span className="flex items-center gap-2 text-xs text-zinc-500">
+      <span className="flex shrink-0 items-center gap-2 text-xs text-zinc-500">
         <span className="text-emerald-300">{icon}</span>
         {label}
       </span>
-      <span className="text-right text-xs font-medium text-zinc-100">{value}</span>
+      {/* FIX: added max-w + truncate + title tooltip so long hashes don't overflow */}
+      <span className="max-w-[140px] truncate text-right text-xs font-medium text-zinc-100" title={value}>
+        {value}
+      </span>
     </div>
   );
 }
+
