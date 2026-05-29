@@ -53,7 +53,13 @@ export function LocationDetectButton({ compact = false }: LocationDetectButtonPr
       } ${compact ? "w-full sm:w-auto" : "w-full sm:w-auto"}`}
     >
       <LocateFixed size={16} className={detecting ? "animate-spin" : ""} />
-      {detecting ? "Detecting" : isDetected ? detectedLocation.cityName : "Use My City"}
+      {detecting
+        ? "Detecting"
+        : isDetected
+          ? detectedLocation.cityName
+          : isBlocked
+            ? "Location Blocked"
+            : "Detect City"}
     </button>
   );
 }

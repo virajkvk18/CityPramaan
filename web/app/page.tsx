@@ -673,7 +673,7 @@ function CitySelector({
       >
         {demoCities.map((city) => (
           <option key={city.key} value={city.key} className="bg-[#050505] text-white">
-            {isDetected && city.key === value ? `${detectedCityName} GPS` : city.name}
+            {isDetected && city.key === value ? detectedCityName : city.name}
           </option>
         ))}
       </select>

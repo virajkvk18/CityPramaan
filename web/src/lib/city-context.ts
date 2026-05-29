@@ -1,4 +1,11 @@
-export type CityKey = "bhopal" | "mumbai" | "delhi" | "pune" | "hyderabad" | "chennai";
+export type CityKey =
+  | "bhopal"
+  | "jabalpur"
+  | "mumbai"
+  | "delhi"
+  | "pune"
+  | "hyderabad"
+  | "chennai";
 
 export type DemoCity = {
   key: CityKey;
@@ -25,6 +32,17 @@ export const demoCities: DemoCity[] = [
     contractor: "Bhopal RoadWorks",
     lat: 23.2599,
     lng: 77.4126,
+  },
+  {
+    key: "jabalpur",
+    name: "Jabalpur",
+    state: "Madhya Pradesh",
+    primaryArea: "Civic Centre",
+    secondaryArea: "Napier Town Main Road",
+    repairWard: "Ward 32",
+    contractor: "Jabalpur CivicWorks",
+    lat: 23.1815,
+    lng: 79.9864,
   },
   {
     key: "mumbai",
