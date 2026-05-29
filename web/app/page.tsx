@@ -117,8 +117,8 @@ export default function Home() {
 
   return (
     <main className="cp-page-shell relative min-h-screen overflow-hidden bg-[#050505] text-[#e5e2e3]">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_14%_8%,rgba(255,153,51,0.16),transparent_24%),radial-gradient(circle_at_82%_12%,rgba(0,219,233,0.14),transparent_28%),radial-gradient(circle_at_48%_94%,rgba(0,235,136,0.08),transparent_30%)]" />
-      <div className="pointer-events-none fixed inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:34px_34px] opacity-70" />
+      <div className="cp-ambient-mesh pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_14%_8%,rgba(255,153,51,0.16),transparent_24%),radial-gradient(circle_at_82%_12%,rgba(0,219,233,0.14),transparent_28%),radial-gradient(circle_at_48%_94%,rgba(0,235,136,0.08),transparent_30%)]" />
+      <div className="cp-grid-drift pointer-events-none fixed inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:34px_34px] opacity-70" />
 
       <header className="fixed left-0 right-0 top-0 z-50 flex min-h-16 flex-col items-stretch gap-3 border-b border-[#ff9933]/15 bg-[#030507]/85 px-3 py-3 shadow-[0_0_34px_rgba(0,219,233,0.08)] backdrop-blur-2xl sm:h-20 sm:flex-row sm:items-center sm:justify-between sm:px-5 lg:px-10">
         <Link href="/" className="group flex min-w-0 items-center gap-3">
@@ -243,7 +243,7 @@ export default function Home() {
                 </p>
               </div>
 
-              <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:gap-3">
+              <div className="cp-action-row grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:gap-3">
                 <CitySelector
                   value={selectedCity.key}
                   displayCityName={dashboardCityName}
@@ -260,7 +260,7 @@ export default function Home() {
                 />
                 <Link
                   href="/report"
-                  className="relative col-span-2 flex min-h-12 items-center justify-center overflow-hidden rounded-sm bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] px-5 py-3 text-center font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#4c2700] shadow-[0_0_24px_rgba(255,153,51,0.2)] hover:shadow-[0_0_30px_rgba(255,153,51,0.3)] sm:col-auto"
+                  className="cp-command-link relative col-span-2 flex min-h-12 items-center justify-center overflow-hidden rounded-sm bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] px-5 py-3 text-center font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#4c2700] shadow-[0_0_24px_rgba(255,153,51,0.2)] hover:shadow-[0_0_30px_rgba(255,153,51,0.3)] sm:col-auto"
                 >
                   <span className="stitch-shimmer" />
                   {t("reportIssue")}
@@ -537,7 +537,7 @@ export default function Home() {
         </aside>
       </section>
 
-      <nav className="fixed inset-x-3 bottom-3 z-50 grid grid-cols-5 overflow-hidden rounded-2xl border border-[#ff9933]/20 bg-[#030507]/90 shadow-[0_0_34px_rgba(0,219,233,0.12)] backdrop-blur-2xl sm:hidden">
+      <nav className="cp-mobile-dock fixed inset-x-3 bottom-3 z-50 grid grid-cols-5 overflow-hidden rounded-2xl border border-[#ff9933]/20 bg-[#030507]/90 shadow-[0_0_34px_rgba(0,219,233,0.12)] backdrop-blur-2xl sm:hidden">
         <MobileNavLink href="/" label="Home" icon={<Gauge size={17} />} active />
         <MobileNavLink href="/report" label="Report" icon={<AlertTriangle size={17} />} />
         <MobileNavLink href="/pending" label="Review" icon={<ScanSearch size={17} />} />
@@ -580,10 +580,10 @@ function PulseStat({
   return (
     <div className={`cp-pulse-stat min-h-[142px] rounded-md border p-3 ${tones[tone]}`}>
       <div className="flex items-center justify-between gap-3">
-        <span className="grid h-8 w-8 place-items-center rounded-sm border border-current/25 bg-black/20">
+        <span className="cp-stat-icon grid h-8 w-8 place-items-center rounded-sm border border-current/25 bg-black/20">
           {icon}
         </span>
-        <span className="h-2 w-2 rounded-full bg-current shadow-[0_0_12px_currentColor]" />
+        <span className="cp-pulse-dot h-2 w-2 rounded-full bg-current shadow-[0_0_12px_currentColor]" />
       </div>
       <p className="mt-3 font-mono text-[9px] font-bold uppercase tracking-[0.14em] opacity-80 sm:tracking-[0.16em]">{label}</p>
       <p className="mt-1 text-[1.45rem] font-black leading-tight tracking-tight text-white sm:text-xl">{value}</p>
@@ -647,7 +647,7 @@ function CommandLink({
   return (
     <Link
       href={href}
-      className={`flex min-h-14 items-center justify-center gap-2 rounded-md border px-2 py-2 text-center text-[12px] font-semibold leading-tight transition sm:min-h-0 sm:flex-none sm:px-5 sm:py-3 sm:text-sm ${tones[tone]}`}
+      className={`cp-command-link flex min-h-14 items-center justify-center gap-2 rounded-md border px-2 py-2 text-center text-[12px] font-semibold leading-tight transition sm:min-h-0 sm:flex-none sm:px-5 sm:py-3 sm:text-sm ${tones[tone]}`}
     >
       <span className="shrink-0">{icon}</span>
       <span className="min-w-0 break-words">{label}</span>

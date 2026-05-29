@@ -12,6 +12,11 @@
   --font-mono: var(--font-cp-mono);
 }
 
+html {
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
@@ -28,7 +33,33 @@ body {
   color: var(--foreground);
   font-family: var(--font-cp-sans), Arial, Helvetica, sans-serif;
   min-height: 100vh;
+  overscroll-behavior-y: none;
   overflow-x: hidden;
+  text-rendering: geometricPrecision;
+}
+
+::selection {
+  background: rgba(0, 219, 233, 0.28);
+  color: #ffffff;
+}
+
+::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(2, 3, 4, 0.82);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(255, 153, 51, 0.78), rgba(0, 219, 233, 0.72));
+  border: 2px solid rgba(2, 3, 4, 0.82);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #ffc08d, #00dbe9);
 }
 
 .bg-holo-grid {
@@ -401,6 +432,7 @@ select {
 }
 
 .stitch-cityline {
+  animation: cp-cityline-glow 5.8s ease-in-out infinite;
   filter: drop-shadow(0 -12px 28px rgba(255, 153, 51, 0.18));
 }
 
@@ -436,6 +468,22 @@ label:has(select):hover svg {
 
 .cp-notification-badge {
   animation: cp-badge-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.cp-ambient-mesh {
+  animation: cp-ambient-float 14s ease-in-out infinite alternate;
+  filter: saturate(1.15);
+  will-change: opacity, transform;
+}
+
+.cp-grid-drift {
+  animation: cp-grid-drift 24s linear infinite;
+  will-change: background-position;
+}
+
+.bg-holo-grid {
+  animation: cp-grid-drift 30s linear infinite;
+  will-change: background-position;
 }
 
 @keyframes buildverse-stage-sweep {
@@ -513,6 +561,12 @@ label:has(select):hover svg {
     0 18px 44px rgba(0, 0, 0, 0.18);
   overflow: hidden;
   position: relative;
+  transition:
+    border-color 0.28s ease,
+    box-shadow 0.28s ease,
+    filter 0.28s ease,
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
 }
 
 .cp-pulse-stat::before {
@@ -524,12 +578,33 @@ label:has(select):hover svg {
   transform: translateX(-115%);
 }
 
+.cp-pulse-stat:hover {
+  filter: brightness(1.08) saturate(1.08);
+  transform: translateY(-3px);
+}
+
+.cp-stat-icon {
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cp-pulse-stat:hover .cp-stat-icon {
+  transform: rotate(-6deg) scale(1.08);
+}
+
+.cp-pulse-dot {
+  animation: cp-live-dot 2.2s ease-in-out infinite;
+}
+
 .cp-live-strip {
   box-shadow: inset 0 0 24px rgba(0, 219, 233, 0.07);
 }
 
 .cp-live-track {
   animation: cp-live-marquee 28s linear infinite;
+}
+
+.cp-live-strip:hover .cp-live-track {
+  animation-play-state: paused;
 }
 
 .cp-trust-band {
@@ -1144,7 +1219,7 @@ label:has(select):hover svg {
   }
 }
 
-/* —— Page & section motion (presentation only) —— */
+/* Page and section motion (presentation only) */
 .cp-page-shell {
   animation: cp-page-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -1311,6 +1386,96 @@ label:has(select):hover svg {
   transform: translateY(-2px);
 }
 
+.cp-action-row > * {
+  animation: cp-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.cp-action-row > *:nth-child(1) {
+  animation-delay: 0.08s;
+}
+
+.cp-action-row > *:nth-child(2) {
+  animation-delay: 0.13s;
+}
+
+.cp-action-row > *:nth-child(3) {
+  animation-delay: 0.18s;
+}
+
+.cp-action-row > *:nth-child(4) {
+  animation-delay: 0.23s;
+}
+
+.cp-action-row > *:nth-child(5) {
+  animation-delay: 0.28s;
+}
+
+.cp-action-row > *:nth-child(6) {
+  animation-delay: 0.33s;
+}
+
+.cp-command-link {
+  overflow: hidden;
+  position: relative;
+  transform: translateZ(0);
+}
+
+.cp-command-link::before {
+  background: linear-gradient(110deg, transparent, rgba(255, 255, 255, 0.18), transparent);
+  content: "";
+  inset: -60% auto -60% -42%;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  transform: translateX(0) rotate(18deg);
+  transition:
+    opacity 0.25s ease,
+    transform 0.62s cubic-bezier(0.22, 1, 0.36, 1);
+  width: 36%;
+}
+
+.cp-command-link:hover::before {
+  opacity: 1;
+  transform: translateX(260%) rotate(18deg);
+}
+
+.cp-command-link:hover {
+  box-shadow: 0 0 28px color-mix(in srgb, currentColor 20%, transparent);
+  transform: translateY(-2px);
+}
+
+.cp-command-link svg {
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cp-command-link:hover svg {
+  transform: scale(1.08);
+}
+
+.cp-mobile-dock {
+  animation: cp-dock-rise 0.62s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
+}
+
+.cp-mobile-dock a {
+  position: relative;
+}
+
+.cp-mobile-dock a::after {
+  background: linear-gradient(90deg, transparent, currentColor, transparent);
+  bottom: 0;
+  content: "";
+  height: 1px;
+  left: 20%;
+  opacity: 0;
+  position: absolute;
+  right: 20%;
+  transition: opacity 0.24s ease;
+}
+
+.cp-mobile-dock a:hover::after {
+  opacity: 0.56;
+}
+
 .cp-incident-card {
   animation: cp-card-glow-in 0.72s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
 }
@@ -1471,6 +1636,42 @@ label:has(select):hover svg {
   }
 }
 
+@keyframes cp-ambient-float {
+  0% {
+    opacity: 0.78;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: translate3d(0, -8px, 0) scale(1.012);
+  }
+  100% {
+    opacity: 0.84;
+    transform: translate3d(0, 6px, 0) scale(1.02);
+  }
+}
+
+@keyframes cp-grid-drift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 34px 34px;
+  }
+}
+
+@keyframes cp-cityline-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 -10px 24px rgba(255, 153, 51, 0.12));
+    opacity: 0.2;
+  }
+  50% {
+    filter: drop-shadow(0 -14px 30px rgba(0, 219, 233, 0.18));
+    opacity: 0.28;
+  }
+}
+
 @keyframes cp-badge-pop {
   0% {
     opacity: 0;
@@ -1496,6 +1697,7 @@ label:has(select):hover svg {
 
   .cp-page-shell,
   .cp-page-shell > header,
+  .cp-action-row > *,
   .cp-stagger-grid > *,
   .cp-stagger-col > *,
   .cp-stagger-nav > *,
@@ -1507,9 +1709,15 @@ label:has(select):hover svg {
   }
 
   .cp-live-pulse,
+  .cp-pulse-dot,
   .cp-filter-active,
   .cp-orbit-drift,
+  .cp-ambient-mesh,
+  .cp-grid-drift,
+  .bg-holo-grid,
+  .cp-mobile-dock,
   .cp-command-frame,
+  .stitch-cityline,
   .buildverse-orbit::before,
   body > main::after {
     animation: none !important;
