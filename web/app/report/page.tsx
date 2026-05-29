@@ -172,6 +172,8 @@ export default function ReportIssuePage() {
   const [mapsLink, setMapsLink] = useState("");
   const [locationMessage, setLocationMessage] = useState("Waiting for browser location permission...");
   const [locationDetecting, setLocationDetecting] = useState(true);
+  const [locationSource, setLocationSource] = useState<"default" | "browser" | "manual" | "maps">("default");
+  const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const [description, setDescription] = useState(
     "Large pothole appeared again near the same repaired road segment."
   );
@@ -185,6 +187,12 @@ export default function ReportIssuePage() {
   const googleMapsUrl = buildGoogleMapsUrl(latitude, longitude);
   const googleMapsEmbedUrl = `https://maps.google.com/maps?q=${latitude},${longitude}&z=16&output=embed`;
   const autoLocationRequested = useRef(false);
+  const locationSourceLabel = {
+    default: "Default city pin",
+    browser: "Browser GPS",
+    manual: "Manual coordinates",
+    maps: "Google Maps link",
+  }[locationSource];
 
   function runAiVerification() {
     setVerified(false);
@@ -227,6 +235,8 @@ export default function ReportIssuePage() {
     setSelectedCityKey(nearestCity.key);
     setLatitude(nextLatitude);
     setLongitude(nextLongitude);
+    setLocationSource("manual");
+    setLocationAccuracy(null);
     setLocation(pinnedLocation);
     setLocationMessage(`Manual coordinates pinned. Nearest CityPramaan city context: ${nearestCity.name}.`);
     setSubmitted(false);
@@ -236,13 +246,16 @@ export default function ReportIssuePage() {
   const applyRealCoordinates = useCallback(async (
     nextLatitude: number,
     nextLongitude: number,
-    source: "auto" | "manual"
+    source: "auto" | "manual",
+    accuracy?: number
   ) => {
     const nearestCity = getNearestCity(nextLatitude, nextLongitude);
 
     setSelectedCityKey(nearestCity.key);
     setLatitude(nextLatitude);
     setLongitude(nextLongitude);
+    setLocationSource("browser");
+    setLocationAccuracy(Number.isFinite(accuracy) ? Math.round(accuracy ?? 0) : null);
     setLocation(`Live GPS location (${nextLatitude.toFixed(5)}, ${nextLongitude.toFixed(5)})`);
     setLocationMessage("Live GPS coordinates captured. Detecting area name...");
     setSubmitted(false);
@@ -281,7 +294,7 @@ export default function ReportIssuePage() {
         const nextLatitude = Number(position.coords.latitude.toFixed(6));
         const nextLongitude = Number(position.coords.longitude.toFixed(6));
 
-        void applyRealCoordinates(nextLatitude, nextLongitude, source).finally(() =>
+        void applyRealCoordinates(nextLatitude, nextLongitude, source, position.coords.accuracy).finally(() =>
           setLocationDetecting(false)
         );
       },
@@ -329,6 +342,8 @@ export default function ReportIssuePage() {
     setSelectedCityKey(nearestCity.key);
     setLatitude(nextLatitude);
     setLongitude(nextLongitude);
+    setLocationSource("maps");
+    setLocationAccuracy(null);
     setLocation(`Google Maps pinned location (${nextLatitude.toFixed(5)}, ${nextLongitude.toFixed(5)})`);
     setLocationMessage(`Google Maps link parsed. Nearest CityPramaan city context: ${nearestCity.name}.`);
     setSubmitted(false);
@@ -444,6 +459,8 @@ export default function ReportIssuePage() {
     setLocation(formatCityLocation(city));
     setLatitude(city.lat);
     setLongitude(city.lng);
+    setLocationSource("default");
+    setLocationAccuracy(null);
     setMapsLink("");
     setLocationMessage(`${city.name} default Google Maps pin selected.`);
     setImageName("");
@@ -573,12 +590,12 @@ export default function ReportIssuePage() {
                 </div>
 
                 <label className="group relative grid min-h-60 cursor-pointer place-items-center overflow-hidden rounded-lg border border-dashed border-[#554336] bg-black/25 p-8 text-center transition hover:border-[#00dbe9]/80">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(event) => void handleIssueFile(event.target.files?.[0])}
-                      />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(event) => void handleIssueFile(event.target.files?.[0])}
+                  />
                   {imageDataUrl ? (
                     <img
                       src={imageDataUrl}
@@ -605,6 +622,35 @@ export default function ReportIssuePage() {
                     </p>
                   </div>
                 </label>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded border border-[#00eb88]/45 bg-[#00eb88]/10 px-4 py-3 font-mono text-xs font-semibold text-[#5bffa1] transition hover:bg-[#00eb88]/15">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(event) => void handleIssueFile(event.target.files?.[0])}
+                    />
+                    <Camera size={16} />
+                    Capture Live Photo
+                  </label>
+
+                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-4 py-3 font-mono text-xs font-semibold text-[#7df4ff] transition hover:bg-[#00dbe9]/15">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(event) => void handleIssueFile(event.target.files?.[0])}
+                    />
+                    <UploadCloud size={16} />
+                    Upload From Gallery
+                  </label>
+                </div>
+
+                <p className="mt-3 rounded border border-white/10 bg-black/25 p-3 text-xs leading-5 text-[#dbc2b0]/75">
+                  On mobile, <span className="text-[#5bffa1]">Capture Live Photo</span> opens the device camera so a citizen standing at the location can submit fresh evidence directly.
+                </p>
               </section>
 
               <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
@@ -656,14 +702,59 @@ export default function ReportIssuePage() {
                     </div>
 
                     <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-                      <div className="overflow-hidden rounded-lg border border-[#00dbe9]/20 bg-black/35">
+                      <div className="flex overflow-hidden rounded-lg border border-[#00dbe9]/20 bg-black/35">
+                        <div className="flex min-h-full w-full flex-col">
                         <iframe
                           title="Selected Google Maps location"
                           src={googleMapsEmbedUrl}
-                          className="h-72 w-full grayscale-[0.15]"
+                          className="h-72 w-full shrink-0 grayscale-[0.15]"
                           loading="lazy"
                           referrerPolicy="no-referrer-when-downgrade"
                         />
+
+                        <div className="grid flex-1 gap-3 border-t border-[#00dbe9]/15 bg-[linear-gradient(135deg,rgba(0,219,233,0.09),rgba(255,153,51,0.045))] p-4 sm:grid-cols-2">
+                          <div className="rounded border border-white/10 bg-black/30 p-3">
+                            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#dbc2b0]/60">
+                              Location source
+                            </p>
+                            <p className="mt-1 font-mono text-sm font-semibold text-[#7df4ff]">
+                              {locationSourceLabel}
+                            </p>
+                          </div>
+                          <div className="rounded border border-white/10 bg-black/30 p-3">
+                            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#dbc2b0]/60">
+                              GPS accuracy
+                            </p>
+                            <p className="mt-1 font-mono text-sm font-semibold text-[#5bffa1]">
+                              {locationAccuracy ? `~${locationAccuracy} m` : locationSource === "browser" ? "Captured" : "Manual"}
+                            </p>
+                          </div>
+                          <div className="rounded border border-white/10 bg-black/30 p-3">
+                            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#dbc2b0]/60">
+                              Proof coordinates
+                            </p>
+                            <p className="mt-1 font-mono text-sm font-semibold text-white">
+                              {latitude.toFixed(5)}, {longitude.toFixed(5)}
+                            </p>
+                          </div>
+                          <div className="rounded border border-white/10 bg-black/30 p-3">
+                            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#dbc2b0]/60">
+                              Nearest city node
+                            </p>
+                            <p className="mt-1 font-mono text-sm font-semibold text-[#ffc08d]">
+                              {selectedCity.name}
+                            </p>
+                          </div>
+                          <div className="rounded border border-[#00eb88]/20 bg-[#00eb88]/10 p-3 sm:col-span-2">
+                            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#5bffa1]">
+                              Location proof packet
+                            </p>
+                            <p className="mt-2 text-xs leading-5 text-[#d3fbff]">
+                              This report will store the exact latitude/longitude with the issue image, so the contractor, issuer, and public proof page can verify where the evidence was captured.
+                            </p>
+                          </div>
+                        </div>
+                        </div>
                       </div>
 
                       <div className="space-y-3">
