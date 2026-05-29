@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
+import { LocationDetectButton } from "@/src/components/layout/LocationDetectButton";
 import { NotificationBell } from "@/src/components/layout/NotificationBell";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { AnimatedCityMap } from "@/src/components/map/AnimatedCityMap";
@@ -231,6 +232,7 @@ export default function Home() {
 
               <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:gap-3">
                 <CitySelector value={selectedCity.key} detectedCityName={cityDisplay.cityName} isDetected={cityDisplay.isDetectedForSelected} />
+                <LocationDetectButton compact />
                 <CommandLink href="/contractor" label={t("contractorView")} icon={<Building2 size={16} />} tone="cyan" />
                 <CommandLink href="/pending" label={t("pendingProof")} icon={<ScanSearch size={16} />} tone="glass" />
                 <CommandLink href="/warranty" label={t("warrantyScanner")} icon={<ScanSearch size={16} />} tone="gold" />
