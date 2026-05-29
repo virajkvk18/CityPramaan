@@ -12,6 +12,7 @@ import {
   Building2,
   Camera,
   CheckCircle2,
+  ExternalLink,
   Hammer,
   LayoutDashboard,
   MapPin,
@@ -164,6 +165,7 @@ export default function ContractorPage() {
     const now = new Date();
     const tx = `0x93ac...${report.id.replace("CP-", "")}fd`;
     const isPowerOutage = report.issueCategory === "POWER_OUTAGE";
+    const reportCity = getCityByKey(report.cityKey ?? selectedCity.key);
     const repairAudit = {
       materialMatch: isPowerOutage ? "Restoration signal verified" : "95.4%",
       repairIntegrity: isPowerOutage ? "Power Restored" : "High",
@@ -179,8 +181,8 @@ export default function ContractorPage() {
     const updated = appendReportEvent(
       {
         ...report,
-        cityKey: selectedCity.key,
-        contractor: selectedCity.contractor,
+        cityKey: reportCity.key,
+        contractor: reportCity.contractor,
         status: "REPAIR_SUBMITTED",
         warrantyDaysLeft: null,
         warrantyActivatedAt: undefined,
@@ -204,8 +206,8 @@ export default function ContractorPage() {
       {
         label: isPowerOutage ? "Power restoration proof submitted" : "Repair proof submitted",
         detail: isPowerOutage
-          ? `${selectedCity.contractor} uploaded transformer / feeder restoration proof for ${report.location}. Waiting for issuer confirmation.`
-          : `${selectedCity.contractor} uploaded after-repair proof for ${report.location}. Waiting for report issuer approval before warranty activation.`,
+          ? `${reportCity.contractor} uploaded transformer / feeder restoration proof for ${report.location}. Waiting for issuer confirmation.`
+          : `${reportCity.contractor} uploaded after-repair proof for ${report.location}. Waiting for report issuer approval before warranty activation.`,
         time: now.toLocaleString(),
         tx,
       }
@@ -419,6 +421,8 @@ export default function ContractorPage() {
                         <Info label="SLA" value={`${selectedReport.slaHours ?? 72} hrs`} />
                       </div>
                     </div>
+
+                    <LocationProofStrip report={selectedReport} />
 
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                       <EvidenceBox
@@ -672,6 +676,41 @@ function Info({ label, value }: { label: string; value: string }) {
     <div className="rounded border border-white/10 bg-black/35 p-3">
       <p className="font-mono text-[10px] uppercase text-[#dbc2b0]/60">{label}</p>
       <p className="mt-1 font-mono text-sm font-semibold text-white">{value}</p>
+    </div>
+  );
+}
+
+function LocationProofStrip({ report }: { report: CivicReport }) {
+  const coordinates =
+    typeof report.latitude === "number" && typeof report.longitude === "number"
+      ? `${report.latitude.toFixed(5)}, ${report.longitude.toFixed(5)}`
+      : "Coordinates pending";
+  const mapUrl =
+    report.mapUrl ??
+    (typeof report.latitude === "number" && typeof report.longitude === "number"
+      ? `https://www.google.com/maps/search/?api=1&query=${report.latitude},${report.longitude}`
+      : "");
+
+  return (
+    <div className="mb-5 grid gap-3 rounded border border-[#00dbe9]/20 bg-[#00dbe9]/10 p-4 sm:grid-cols-[1fr_auto] sm:items-center">
+      <div>
+        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#00dbe9]">
+          Exact citizen location proof
+        </p>
+        <p className="mt-2 text-sm leading-6 text-[#d3fbff]">{report.location}</p>
+        <p className="mt-1 font-mono text-xs text-[#dbc2b0]/70">{coordinates}</p>
+      </div>
+      {mapUrl && (
+        <a
+          href={mapUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center justify-center gap-2 rounded border border-[#00dbe9]/35 bg-black/30 px-4 py-3 font-mono text-xs font-semibold text-[#00dbe9] transition hover:bg-[#00dbe9]/10"
+        >
+          <ExternalLink size={14} />
+          Open maps
+        </a>
+      )}
     </div>
   );
 }

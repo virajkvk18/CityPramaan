@@ -166,6 +166,7 @@ export default function ReportIssuePage() {
   const tr = (key: Parameters<typeof translate>[1]) => translate(languageSnapshot, key);
   const [imageName, setImageName] = useState("");
   const [imageDataUrl, setImageDataUrl] = useState("");
+  const [imageLoading, setImageLoading] = useState(false);
   const [location, setLocation] = useState(() => formatCityLocation(getCityByKey(getCitySnapshot())));
   const [latitude, setLatitude] = useState(selectedCity.lat);
   const [longitude, setLongitude] = useState(selectedCity.lng);
@@ -219,11 +220,21 @@ export default function ReportIssuePage() {
     }
 
     setImageName(file.name);
-    setImageDataUrl(await readFileAsDataUrl(file));
+    setImageDataUrl("");
+    setImageLoading(true);
     setVerified(false);
     setAiResult(null);
     setSubmitted(false);
     setProofError("");
+
+    try {
+      setImageDataUrl(await readFileAsDataUrl(file));
+    } catch {
+      setImageName("");
+      setProofError("Could not prepare this image. Please capture again or choose another photo.");
+    } finally {
+      setImageLoading(false);
+    }
   }
 
   function pinManualLocation(nextLatitude = latitude, nextLongitude = longitude) {
@@ -355,16 +366,30 @@ export default function ReportIssuePage() {
       return;
     }
 
+    if (imageLoading) {
+      setProofError("Photo is still being prepared. Please wait a moment, then sign again.");
+      return;
+    }
+
+    if (!imageDataUrl) {
+      setProofError("Capture or upload a civic issue photo before creating public proof.");
+      return;
+    }
+
     setProofCreating(true);
     setProofError("");
     try {
+      const reportCity = getNearestCity(latitude, longitude);
+      const savedLocation = location.includes(latitude.toFixed(5))
+        ? location
+        : `${location} (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`;
       const result =
         aiResult ??
         analyzeInfrastructureIssue({
           description,
           imageName,
-          location,
-          cityName: selectedCity.name,
+          location: savedLocation,
+          cityName: reportCity.name,
         });
 
       const now = new Date().toISOString();
@@ -372,16 +397,16 @@ export default function ReportIssuePage() {
 
       saveLocalReport({
         id: reportId,
-        cityKey: selectedCity.key,
-        title: `${result.issueType} awaiting repair in ${selectedCity.name}`,
-        ward: selectedCity.repairWard,
+        cityKey: reportCity.key,
+        title: `${result.issueType} awaiting repair in ${reportCity.name}`,
+        ward: reportCity.repairWard,
         status: "PENDING_PROOF",
         severity: result.severity,
         confidence: result.confidence,
         contractor: "Awaiting assignment",
         txHash: "0x7bd9...42fa",
         warrantyDaysLeft: null,
-        location,
+        location: savedLocation,
         latitude,
         longitude,
         mapUrl: googleMapsUrl,
@@ -396,7 +421,7 @@ export default function ReportIssuePage() {
           result.category === "POWER_OUTAGE"
             ? {
                 cause: "Weather casualty / suspected transformer or feeder fault",
-                affectedArea: `${selectedCity.primaryArea} residential pocket`,
+                affectedArea: `${reportCity.primaryArea} residential pocket`,
                 estimatedRestoration: "4-6 hours",
                 progressStage: "Fault reported",
                 department: "Electricity Maintenance",
@@ -413,7 +438,7 @@ export default function ReportIssuePage() {
         history: [
           {
             label: "Citizen report created",
-            detail: `${result.issueType} submitted from ${location}.`,
+            detail: `${result.issueType} submitted from ${savedLocation}.`,
             time: new Date(now).toLocaleString(),
             tx: "0x7bd9...42fa",
           },
@@ -438,6 +463,7 @@ export default function ReportIssuePage() {
       });
 
       setAiResult(result);
+      setSelectedCityKey(reportCity.key);
       setVerified(true);
       setSubmitted(true);
       setSigning(false);
@@ -465,6 +491,7 @@ export default function ReportIssuePage() {
     setLocationMessage(`${city.name} default Google Maps pin selected.`);
     setImageName("");
     setImageDataUrl("");
+    setImageLoading(false);
     setDescription(`Large pothole appeared again near the repaired road segment at ${city.primaryArea}.`);
     setVerified(false);
     setAiResult(null);
@@ -589,7 +616,7 @@ export default function ReportIssuePage() {
                   </select>
                 </div>
 
-                <label className="group relative grid min-h-60 cursor-pointer place-items-center overflow-hidden rounded-lg border border-dashed border-[#554336] bg-black/25 p-8 text-center transition hover:border-[#00dbe9]/80">
+                <label className="group relative grid min-h-52 cursor-pointer place-items-center overflow-hidden rounded-lg border border-dashed border-[#554336] bg-black/25 p-5 text-center transition hover:border-[#00dbe9]/80 sm:min-h-60 sm:p-8">
                   <input
                     type="file"
                     accept="image/*"
@@ -612,13 +639,19 @@ export default function ReportIssuePage() {
 
                   <div className="relative">
                     <div className="mx-auto grid h-16 w-16 place-items-center rounded-full border border-[#00dbe9]/30 bg-[#00dbe9]/10 text-[#00dbe9] shadow-[0_0_28px_rgba(0,219,233,0.18)]">
-                      {imageName ? <FileImage size={28} /> : <UploadCloud size={28} />}
+                      {imageLoading ? (
+                        <Sparkles size={28} className="animate-spin" />
+                      ) : imageName ? (
+                        <FileImage size={28} />
+                      ) : (
+                        <UploadCloud size={28} />
+                      )}
                     </div>
                     <p className="mt-4 font-medium text-white">
-                      {imageName || tr("uploadCivicEvidence")}
+                      {imageLoading ? "Preparing captured photo..." : imageName || tr("uploadCivicEvidence")}
                     </p>
                     <p className="mt-1 font-mono text-xs text-[#dbc2b0]/65">
-                      {tr("uploadClickBrowse")}
+                      {imageDataUrl ? "This image will travel to contractor, pending proof, warranty, and public proof." : tr("uploadClickBrowse")}
                     </p>
                   </div>
                 </label>
@@ -651,6 +684,11 @@ export default function ReportIssuePage() {
                 <p className="mt-3 rounded border border-white/10 bg-black/25 p-3 text-xs leading-5 text-[#dbc2b0]/75">
                   On mobile, <span className="text-[#5bffa1]">Capture Live Photo</span> opens the device camera so a citizen standing at the location can submit fresh evidence directly.
                 </p>
+                {proofError && (
+                  <p className="mt-3 rounded border border-[#ffb4ab]/25 bg-[#ffb4ab]/10 px-3 py-2 text-sm text-[#ffdad6]">
+                    {proofError}
+                  </p>
+                )}
               </section>
 
               <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
@@ -978,6 +1016,16 @@ export default function ReportIssuePage() {
                 <button
                   type="button"
                   onClick={() => {
+                    if (imageLoading) {
+                      setProofError("Photo is still being prepared. Please wait a moment.");
+                      return;
+                    }
+
+                    if (!imageDataUrl) {
+                      setProofError("Capture or upload a civic issue photo before creating public proof.");
+                      return;
+                    }
+
                     setProofError("");
                     setSigning(true);
                   }}
@@ -985,8 +1033,19 @@ export default function ReportIssuePage() {
                   className="royal-blue-glow flex w-full items-center justify-center gap-2 rounded border border-[#2A2D35] bg-[#1A1C23] px-4 py-4 font-mono text-xs font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ShieldCheck size={16} />
-                  {proofCreating ? `${tr("createProof")}...` : submitted ? tr("newProofCreated") : tr("createProof")}
+                  {imageLoading
+                    ? "Preparing photo..."
+                    : proofCreating
+                      ? `${tr("createProof")}...`
+                      : submitted
+                        ? tr("newProofCreated")
+                        : tr("createProof")}
                 </button>
+                {proofError && (
+                  <p className="mt-3 rounded border border-[#ffb4ab]/25 bg-[#ffb4ab]/10 px-3 py-2 text-sm text-[#ffdad6]">
+                    {proofError}
+                  </p>
+                )}
                 {!verified && (
                   <p className="mt-3 text-center text-xs text-[#dbc2b0]/60">
                     {tr("unifiedAnalysis")}. {tr("readyToSign")}.
@@ -1083,10 +1142,10 @@ export default function ReportIssuePage() {
               <button
                 type="button"
                 onClick={createProof}
-                disabled={proofCreating}
+                disabled={imageLoading || proofCreating}
                 className="relative z-10 flex-1 rounded bg-[#ffc08d] px-4 py-2 text-sm font-semibold text-[#4c2700] shadow-[0_0_22px_rgba(255,153,51,0.22)] transition hover:bg-[#ffdcc2] disabled:cursor-wait disabled:opacity-70"
               >
-                {proofCreating ? `${tr("signAndCreate")}...` : tr("signAndCreate")}
+                {imageLoading ? "Preparing..." : proofCreating ? `${tr("signAndCreate")}...` : tr("signAndCreate")}
               </button>
             </div>
 

@@ -28,9 +28,11 @@ export function saveLocalReports(reports: CivicReport[]) {
 
   const saveAttempts = [
     reports,
+    compactStoredReports(reports, 6),
+    compactStoredReports(reports, 3),
     compactStoredReports(reports, 1),
     compactStoredReports(reports, 0),
-    compactStoredReports(reports, 0).slice(0, 8),
+    compactStoredReports(reports, 0).slice(0, 12),
   ];
   let lastError: unknown;
 
@@ -155,7 +157,7 @@ async function readCompressedImageAsDataUrl(file: File) {
   }
 
   const image = await loadImage(rawDataUrl);
-  const maxSide = 760;
+  const maxSide = 680;
   const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
   const width = Math.max(1, Math.round(image.width * scale));
   const height = Math.max(1, Math.round(image.height * scale));
@@ -171,9 +173,9 @@ async function readCompressedImageAsDataUrl(file: File) {
 
   context.drawImage(image, 0, 0, width, height);
   const compressedDataUrl =
-    [0.68, 0.58, 0.48]
+    [0.62, 0.5, 0.4]
       .map((quality) => canvas.toDataURL("image/jpeg", quality))
-      .find((dataUrl) => dataUrl.length <= 520_000) ?? canvas.toDataURL("image/jpeg", 0.42);
+      .find((dataUrl) => dataUrl.length <= 420_000) ?? canvas.toDataURL("image/jpeg", 0.34);
 
   return compressedDataUrl.length < rawDataUrl.length ? compressedDataUrl : rawDataUrl;
 }
