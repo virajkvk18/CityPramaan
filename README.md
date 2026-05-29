@@ -1,6 +1,6 @@
 <div align="center">
 
-![Header](https://capsule-render.vercel.app/api?type=waving&color=0:ff9933,50:00dbe9,100:00eb88&height=210&section=header&text=CityPramaam&fontSize=72&fontColor=ffffff&fontAlignY=38&desc=Proof%20of%20Repair%20for%20Accountable%20Cities&descAlignY=58&descSize=20&animation=fadeIn)
+![Header](https://capsule-render.vercel.app/api?type=waving&color=0:ff9933,50:00dbe9,100:00eb88&height=210&section=header&text=CityPramaan&fontSize=72&fontColor=ffffff&fontAlignY=38&desc=Proof%20of%20Repair%20for%20Accountable%20Cities&descAlignY=58&descSize=20&animation=fadeIn)
 
 [![Typing SVG](https://readme-typing-svg.demolab.com?font=Fira+Code&size=21&duration=3000&pause=900&color=00DBE9&center=true&vCenter=true&width=900&lines=AI-powered+civic+issue+reporting;Real+GPS+and+camera-based+public+evidence;Blockchain-style+proof+timeline+and+repair+warranty;Transparent+repair+history+for+accountable+cities)](https://git.io/typing-svg)
 
