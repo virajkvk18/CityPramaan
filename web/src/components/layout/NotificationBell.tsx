@@ -4,9 +4,10 @@ import type { ReactNode } from "react";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { Bell, CheckCircle2, FileImage, MapPin, ShieldAlert, ShieldCheck } from "lucide-react";
 import { getCitySnapshot, subscribeCity } from "@/src/lib/city-storage";
-import { getCityByKey } from "@/src/lib/city-context";
+import { DEFAULT_CITY_KEY, getCityByKey } from "@/src/lib/city-context";
 import { getReportsForCity, type CivicReport } from "@/src/lib/mock-data";
 import { getLocalReportsSnapshot, subscribeLocalReports } from "@/src/lib/report-storage";
+import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 
 type NotificationBellProps = {
   className?: string;
@@ -23,13 +24,14 @@ type NotificationItem = {
 
 export function NotificationBell({ className = "" }: NotificationBellProps) {
   const [open, setOpen] = useState(false);
-  const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => "bhopal");
+  const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => DEFAULT_CITY_KEY);
   const localReportsSnapshot = useSyncExternalStore(
     subscribeLocalReports,
     getLocalReportsSnapshot,
     () => "[]"
   );
   const selectedCity = getCityByKey(citySnapshot);
+  const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const localReports = useMemo(() => parseReports(localReportsSnapshot), [localReportsSnapshot]);
   const notifications = useMemo(() => {
     const localForCity = localReports.filter(
@@ -66,7 +68,7 @@ export function NotificationBell({ className = "" }: NotificationBellProps) {
             <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#00dbe9]">
               Civic Notifications
             </p>
-            <p className="mt-1 text-xs text-[#dbc2b0]">{selectedCity.name} live issue updates</p>
+            <p className="mt-1 text-xs text-[#dbc2b0]">{cityDisplay.cityName} live issue updates</p>
           </div>
 
           <div className="max-h-[21rem] overflow-y-auto p-2">

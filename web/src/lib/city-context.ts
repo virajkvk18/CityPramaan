@@ -90,3 +90,29 @@ export function getCityByKey(key: string | null | undefined) {
 export function formatCityLocation(city: DemoCity, area = city.primaryArea) {
   return `${area}, ${city.name}`;
 }
+
+export function getNearestSupportedCity(latitude: number, longitude: number) {
+  return demoCities
+    .map((city) => ({
+      city,
+      distance: getDistanceKm(latitude, longitude, city.lat, city.lng),
+    }))
+    .sort((first, second) => first.distance - second.distance)[0].city;
+}
+
+export function getDistanceKm(fromLat: number, fromLng: number, toLat: number, toLng: number) {
+  const earthRadiusKm = 6371;
+  const latDelta = toRadians(toLat - fromLat);
+  const lngDelta = toRadians(toLng - fromLng);
+  const startLat = toRadians(fromLat);
+  const endLat = toRadians(toLat);
+  const a =
+    Math.sin(latDelta / 2) * Math.sin(latDelta / 2) +
+    Math.cos(startLat) * Math.cos(endLat) * Math.sin(lngDelta / 2) * Math.sin(lngDelta / 2);
+
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function toRadians(value: number) {
+  return (value * Math.PI) / 180;
+}

@@ -25,7 +25,7 @@ import { NotificationBell } from "@/src/components/layout/NotificationBell";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { AnimatedCityMap } from "@/src/components/map/AnimatedCityMap";
 import { ChainProofCard } from "@/src/components/proof/ChainProofCard";
-import { demoCities, getCityByKey, type CityKey } from "@/src/lib/city-context";
+import { DEFAULT_CITY_KEY, demoCities, getCityByKey, type CityKey } from "@/src/lib/city-context";
 import { getCitySnapshot, setSelectedCityKey, subscribeCity } from "@/src/lib/city-storage";
 import { getReportsForCity, type CivicReport } from "@/src/lib/mock-data";
 import {
@@ -41,6 +41,7 @@ import {
   subscribeWallet,
 } from "@/src/lib/wallet-storage";
 import { useLanguage } from "@/src/lib/use-language";
+import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 import type { TranslationKey } from "@/src/lib/language-context";
 
 const timelineDefaultKeys: TranslationKey[] = [
@@ -66,9 +67,10 @@ export default function Home() {
     getLocalReportsSnapshot,
     () => "[]"
   );
-  const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => "bhopal");
+  const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => DEFAULT_CITY_KEY);
   const walletSnapshot = useSyncExternalStore(subscribeWallet, getWalletSnapshot, () => "false");
   const selectedCity = getCityByKey(citySnapshot);
+  const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const walletConnected = walletSnapshot === "true";
   const localReports = useMemo(
     () => JSON.parse(localReportsSnapshot) as CivicReport[],
@@ -218,16 +220,17 @@ export default function Home() {
                   {t("commandCenterSubtitle")}
                 </p>
                 <h2 className="mt-2 max-w-xl text-[2rem] font-black leading-[1.05] tracking-tight text-white sm:text-4xl">
-                  {selectedCity.name} {t("commandCenter")}
+                  {cityDisplay.cityName} {t("commandCenter")}
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-[#dbc2b0]">
-                  Demo node: {selectedCity.primaryArea}, {selectedCity.state}. Switch cities to
-                  show CityPramaan works beyond one municipal area.
+                  {cityDisplay.isDetectedForSelected
+                    ? `Detected from browser GPS: ${cityDisplay.locationLabel}. Mock civic data is mapped to the nearest supported CityPramaan node.`
+                    : `Selected city node: ${selectedCity.primaryArea}, ${selectedCity.state}. Allow location access to auto-set your city.`}
                 </p>
               </div>
 
               <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:gap-3">
-                <CitySelector value={selectedCity.key} />
+                <CitySelector value={selectedCity.key} detectedCityName={cityDisplay.cityName} isDetected={cityDisplay.isDetectedForSelected} />
                 <CommandLink href="/contractor" label={t("contractorView")} icon={<Building2 size={16} />} tone="cyan" />
                 <CommandLink href="/pending" label={t("pendingProof")} icon={<ScanSearch size={16} />} tone="glass" />
                 <CommandLink href="/warranty" label={t("warrantyScanner")} icon={<ScanSearch size={16} />} tone="gold" />
@@ -287,13 +290,26 @@ export default function Home() {
             </div>
 
             <div className="cp-command-frame relative">
-              <AnimatedCityMap reports={activeDashboardReports} city={selectedCity} />
+              <AnimatedCityMap
+                reports={activeDashboardReports}
+                city={selectedCity}
+                displayCityName={cityDisplay.cityName}
+                displayAreaName={cityDisplay.locationLabel}
+                center={
+                  cityDisplay.isDetectedForSelected && cityDisplay.detectedLocation
+                    ? {
+                        lat: cityDisplay.detectedLocation.latitude,
+                        lng: cityDisplay.detectedLocation.longitude,
+                      }
+                    : undefined
+                }
+              />
             </div>
 
             <div className="cp-live-strip mt-5 overflow-hidden rounded-md border border-white/10 bg-black/30 backdrop-blur-xl">
               <div className="cp-live-track flex min-w-max items-center gap-8 px-4 py-3 font-mono text-xs uppercase tracking-[0.18em] text-[#dbc2b0]">
                 <span className="text-[#00eb88]">{t("liveCivicStream")}</span>
-                <span>{selectedCity.name} {t("nodeSynced")}</span>
+                <span>{cityDisplay.cityName} {t("nodeSynced")}</span>
                 <span>{t("aiClassifierOnline")}</span>
                 <span>{t("warrantyOracleListening")}</span>
                 <span>{t("publicLedgerReady")}</span>
@@ -628,7 +644,15 @@ function IncidentChip({ label, tone }: { label: string; tone: "amber" | "rose" |
   );
 }
 
-function CitySelector({ value }: { value: CityKey }) {
+function CitySelector({
+  value,
+  detectedCityName,
+  isDetected,
+}: {
+  value: CityKey;
+  detectedCityName: string;
+  isDetected: boolean;
+}) {
   return (
     <label className="col-span-2 flex min-h-14 w-full items-center gap-2 rounded-md border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-3 py-2 text-sm text-[#7df4ff] sm:col-auto sm:w-auto">
       <MapPin size={16} />
@@ -640,7 +664,7 @@ function CitySelector({ value }: { value: CityKey }) {
       >
         {demoCities.map((city) => (
           <option key={city.key} value={city.key} className="bg-[#050505] text-white">
-            {city.name}
+            {isDetected && city.key === value ? `${detectedCityName} GPS` : city.name}
           </option>
         ))}
       </select>

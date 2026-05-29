@@ -8,6 +8,12 @@ import { useLanguage } from "@/src/lib/use-language";
 type AnimatedCityMapProps = {
   reports: CivicReport[];
   city: DemoCity;
+  displayCityName?: string;
+  displayAreaName?: string;
+  center?: {
+    lat: number;
+    lng: number;
+  };
 };
 
 const pinTone: Record<
@@ -74,15 +80,17 @@ const mockOffsets = [
   { lat: 0.0076, lng: -0.001 },
 ];
 
-export function AnimatedCityMap({ reports, city }: AnimatedCityMapProps) {
+export function AnimatedCityMap({ reports, city, displayCityName = city.name, displayAreaName, center }: AnimatedCityMapProps) {
   const { t } = useLanguage();
   const visibleReports = reports.filter((report) => report.status !== "CLOSED");
+  const centerLat = center?.lat ?? city.lat;
+  const centerLng = center?.lng ?? city.lng;
   const mapSpan = 0.028;
-  const minLat = city.lat - mapSpan;
-  const maxLat = city.lat + mapSpan;
-  const minLng = city.lng - mapSpan;
-  const maxLng = city.lng + mapSpan;
-  const osmSrc = `https://www.openstreetmap.org/export/embed.html?bbox=${minLng}%2C${minLat}%2C${maxLng}%2C${maxLat}&layer=mapnik&marker=${city.lat}%2C${city.lng}`;
+  const minLat = centerLat - mapSpan;
+  const maxLat = centerLat + mapSpan;
+  const minLng = centerLng - mapSpan;
+  const maxLng = centerLng + mapSpan;
+  const osmSrc = `https://www.openstreetmap.org/export/embed.html?bbox=${minLng}%2C${minLat}%2C${maxLng}%2C${maxLat}&layer=mapnik&marker=${centerLat}%2C${centerLng}`;
   const statusLabels: Record<ReportStatus, string> = {
     OPEN: t("openIssues"),
     PENDING_PROOF: t("pendingProof"),
@@ -98,7 +106,7 @@ export function AnimatedCityMap({ reports, city }: AnimatedCityMapProps) {
   return (
     <div className="glass-panel relative min-h-[430px] flex-1 overflow-hidden rounded-md border border-white/10 bg-[#101014] shadow-[0_0_36px_rgba(0,0,0,0.55)] sm:min-h-[540px] lg:min-h-[620px]">
       <iframe
-        title={`${city.name} OpenStreetMap civic repair mock layer`}
+        title={`${displayCityName} OpenStreetMap civic repair layer`}
         src={osmSrc}
         className="pointer-events-none absolute inset-0 h-full w-full scale-[1.01] border-0 opacity-75 grayscale contrast-125 brightness-75 saturate-50"
         loading="lazy"
@@ -165,7 +173,7 @@ export function AnimatedCityMap({ reports, city }: AnimatedCityMapProps) {
           Mock civic issue layer
         </p>
         <p className="mt-1 text-xs leading-5 text-[#dbc2b0]">
-          Pins are generated around {city.primaryArea}. Real MVP can replace this with GPS reports.
+          Pins are centered around {displayAreaName ?? city.primaryArea}. New reports use exact GPS coordinates.
         </p>
       </div>
 
@@ -173,8 +181,8 @@ export function AnimatedCityMap({ reports, city }: AnimatedCityMapProps) {
         {visibleReports.map((report, index) => {
           const tone = pinTone[report.status];
           const offset = mockOffsets[index % mockOffsets.length];
-          const lat = city.lat + offset.lat;
-          const lng = city.lng + offset.lng;
+          const lat = report.latitude ?? centerLat + offset.lat;
+          const lng = report.longitude ?? centerLng + offset.lng;
           const x = clamp(((lng - minLng) / (maxLng - minLng)) * 100, 8, 92);
           const y = clamp((1 - (lat - minLat) / (maxLat - minLat)) * 100, 12, 88);
 

@@ -1,6 +1,10 @@
 import { DEFAULT_CITY_KEY, type CityKey } from "./city-context";
 
 export const SELECTED_CITY_KEY = "city-pramaan:selected-city";
+export const SELECTED_CITY_SOURCE_KEY = "city-pramaan:selected-city-source";
+export const CITY_UPDATED_EVENT = "city-pramaan:city-updated";
+
+export type CitySelectionSource = "manual" | "auto";
 
 export function getCitySnapshot() {
   if (typeof window === "undefined") {
@@ -11,8 +15,21 @@ export function getCitySnapshot() {
 }
 
 export function setSelectedCityKey(cityKey: CityKey) {
+  setCityKey(cityKey, "manual");
+}
+
+export function setAutoSelectedCityKey(cityKey: CityKey) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  setCityKey(cityKey, "auto");
+}
+
+function setCityKey(cityKey: CityKey, source: CitySelectionSource) {
   window.localStorage.setItem(SELECTED_CITY_KEY, cityKey);
-  window.dispatchEvent(new Event("city-pramaan:city-updated"));
+  window.localStorage.setItem(SELECTED_CITY_SOURCE_KEY, source);
+  window.dispatchEvent(new Event(CITY_UPDATED_EVENT));
 }
 
 export function subscribeCity(callback: () => void) {
@@ -27,10 +44,10 @@ export function subscribeCity(callback: () => void) {
   };
 
   window.addEventListener("storage", onStorage);
-  window.addEventListener("city-pramaan:city-updated", callback);
+  window.addEventListener(CITY_UPDATED_EVENT, callback);
 
   return () => {
     window.removeEventListener("storage", onStorage);
-    window.removeEventListener("city-pramaan:city-updated", callback);
+    window.removeEventListener(CITY_UPDATED_EVENT, callback);
   };
 }

@@ -26,12 +26,13 @@ import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { NotificationBell } from "@/src/components/layout/NotificationBell";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
-import { demoCities, getCityByKey, type CityKey } from "@/src/lib/city-context";
+import { DEFAULT_CITY_KEY, demoCities, getCityByKey, type CityKey } from "@/src/lib/city-context";
 import { getCitySnapshot, setSelectedCityKey, subscribeCity } from "@/src/lib/city-storage";
 import { getReportsForCity, type CivicReport } from "@/src/lib/mock-data";
 import { getLocalReportsSnapshot, subscribeLocalReports } from "@/src/lib/report-storage";
 import { translate } from "@/src/lib/language-context";
 import { getLanguageSnapshot, subscribeLanguage } from "@/src/lib/language-storage";
+import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 
 export default function WarrantyScannerPage() {
   const linkedIssueId = useSyncExternalStore(
@@ -39,7 +40,7 @@ export default function WarrantyScannerPage() {
     getIssueIdFromUrl,
     () => ""
   );
-  const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => "bhopal");
+  const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => DEFAULT_CITY_KEY);
   const languageSnapshot = useSyncExternalStore(
     subscribeLanguage,
     getLanguageSnapshot,
@@ -51,6 +52,7 @@ export default function WarrantyScannerPage() {
     () => "[]"
   );
   const selectedCity = getCityByKey(citySnapshot);
+  const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const tr = (key: Parameters<typeof translate>[1]) => translate(languageSnapshot, key);
   const localReports = useMemo(
     () => JSON.parse(localReportsSnapshot) as CivicReport[],
@@ -145,7 +147,9 @@ export default function WarrantyScannerPage() {
                 {tr("warrantyScanner")} <span className="text-[#dbc2b0]/35">|</span> {tr("publicProof")}
               </h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[#dbc2b0]">
-                {tr("publicRegistrySubtitle")}
+                {cityDisplay.isDetectedForSelected
+                  ? `${tr("publicRegistrySubtitle")} Current city detected as ${cityDisplay.cityName}, ${cityDisplay.regionName}.`
+                  : tr("publicRegistrySubtitle")}
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -163,7 +167,9 @@ export default function WarrantyScannerPage() {
                 >
                   {demoCities.map((city) => (
                     <option key={city.key} value={city.key} className="bg-[#050505] text-white">
-                      {city.name}
+                      {cityDisplay.isDetectedForSelected && city.key === selectedCity.key
+                        ? `${cityDisplay.cityName} GPS`
+                        : city.name}
                     </option>
                   ))}
                 </select>

@@ -21,7 +21,7 @@ import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { NotificationBell } from "@/src/components/layout/NotificationBell";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
-import { demoCities, getCityByKey, type CityKey } from "@/src/lib/city-context";
+import { DEFAULT_CITY_KEY, demoCities, getCityByKey, type CityKey } from "@/src/lib/city-context";
 import { getCitySnapshot, setSelectedCityKey, subscribeCity } from "@/src/lib/city-storage";
 import { getReportsForCity, type CivicReport } from "@/src/lib/mock-data";
 import {
@@ -31,6 +31,7 @@ import {
   upsertLocalReport,
 } from "@/src/lib/report-storage";
 import { useLanguage } from "@/src/lib/use-language";
+import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 
 const reviewStatuses: CivicReport["status"][] = [
   "OPEN",
@@ -43,13 +44,14 @@ const reviewStatuses: CivicReport["status"][] = [
 
 export default function PendingApprovalPage() {
   const { t } = useLanguage();
-  const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => "bhopal");
+  const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => DEFAULT_CITY_KEY);
   const localReportsSnapshot = useSyncExternalStore(
     subscribeLocalReports,
     getLocalReportsSnapshot,
     () => "[]"
   );
   const selectedCity = getCityByKey(citySnapshot);
+  const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const localReports = useMemo(
     () => JSON.parse(localReportsSnapshot) as CivicReport[],
     [localReportsSnapshot]
@@ -191,7 +193,9 @@ export default function PendingApprovalPage() {
                 >
                   {demoCities.map((city) => (
                     <option key={city.key} value={city.key} className="bg-[#050505] text-white">
-                      {city.name}
+                      {cityDisplay.isDetectedForSelected && city.key === selectedCity.key
+                        ? `${cityDisplay.cityName} GPS`
+                        : city.name}
                     </option>
                   ))}
                 </select>
@@ -206,7 +210,7 @@ export default function PendingApprovalPage() {
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="font-mono text-xs uppercase text-[#ffc08d]">Report history</h2>
                 <span className="rounded border border-white/10 bg-black/35 px-2 py-1 font-mono text-[10px] text-[#dbc2b0]">
-                  {selectedCity.name}
+                  {cityDisplay.cityName}
                 </span>
               </div>
 

@@ -27,7 +27,7 @@ import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { NotificationBell } from "@/src/components/layout/NotificationBell";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
-import { demoCities, getCityByKey, type CityKey } from "@/src/lib/city-context";
+import { DEFAULT_CITY_KEY, demoCities, getCityByKey, type CityKey } from "@/src/lib/city-context";
 import { getCitySnapshot, setSelectedCityKey, subscribeCity } from "@/src/lib/city-storage";
 import { getReportsForCity, type CivicReport } from "@/src/lib/mock-data";
 import {
@@ -38,6 +38,7 @@ import {
   upsertLocalReport,
 } from "@/src/lib/report-storage";
 import { useLanguage } from "@/src/lib/use-language";
+import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 
 const activeStatuses: CivicReport["status"][] = [
   "OPEN",
@@ -49,13 +50,14 @@ const activeStatuses: CivicReport["status"][] = [
 
 export default function ContractorPage() {
   const { t } = useLanguage();
-  const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => "bhopal");
+  const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => DEFAULT_CITY_KEY);
   const localReportsSnapshot = useSyncExternalStore(
     subscribeLocalReports,
     getLocalReportsSnapshot,
     () => "[]"
   );
   const selectedCity = getCityByKey(citySnapshot);
+  const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const localReports = useMemo(
     () => JSON.parse(localReportsSnapshot) as CivicReport[],
     [localReportsSnapshot]
@@ -293,7 +295,7 @@ export default function ContractorPage() {
                 {t("backToCommandCenter")}
               </Link>
               <p className="font-mono text-xs uppercase text-[#00dbe9]">
-                {t("repairProof")} | {selectedCity.name} {t("nodeSynced")}
+                {t("repairProof")} | {cityDisplay.cityName} {t("nodeSynced")}
               </p>
               <h1 className="mt-2 text-3xl font-semibold text-white sm:text-5xl">
                 {t("contractorRepairAudit")}
@@ -310,7 +312,9 @@ export default function ContractorPage() {
             >
               {demoCities.map((city) => (
                 <option key={city.key} value={city.key} className="bg-[#050505] text-white">
-                  {city.name}
+                  {cityDisplay.isDetectedForSelected && city.key === selectedCity.key
+                    ? `${cityDisplay.cityName} GPS`
+                    : city.name}
                 </option>
               ))}
             </select>

@@ -36,6 +36,7 @@ import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { NotificationBell } from "@/src/components/layout/NotificationBell";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import {
+  DEFAULT_CITY_KEY,
   demoCities,
   formatCityLocation,
   getCityByKey,
@@ -55,6 +56,7 @@ import {
   saveLocalReport,
 } from "@/src/lib/report-storage";
 import { MOCK_WALLET_ADDRESS } from "@/src/lib/wallet-storage";
+import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 
 const issuePresets = [
   {
@@ -156,13 +158,14 @@ async function reverseGeocodeArea(latitude: number, longitude: number) {
 }
 
 export default function ReportIssuePage() {
-  const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => "bhopal");
+  const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => DEFAULT_CITY_KEY);
   const languageSnapshot = useSyncExternalStore(
     subscribeLanguage,
     getLanguageSnapshot,
     () => "en"
   );
   const selectedCity = getCityByKey(citySnapshot);
+  const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const tr = (key: Parameters<typeof translate>[1]) => translate(languageSnapshot, key);
   const [imageName, setImageName] = useState("");
   const [imageDataUrl, setImageDataUrl] = useState("");
@@ -206,7 +209,7 @@ export default function ReportIssuePage() {
           description,
           imageName,
           location,
-          cityName: selectedCity.name,
+          cityName: cityDisplay.cityName,
         })
       );
       setVerified(true);
@@ -576,7 +579,7 @@ export default function ReportIssuePage() {
               <p className="font-mono text-xs uppercase text-[#00dbe9]">{tr("universalInfrastructureEvidence")}</p>
               <h1 className="mt-2 text-3xl font-semibold text-white sm:text-5xl">{tr("reportIssue")}</h1>
               <p className="mt-2 text-sm text-[#dbc2b0]">
-                {tr("filingNode")}: {selectedCity.name}, {selectedCity.state}. You can also type any exact
+                {tr("filingNode")}: {cityDisplay.cityName}, {cityDisplay.regionName}. You can also type any exact
                 landmark or GPS-backed address below.
               </p>
             </div>
@@ -610,7 +613,9 @@ export default function ReportIssuePage() {
                   >
                     {demoCities.map((city) => (
                       <option key={city.key} value={city.key} className="bg-[#050505] text-white">
-                        {city.name} | {city.state}
+                        {cityDisplay.isDetectedForSelected && city.key === selectedCity.key
+                          ? `${cityDisplay.cityName} GPS | ${cityDisplay.regionName}`
+                          : `${city.name} | ${city.state}`}
                       </option>
                     ))}
                   </select>
@@ -780,7 +785,7 @@ export default function ReportIssuePage() {
                               Nearest city node
                             </p>
                             <p className="mt-1 font-mono text-sm font-semibold text-[#ffc08d]">
-                              {selectedCity.name}
+                              {cityDisplay.cityName}
                             </p>
                           </div>
                           <div className="rounded border border-[#00eb88]/20 bg-[#00eb88]/10 p-3 sm:col-span-2">

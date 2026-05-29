@@ -24,7 +24,7 @@ import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { ChainProofCard } from "@/src/components/proof/ChainProofCard";
-import { getCityByKey } from "@/src/lib/city-context";
+import { DEFAULT_CITY_KEY, getCityByKey } from "@/src/lib/city-context";
 import { getCitySnapshot, subscribeCity } from "@/src/lib/city-storage";
 import { getReportsForCity, type CivicReport } from "@/src/lib/mock-data";
 import {
@@ -34,6 +34,7 @@ import {
   upsertLocalReport,
 } from "@/src/lib/report-storage";
 import { useLanguage } from "@/src/lib/use-language";
+import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 
 const statusTone: Record<CivicReport["status"], string> = {
   OPEN: "border-[#ffb4ab]/30 bg-[#ffb4ab]/10 text-[#ffb4ab]",
@@ -48,7 +49,7 @@ export default function ProofTimelinePage() {
   const { t } = useLanguage();
   const params = useParams<{ id: string }>();
   const proofId = params.id;
-  const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => "bhopal");
+  const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => DEFAULT_CITY_KEY);
   const localReportsSnapshot = useSyncExternalStore(
     subscribeLocalReports,
     getLocalReportsSnapshot,
@@ -65,6 +66,7 @@ export default function ProofTimelinePage() {
   }, [cityReports, localReports]);
   const report = allReports.find((item) => item.id === proofId) ?? cityReports[3];
   const activeCity = getCityByKey(report.cityKey ?? citySnapshot);
+  const cityDisplay = useDetectedLocationDisplay(activeCity);
   const cityHistoryReports = useMemo(() => {
     const baseReports =
       activeCity.key === citySnapshot ? cityReports : getReportsForCity(activeCity.key);
@@ -454,7 +456,7 @@ export default function ProofTimelinePage() {
                   <p className="font-medium">City Report History</p>
                 </div>
                 <p className="mt-1 text-xs text-zinc-400">
-                  {activeCity.name} public reports and proof records
+                  {cityDisplay.cityName} public reports and proof records
                 </p>
               </div>
               <span className="rounded-full border border-[#00dbe9]/25 bg-black/30 px-2 py-1 font-mono text-[10px] text-[#7df4ff]">

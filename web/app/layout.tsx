@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Anton, Inter, JetBrains_Mono } from "next/font/google";
+import { LocationCityInit } from "@/src/components/layout/LocationCityInit";
 import { ThemeInit } from "@/src/components/layout/ThemeInit";
 import "./globals.css";
 
@@ -40,6 +41,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <ThemeInit />
+        <LocationCityInit />
         <div className="buildverse-backdrop" aria-hidden="true">
           <span className="buildverse-orbit buildverse-orbit-a" />
           <span className="buildverse-orbit buildverse-orbit-b" />
