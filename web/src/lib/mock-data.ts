@@ -39,7 +39,13 @@ export type CivicReport = {
   warrantyExpiresAt?: string;
   warrantyPeriodDays?: number;
   evidenceHash?: string;
+  proofBundleHash?: string;
+  repairEvidenceHash?: string;
   repairTxHash?: string;
+  aiPriorityScore?: number;
+  imageEvidenceScore?: number;
+  aiModelVersion?: string;
+  estimatedImpact?: string;
   ownerVerified?: boolean;
   closedAt?: string;
   closureNote?: string;
@@ -92,6 +98,8 @@ export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY):
       confidence: 94,
       contractor: "Not assigned",
       txHash: "0x82f4...91ac",
+      evidenceHash: "0x5d1c9f4a03b7...road01",
+      proofBundleHash: "0xa81e4f0c72d9...bundle01",
       warrantyDaysLeft: null,
       location: formatCityLocation(city, city.secondaryArea),
       latitude: city.lat + 0.006,
@@ -102,6 +110,10 @@ export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY):
       aiSummary: "Road damage requires contractor inspection and repair proof.",
       recommendedAction: "Assign contractor and collect after-repair evidence.",
       slaHours: 72,
+      aiPriorityScore: 92,
+      imageEvidenceScore: 91,
+      aiModelVersion: "CityPramaan Ruleset v0.4",
+      estimatedImpact: "Vehicle damage and accident risk for commuters",
       createdAt: "2026-05-23T10:12:00.000Z",
     },
     {
@@ -114,6 +126,8 @@ export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY):
       confidence: 95,
       contractor: "Electricity restoration crew",
       txHash: "0xee91...44ac",
+      evidenceHash: "0x91f5b6c8aa10...pwr05",
+      proofBundleHash: "0xfe5a89c1d442...bundle05",
       warrantyDaysLeft: null,
       location: formatCityLocation(city, city.primaryArea),
       latitude: city.lat - 0.004,
@@ -126,6 +140,10 @@ export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY):
       recommendedAction:
         "Escalate to electricity maintenance, publish restoration ETA, and require power restoration proof before closure.",
       slaHours: 6,
+      aiPriorityScore: 98,
+      imageEvidenceScore: 93,
+      aiModelVersion: "CityPramaan Ruleset v0.4",
+      estimatedImpact: "Homes and shops affected by power loss and uncertain restoration ETA",
       createdAt: "2026-05-24T06:35:00.000Z",
       utilityRestoration: {
         cause: "Heavy rainfall / suspected transformer trip",
@@ -167,6 +185,10 @@ export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY):
       confidence: 81,
       contractor: city.contractor,
       txHash: "0xa91b...22fd",
+      evidenceHash: "0x123e7a6bc9d2...road02",
+      proofBundleHash: "0xb219a88ef552...bundle02",
+      repairEvidenceHash: "0x8dc41a72f09b...repair02",
+      repairTxHash: "0x93ac...02fd",
       warrantyDaysLeft: null,
       location: formatCityLocation(city, city.secondaryArea),
       latitude: city.lat + 0.004,
@@ -177,6 +199,10 @@ export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY):
       aiSummary: "Contractor has submitted repair evidence. Warranty activation is pending.",
       recommendedAction: "Verify repair proof and activate warranty if audit passes.",
       slaHours: 24,
+      aiPriorityScore: 78,
+      imageEvidenceScore: 89,
+      aiModelVersion: "CityPramaan Ruleset v0.4",
+      estimatedImpact: "Pending issuer approval for safer road movement",
       createdAt: "2026-05-22T12:20:00.000Z",
       repairImageName: "contractor-road-patch-proof.jpg",
     },
@@ -190,6 +216,9 @@ export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY):
       confidence: 88,
       contractor: city.contractor,
       txHash: "0x44ce...73ab",
+      evidenceHash: "0x9ba43df00291...road03",
+      proofBundleHash: "0x31e840fa3b55...bundle03",
+      repairEvidenceHash: "0xb6cd18f00e32...repair03",
       warrantyDaysLeft: 24,
       location: formatCityLocation(city),
       latitude: city.lat,
@@ -200,6 +229,10 @@ export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY):
       aiSummary: "Repair has passed audit and is under active warranty monitoring.",
       recommendedAction: "Monitor for repeat failure during warranty window.",
       slaHours: 0,
+      aiPriorityScore: 66,
+      imageEvidenceScore: 94,
+      aiModelVersion: "CityPramaan Ruleset v0.4",
+      estimatedImpact: "Repair verified and monitored for repeat failure",
       createdAt: "2026-05-19T10:00:00.000Z",
       repairImageName: "verified-road-repair.jpg",
       repairProofAt: "2026-05-20T16:40:00.000Z",
@@ -226,6 +259,9 @@ export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY):
       confidence: 96,
       contractor: city.contractor,
       txHash: "0xf12d...8bb0",
+      evidenceHash: "0xcc1a74df0286...road04",
+      proofBundleHash: "0x74ab6fc11e90...bundle04",
+      repairEvidenceHash: "0x0aa7cc53fd29...repair04",
       warrantyDaysLeft: 12,
       location: formatCityLocation(city),
       latitude: city.lat,
@@ -236,6 +272,10 @@ export function getReportsForCity(cityKey: CityKey | string = DEFAULT_CITY_KEY):
       aiSummary: "Repeat failure is detected inside the active warranty window.",
       recommendedAction: "Reopen warranty claim and reduce contractor reputation score.",
       slaHours: 24,
+      aiPriorityScore: 97,
+      imageEvidenceScore: 96,
+      aiModelVersion: "CityPramaan Ruleset v0.4",
+      estimatedImpact: "Repeat road hazard exposed under active repair warranty",
       createdAt: "2026-05-21T09:41:00.000Z",
       repairImageName: "failed-road-repair-before-after.jpg",
       repairProofAt: "2026-05-21T16:40:00.000Z",

@@ -393,6 +393,11 @@ export default function Home() {
               <div className="mt-5 grid grid-cols-2 gap-3">
                 <InfoCard label={t("severity")} value={selected.severity} accent="text-[#ffb4ab]" />
                 <InfoCard label={t("aiConfidence")} value={`${selected.confidence}%`} accent="text-[#00eb88]" />
+                <InfoCard
+                  label="AI priority"
+                  value={`${selected.aiPriorityScore ?? selected.confidence}/100`}
+                  accent="text-[#d3fbff]"
+                />
                 <InfoCard label="SLA" value={`${selected.slaHours ?? 24} hrs`} accent="text-[#ffc08d]" />
                 <InfoCard
                   label={isPowerIncident ? "Restoration ETA" : t("warranty")}
@@ -412,12 +417,14 @@ export default function Home() {
                   <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#dbc2b0]/70">
                     AI escalation score
                   </span>
-                  <span className="font-mono text-xs font-bold text-[#ffb4ab]">{selected.confidence}%</span>
+                  <span className="font-mono text-xs font-bold text-[#ffb4ab]">
+                    {selected.aiPriorityScore ?? selected.confidence}/100
+                  </span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-white/10">
                   <div
                     className="h-full rounded-full bg-[linear-gradient(90deg,#ff9933,#ff4d6d,#d946ef)] shadow-[0_0_18px_rgba(255,77,109,0.45)]"
-                    style={{ width: `${selected.confidence}%` }}
+                    style={{ width: `${selected.aiPriorityScore ?? selected.confidence}%` }}
                   />
                 </div>
                 <p className="mt-3 text-xs leading-5 text-[#dbc2b0]/75">

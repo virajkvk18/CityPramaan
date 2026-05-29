@@ -55,6 +55,7 @@ import {
   readFileAsDataUrl,
   saveLocalReport,
 } from "@/src/lib/report-storage";
+import { createProofBundleHash, deriveTransactionHash, sha256Hex } from "@/src/lib/proof-hashing";
 import { MOCK_WALLET_ADDRESS } from "@/src/lib/wallet-storage";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 
@@ -186,6 +187,8 @@ export default function ReportIssuePage() {
   const [signing, setSigning] = useState(false);
   const [proofCreating, setProofCreating] = useState(false);
   const [proofError, setProofError] = useState("");
+  const [createdTxHash, setCreatedTxHash] = useState("");
+  const [createdProofHash, setCreatedProofHash] = useState("");
   const [aiProcessing, setAiProcessing] = useState(false);
   const [aiResult, setAiResult] = useState<InfrastructureAnalysis | null>(null);
   const googleMapsUrl = buildGoogleMapsUrl(latitude, longitude);
@@ -229,6 +232,8 @@ export default function ReportIssuePage() {
     setAiResult(null);
     setSubmitted(false);
     setProofError("");
+    setCreatedTxHash("");
+    setCreatedProofHash("");
 
     try {
       setImageDataUrl(await readFileAsDataUrl(file));
@@ -255,6 +260,8 @@ export default function ReportIssuePage() {
     setLocationMessage(`Manual coordinates pinned. Nearest CityPramaan city context: ${nearestCity.name}.`);
     setSubmitted(false);
     setProofError("");
+    setCreatedTxHash("");
+    setCreatedProofHash("");
   }
 
   const applyRealCoordinates = useCallback(async (
@@ -274,6 +281,8 @@ export default function ReportIssuePage() {
     setLocationMessage("Live GPS coordinates captured. Detecting area name...");
     setSubmitted(false);
     setProofError("");
+    setCreatedTxHash("");
+    setCreatedProofHash("");
 
     const detectedArea = await reverseGeocodeArea(nextLatitude, nextLongitude);
 
@@ -362,9 +371,11 @@ export default function ReportIssuePage() {
     setLocationMessage(`Google Maps link parsed. Nearest CityPramaan city context: ${nearestCity.name}.`);
     setSubmitted(false);
     setProofError("");
+    setCreatedTxHash("");
+    setCreatedProofHash("");
   }
 
-  function createProof() {
+  async function createProof() {
     if (submitted || proofCreating) {
       return;
     }
@@ -397,6 +408,20 @@ export default function ReportIssuePage() {
 
       const now = new Date().toISOString();
       const reportId = createLocalReportId();
+      const evidenceHash = await sha256Hex(imageDataUrl);
+      const proofBundleHash = await createProofBundleHash([
+        reportId,
+        evidenceHash,
+        result.category,
+        result.severity,
+        result.confidence,
+        latitude,
+        longitude,
+        savedLocation,
+        now,
+      ]);
+      const txHash = await deriveTransactionHash(`${reportId}:${proofBundleHash}:submitProof`);
+      const aiTxHash = await deriveTransactionHash(`${reportId}:${result.proofTag}:aiVerification`);
 
       saveLocalReport({
         id: reportId,
@@ -407,7 +432,7 @@ export default function ReportIssuePage() {
         severity: result.severity,
         confidence: result.confidence,
         contractor: "Awaiting assignment",
-        txHash: "0x7bd9...42fa",
+        txHash,
         warrantyDaysLeft: null,
         location: savedLocation,
         latitude,
@@ -418,6 +443,10 @@ export default function ReportIssuePage() {
         aiSummary: result.publicSummary,
         recommendedAction: result.recommendedAction,
         slaHours: result.slaHours,
+        aiPriorityScore: result.aiPriorityScore,
+        imageEvidenceScore: result.imageEvidenceScore,
+        aiModelVersion: result.modelVersion,
+        estimatedImpact: result.estimatedImpact,
         createdAt: now,
         updatedAt: now,
         utilityRestoration:
@@ -434,22 +463,20 @@ export default function ReportIssuePage() {
             : undefined,
         issueImageName: imageName || "citizen-issue-evidence.jpg",
         issueImageDataUrl: imageDataUrl,
-        evidenceHash: `0x${Array.from(`${reportId}-${now}`)
-          .map((char) => char.charCodeAt(0).toString(16))
-          .join("")
-          .slice(0, 12)}...${reportId.replace("CP-", "")}`,
+        evidenceHash,
+        proofBundleHash,
         history: [
           {
             label: "Citizen report created",
             detail: `${result.issueType} submitted from ${savedLocation}.`,
             time: new Date(now).toLocaleString(),
-            tx: "0x7bd9...42fa",
+            tx: txHash,
           },
           {
             label: "AI verified civic issue",
-            detail: `${result.category} classified with ${result.confidence}% confidence and ${result.severity} severity.`,
+            detail: `${result.category} classified with ${result.confidence}% confidence, ${result.severity} severity, and ${result.aiPriorityScore}/100 priority score.`,
             time: new Date(now).toLocaleString(),
-            tx: "0x19bb...45aa",
+            tx: aiTxHash,
           },
           ...(result.category === "POWER_OUTAGE"
             ? [
@@ -470,6 +497,8 @@ export default function ReportIssuePage() {
       setVerified(true);
       setSubmitted(true);
       setSigning(false);
+      setCreatedTxHash(txHash);
+      setCreatedProofHash(proofBundleHash);
     } catch {
       const message =
         "Could not save this proof in browser storage. Clear old local reports or try a smaller image.";
@@ -501,6 +530,8 @@ export default function ReportIssuePage() {
     setSubmitted(false);
     setProofCreating(false);
     setProofError("");
+    setCreatedTxHash("");
+    setCreatedProofHash("");
   }
 
   return (
@@ -714,6 +745,8 @@ export default function ReportIssuePage() {
                               setVerified(false);
                               setAiResult(null);
                               setSubmitted(false);
+                              setCreatedTxHash("");
+                              setCreatedProofHash("");
                             }}
                             className="flex items-center gap-2 rounded border border-white/10 bg-black/25 px-3 py-2 text-left text-xs text-[#dbc2b0] transition hover:border-[#00dbe9]/45 hover:text-[#00dbe9]"
                           >
@@ -808,6 +841,8 @@ export default function ReportIssuePage() {
                             onChange={(event) => {
                               setLocation(event.target.value);
                               setSubmitted(false);
+                              setCreatedTxHash("");
+                              setCreatedProofHash("");
                             }}
                             className="w-full bg-transparent font-mono text-sm text-white outline-none"
                             aria-label={tr("selectedAddress")}
@@ -899,6 +934,8 @@ export default function ReportIssuePage() {
                         setVerified(false);
                         setAiResult(null);
                         setSubmitted(false);
+                        setCreatedTxHash("");
+                        setCreatedProofHash("");
                       }}
                       className="input-recessed min-h-36 w-full resize-none rounded px-4 py-3 text-sm text-white"
                       placeholder={tr("reportIssuePlaceholder")}
@@ -944,10 +981,16 @@ export default function ReportIssuePage() {
                       <AnalysisRow label={tr("severity")} value={aiResult.severity} />
                       <AnalysisRow label="SLA" value={`${aiResult.slaHours} hours`} />
                       <AnalysisRow label={tr("duplicateRisk")} value={aiResult.duplicateRisk} />
+                      <AnalysisRow label="AI Priority Score" value={`${aiResult.aiPriorityScore}/100`} />
+                      <AnalysisRow label="Image Evidence Score" value={`${aiResult.imageEvidenceScore}/100`} />
+                      <AnalysisRow label="Model" value={aiResult.modelVersion} />
                     </div>
                     <div className="mt-4 rounded border border-white/10 bg-black/25 p-3">
                       <p className="font-mono text-[10px] uppercase text-[#00dbe9]">{tr("aiVerdict")}</p>
                       <p className="mt-2 text-sm leading-6 text-[#dbc2b0]">{aiResult.recommendedAction}</p>
+                      <p className="mt-2 text-xs leading-5 text-[#dbc2b0]/75">
+                        Impact: {aiResult.estimatedImpact}
+                      </p>
                     </div>
                     <div className="mt-4 grid gap-2">
                       {aiResult.evidenceSignals.slice(0, 3).map((signal) => (
@@ -1072,9 +1115,16 @@ export default function ReportIssuePage() {
                       Classified as <span className="text-[#00eb88]">{aiResult.issueType}</span>.
                     </p>
                   )}
-                  <p className="mt-3 rounded bg-black/45 p-3 font-mono text-xs text-[#00eb88]">
-                    0x7bd9...42fa
-                  </p>
+                  <div className="mt-3 space-y-2 rounded bg-black/45 p-3 font-mono text-xs">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="uppercase text-[#dbc2b0]/55">Tx hash</span>
+                      <span className="truncate text-[#00eb88]">{createdTxHash || "Created"}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="uppercase text-[#dbc2b0]/55">Proof bundle</span>
+                      <span className="truncate text-[#7df4ff]">{createdProofHash || "Stored"}</span>
+                    </div>
+                  </div>
                   <Link
                     href="/"
                     className="mt-4 inline-flex w-full items-center justify-center rounded border border-[#00eb88]/30 bg-[#00eb88]/10 px-4 py-2 text-sm font-semibold text-[#00eb88] transition hover:bg-[#00eb88]/20"
@@ -1146,7 +1196,7 @@ export default function ReportIssuePage() {
               </button>
               <button
                 type="button"
-                onClick={createProof}
+                onClick={() => void createProof()}
                 disabled={imageLoading || proofCreating}
                 className="relative z-10 flex-1 rounded bg-[#ffc08d] px-4 py-2 text-sm font-semibold text-[#4c2700] shadow-[0_0_22px_rgba(255,153,51,0.22)] transition hover:bg-[#ffdcc2] disabled:cursor-wait disabled:opacity-70"
               >

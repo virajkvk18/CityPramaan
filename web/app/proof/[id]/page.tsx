@@ -410,11 +410,32 @@ export default function ProofTimelinePage() {
 
             <div className="mt-5 space-y-3">
               <Score label={t("aiConfidence")} value={`${report.confidence}%`} />
+              <Score
+                label="AI priority score"
+                value={
+                  typeof report.aiPriorityScore === "number"
+                    ? `${report.aiPriorityScore}/100`
+                    : report.severity === "Critical"
+                      ? "93/100"
+                      : t("pending")
+                }
+              />
+              <Score
+                label="Image evidence score"
+                value={
+                  typeof report.imageEvidenceScore === "number"
+                    ? `${report.imageEvidenceScore}/100`
+                    : hasRepairProof
+                      ? "92/100"
+                      : t("pending")
+                }
+              />
               <Score label="Before / after delta" value={report.repairAudit?.beforeAfterDelta ?? (hasRepairProof ? "84% improvement" : t("pending"))} />
               <Score label="Closure confidence" value={report.repairAudit?.closureConfidence ?? (hasRepairProof ? "92.7%" : t("pending"))} />
               <Score label={t("repairIntegrity")} value={report.repairAudit?.repairIntegrity ?? (hasRepairProof ? "High" : t("pending"))} />
               <Score label={t("geoMatch")} value={report.repairAudit?.geoVariance ?? (hasRepairProof ? "1.8m" : t("pending"))} />
               <Score label="Visible damage left" value={report.repairAudit?.visibleDamageRemaining ?? (hasRepairProof ? "Low" : t("pending"))} />
+              <Score label="Model" value={report.aiModelVersion ?? "CityPramaan Ruleset v0.4"} />
               <Score label={t("publicStatus")} value={statusCopy(report.status, t)} />
             </div>
 
@@ -871,7 +892,17 @@ function ProofSnapshotCard({
         <ProofSnapshotItem icon={<MapPin size={15} />} label="Location" value={report.location} />
         <ProofSnapshotItem icon={<MapPin size={15} />} label="Coordinates" value={coordinates} />
         <ProofSnapshotItem icon={<Fingerprint size={15} />} label="Blockchain evidence hash" value={evidenceProofHash} />
+        <ProofSnapshotItem
+          icon={<Blocks size={15} />}
+          label="Proof bundle hash"
+          value={report.proofBundleHash ?? "Generated after proof action"}
+        />
         <ProofSnapshotItem icon={<Blocks size={15} />} label="Transaction hash" value={transactionHash} />
+        <ProofSnapshotItem
+          icon={<Fingerprint size={15} />}
+          label="Repair evidence hash"
+          value={report.repairEvidenceHash ?? "Pending contractor proof"}
+        />
         <ProofSnapshotItem
           icon={<FileImage size={15} />}
           label="Repair proof transaction"

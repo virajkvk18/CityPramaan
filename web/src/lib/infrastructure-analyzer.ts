@@ -21,6 +21,10 @@ export type InfrastructureAnalysis = {
   recommendedAction: string;
   proofTag: string;
   evidenceSignals: string[];
+  aiPriorityScore: number;
+  imageEvidenceScore: number;
+  estimatedImpact: string;
+  modelVersion: string;
 };
 
 type AnalyzeInput = {
@@ -42,6 +46,7 @@ const issueProfiles: Record<
     proofTag: string;
     recommendedAction: string;
     signals: string[];
+    impact: string;
   }
 > = {
   ROAD_DAMAGE: {
@@ -54,6 +59,7 @@ const issueProfiles: Record<
     proofTag: "ROAD_REPAIR_PROOF",
     recommendedAction: "Dispatch road repair crew and lock a warranty record after repair proof.",
     signals: ["Surface depression visible", "Traffic safety risk", "Repair warranty check required"],
+    impact: "Vehicle damage and accident risk for commuters",
   },
   DRAIN_BLOCKAGE: {
     issueType: "Drain Blockage / Waterlogging Risk",
@@ -65,6 +71,7 @@ const issueProfiles: Record<
     proofTag: "DRAIN_CLEANING_PROOF",
     recommendedAction: "Assign drainage crew and require before/after cleaning evidence.",
     signals: ["Drain obstruction risk", "Monsoon readiness impact", "Public health risk"],
+    impact: "Waterlogging, mosquito breeding, and local road disruption",
   },
   POWER_OUTAGE: {
     issueType: "Power Outage / Transformer Failure",
@@ -96,6 +103,7 @@ const issueProfiles: Record<
     recommendedAction:
       "Escalate to electricity maintenance, publish restoration ETA, and require restoration proof before closure.",
     signals: ["Household electricity affected", "Weather casualty / feeder fault risk", "Restoration ETA required"],
+    impact: "Homes and shops affected by power loss and uncertain restoration ETA",
   },
   DARK_ZONE: {
     issueType: "Streetlight Dark Zone",
@@ -107,6 +115,7 @@ const issueProfiles: Record<
     proofTag: "LIGHT_REPAIR_PROOF",
     recommendedAction: "Route to electrical maintenance and verify brightness after repair.",
     signals: ["Low-light safety risk", "Night-time visibility issue", "Public safety corridor impact"],
+    impact: "Night safety risk for pedestrians and commuters",
   },
   GARBAGE_BLACKSPOT: {
     issueType: "Garbage Blackspot",
@@ -118,6 +127,7 @@ const issueProfiles: Record<
     proofTag: "WASTE_CLEARANCE_PROOF",
     recommendedAction: "Assign sanitation crew and watch for repeat dumping at same coordinate.",
     signals: ["Waste accumulation detected", "Repeat blackspot risk", "Sanitation SLA required"],
+    impact: "Public hygiene risk and repeat dumping hotspot",
   },
   WATER_LEAKAGE: {
     issueType: "Water Leakage / Pipeline Fault",
@@ -129,6 +139,7 @@ const issueProfiles: Record<
     proofTag: "WATER_REPAIR_PROOF",
     recommendedAction: "Escalate to water board and record repair closure with pressure check.",
     signals: ["Water loss risk", "Road damage secondary risk", "Utility repair proof required"],
+    impact: "Water loss, road damage, and pressure disruption",
   },
   ACCESSIBILITY_BLOCK: {
     issueType: "Accessibility / Footpath Obstruction",
@@ -140,6 +151,7 @@ const issueProfiles: Record<
     proofTag: "ACCESSIBILITY_RESTORATION_PROOF",
     recommendedAction: "Remove obstruction or repair walkway, then verify accessible path clearance.",
     signals: ["Pedestrian access affected", "Mobility barrier risk", "Public right-of-way issue"],
+    impact: "Pedestrian and wheelchair access blocked",
   },
   GENERAL_INFRASTRUCTURE: {
     issueType: "General Civic Infrastructure Issue",
@@ -151,7 +163,15 @@ const issueProfiles: Record<
     proofTag: "CIVIC_ASSET_PROOF",
     recommendedAction: "Route to civic admin for triage and request repair proof after action.",
     signals: ["Infrastructure anomaly reported", "Manual civic triage suggested", "Public proof record needed"],
+    impact: "Public infrastructure issue requiring civic triage",
   },
+};
+
+const severityScore: Record<InfrastructureAnalysis["severity"], number> = {
+  Low: 42,
+  Medium: 62,
+  High: 82,
+  Critical: 93,
 };
 
 export function analyzeInfrastructureIssue({
@@ -173,12 +193,18 @@ export function analyzeInfrastructureIssue({
   const repeatedWords = ["again", "repeat", "same", "previous", "repaired", "warranty"];
   const hasRepeatSignal = repeatedWords.some((word) => searchable.includes(word));
   const confidence = Math.min(99, profile.confidence + (imageName ? 2 : 0) + (hasRepeatSignal ? 1 : 0));
+  const severity = hasRepeatSignal && profile.severity === "High" ? "Critical" : profile.severity;
+  const imageEvidenceScore = imageName ? Math.min(98, confidence - 3) : 44;
+  const aiPriorityScore = Math.min(
+    99,
+    severityScore[severity] + (hasRepeatSignal ? 5 : 0) + (imageName ? 2 : -6)
+  );
 
   return {
     category,
     issueType: profile.issueType,
     assetType: profile.assetType,
-    severity: hasRepeatSignal && profile.severity === "High" ? "Critical" : profile.severity,
+    severity,
     confidence,
     slaHours: profile.slaHours,
     warrantyRequired: ["ROAD_DAMAGE", "DRAIN_BLOCKAGE", "POWER_OUTAGE", "DARK_ZONE", "WATER_LEAKAGE"].includes(category),
@@ -191,5 +217,9 @@ export function analyzeInfrastructureIssue({
       imageName ? "Visual evidence attached" : "Visual evidence pending",
       hasRepeatSignal ? "Repeat-location language found" : "No repeat-language signal",
     ],
+    aiPriorityScore,
+    imageEvidenceScore,
+    estimatedImpact: profile.impact,
+    modelVersion: "CityPramaan Ruleset v0.4",
   };
 }

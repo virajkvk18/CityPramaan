@@ -37,6 +37,7 @@ import {
   subscribeLocalReports,
   upsertLocalReport,
 } from "@/src/lib/report-storage";
+import { createProofBundleHash, deriveTransactionHash, sha256Hex } from "@/src/lib/proof-hashing";
 import { useLanguage } from "@/src/lib/use-language";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 
@@ -155,19 +156,40 @@ export default function ContractorPage() {
       window.setTimeout(() => {
         setAudited(true);
         setAuditProcessing(false);
-        submitProofForApproval(selectedReport);
+        void submitProofForApproval(selectedReport);
       }, 900);
       return;
     }
 
-    submitProofForApproval(selectedReport);
+    void submitProofForApproval(selectedReport);
   }
 
-  function submitProofForApproval(report: CivicReport) {
+  async function submitProofForApproval(report: CivicReport) {
     const now = new Date();
-    const tx = `0x93ac...${report.id.replace("CP-", "")}fd`;
     const isPowerOutage = report.issueCategory === "POWER_OUTAGE";
     const reportCity = getCityByKey(report.cityKey ?? selectedCity.key);
+    setActionMessage("Creating repair evidence hash and proof bundle...");
+
+    let repairEvidenceHash = "";
+    let proofBundleHash = "";
+    let tx = "";
+
+    try {
+      repairEvidenceHash = await sha256Hex(repairImageDataUrl);
+      proofBundleHash = await createProofBundleHash([
+        report.id,
+        report.evidenceHash,
+        repairEvidenceHash,
+        report.location,
+        report.status,
+        now.toISOString(),
+      ]);
+      tx = await deriveTransactionHash(`${report.id}:${proofBundleHash}:repairProof`);
+    } catch {
+      setActionMessage("Could not create repair proof hash. Try uploading the repair image again.");
+      return;
+    }
+
     const repairAudit = {
       materialMatch: isPowerOutage ? "Restoration signal verified" : "95.4%",
       repairIntegrity: isPowerOutage ? "Power Restored" : "High",
@@ -192,6 +214,8 @@ export default function ContractorPage() {
         repairProofAt: now.toISOString(),
         repairImageName: repairImage || "contractor-after-repair.jpg",
         repairImageDataUrl,
+        repairEvidenceHash,
+        proofBundleHash,
         repairTxHash: tx,
         txHash: report.txHash || tx,
         utilityRestoration: report.utilityRestoration

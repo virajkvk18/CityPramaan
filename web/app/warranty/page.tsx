@@ -274,7 +274,9 @@ export default function WarrantyScannerPage() {
                       <Info label={tr("status")} value={statusLabel(selectedReport, tr)} />
                       <Info label={tr("warranty")} value={warrantyLabel(selectedReport, tr)} />
                       <Info label={tr("contractor")} value={selectedReport.contractor} />
-                      <Info label={tr("publicHash")} value={selectedReport.evidenceHash ?? selectedReport.txHash} />
+                      <Info label="AI priority" value={selectedReport.aiPriorityScore ? `${selectedReport.aiPriorityScore}/100` : "Pending"} />
+                      <Info label={tr("publicHash")} value={selectedReport.proofBundleHash ?? selectedReport.evidenceHash ?? selectedReport.txHash} />
+                      <Info label="Repair hash" value={selectedReport.repairEvidenceHash ?? selectedReport.repairTxHash ?? "Pending"} />
                     </div>
 
                     {selectedReport.status === "CLOSED" && (

@@ -256,6 +256,8 @@ export default function PendingApprovalPage() {
                         <Info label={t("severity")} value={selectedReport.severity} />
                         <Info label={t("aiConfidence")} value={`${selectedReport.confidence}%`} />
                         <Info label={t("contractor")} value={selectedReport.contractor} />
+                        <Info label="AI priority" value={selectedReport.aiPriorityScore ? `${selectedReport.aiPriorityScore}/100` : "Pending"} />
+                        <Info label="Proof hash" value={selectedReport.proofBundleHash ?? selectedReport.evidenceHash ?? selectedReport.txHash} />
                       </div>
                     </div>
 
@@ -278,6 +280,7 @@ export default function PendingApprovalPage() {
                       <Info label="Before / after delta" value={selectedReport.repairAudit?.beforeAfterDelta ?? "Pending"} />
                       <Info label={t("repairIntegrity")} value={selectedReport.repairAudit?.repairIntegrity ?? "Pending"} />
                       <Info label={t("geoMatch")} value={selectedReport.repairAudit?.geoVariance ?? "Pending"} />
+                      <Info label="Repair evidence hash" value={selectedReport.repairEvidenceHash ?? selectedReport.repairTxHash ?? "Pending"} />
                     </div>
 
                     <div className="mt-5 rounded border border-[#00dbe9]/20 bg-[#00dbe9]/10 p-4 text-sm leading-6 text-[#d3fbff]">
