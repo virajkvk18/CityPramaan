@@ -5,6 +5,7 @@ import { useLanguage } from "@/src/lib/use-language";
 
 type ChainProofCardProps = {
   compact?: boolean;
+  proofData?: Partial<typeof proof>;
 };
 
 const proof = {
@@ -16,8 +17,9 @@ const proof = {
   status: "Verified on-chain",
 };
 
-export function ChainProofCard({ compact = false }: ChainProofCardProps) {
+export function ChainProofCard({ compact = false, proofData }: ChainProofCardProps) {
   const { t } = useLanguage();
+  const displayProof = { ...proof, ...proofData };
 
   return (
     <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-4">
@@ -39,15 +41,15 @@ export function ChainProofCard({ compact = false }: ChainProofCardProps) {
       )}
 
       <div className="mt-4 grid gap-2">
-        <ProofRow icon={<Database size={15} />} label={t("chainStatus")} value={proof.network} />
-        <ProofRow icon={<Fingerprint size={15} />} label="Contract" value={proof.contract} />
-        <ProofRow icon={<Blocks size={15} />} label="Block" value={proof.block} />
-        <ProofRow icon={<FileKey2 size={15} />} label="IPFS CID" value={proof.ipfsCid} />
+        <ProofRow icon={<Database size={15} />} label={t("chainStatus")} value={displayProof.network} />
+        <ProofRow icon={<Fingerprint size={15} />} label="Contract" value={displayProof.contract} />
+        <ProofRow icon={<Blocks size={15} />} label="Block" value={displayProof.block} />
+        <ProofRow icon={<FileKey2 size={15} />} label="Proof Hash / CID" value={displayProof.ipfsCid} />
       </div>
 
       <div className="mt-3 rounded-lg border border-white/10 bg-zinc-950/60 px-3 py-2">
         <p className="text-xs text-zinc-500">{t("blockchainTransaction")}</p>
-        <p className="mt-1 break-all text-xs font-medium text-emerald-300">{proof.txHash}</p>
+        <p className="mt-1 break-all text-xs font-medium text-emerald-300">{displayProof.txHash}</p>
       </div>
     </div>
   );

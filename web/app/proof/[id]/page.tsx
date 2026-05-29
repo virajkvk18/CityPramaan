@@ -80,6 +80,8 @@ export default function ProofTimelinePage() {
   const events = report.history?.length ? report.history : fallbackEvents(report);
   const hasRepairProof = Boolean(report.repairImageDataUrl || report.repairImageName);
   const isWarrantyActive = report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE" || report.status === "CLOSED";
+  const evidenceProofHash = report.evidenceHash ?? report.txHash;
+  const primaryTransactionHash = report.repairTxHash ?? report.txHash;
   const [feedbackText, setFeedbackText] = useState("");
   const [actionMessage, setActionMessage] = useState("");
 
@@ -311,6 +313,13 @@ export default function ProofTimelinePage() {
             </div>
           </div>
 
+          <ProofSnapshotCard
+            report={report}
+            evidenceProofHash={evidenceProofHash}
+            transactionHash={primaryTransactionHash}
+            warrantyStatus={warrantyLabel(report, t)}
+          />
+
           <div className="cp-cyber-card cp-cyber-card-hover mt-6 rounded-2xl p-6">
             <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -384,7 +393,12 @@ export default function ProofTimelinePage() {
         </div>
 
         <aside className="space-y-5">
-          <ChainProofCard />
+          <ChainProofCard
+            proofData={{
+              txHash: primaryTransactionHash,
+              ipfsCid: evidenceProofHash,
+            }}
+          />
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
             <div className="flex items-center gap-2">
@@ -809,6 +823,80 @@ function MiniState({
     <div className="flex items-center justify-between rounded-lg border border-white/10 bg-zinc-950/60 px-3 py-2">
       <span className="text-sm text-zinc-300">{label}</span>
       <span className={done ? "text-emerald-300" : "text-orange-300"}>{done ? synced : pending}</span>
+    </div>
+  );
+}
+
+function ProofSnapshotCard({
+  report,
+  evidenceProofHash,
+  transactionHash,
+  warrantyStatus,
+}: {
+  report: CivicReport;
+  evidenceProofHash: string;
+  transactionHash: string;
+  warrantyStatus: string;
+}) {
+  const coordinates =
+    typeof report.latitude === "number" && typeof report.longitude === "number"
+      ? `${report.latitude.toFixed(5)}, ${report.longitude.toFixed(5)}`
+      : "Location proof stored with report";
+
+  return (
+    <section className="mt-6 rounded-2xl border border-[#00dbe9]/20 bg-[linear-gradient(135deg,rgba(0,219,233,0.11),rgba(255,153,51,0.05))] p-5 shadow-[0_0_28px_rgba(0,219,233,0.08)]">
+      <div className="mb-4 flex flex-col justify-between gap-3 border-b border-white/10 pb-4 sm:flex-row sm:items-end">
+        <div>
+          <p className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-[#00dbe9]">
+            Hero Proof Snapshot
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold text-white">Everything needed to verify this report</h2>
+        </div>
+        {report.mapUrl && (
+          <a
+            href={report.mapUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-4 py-2 text-sm font-semibold text-[#7df4ff] hover:bg-[#00dbe9]/15"
+          >
+            Open location
+            <ExternalLink size={15} />
+          </a>
+        )}
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <ProofSnapshotItem icon={<MapPin size={15} />} label="Location" value={report.location} />
+        <ProofSnapshotItem icon={<MapPin size={15} />} label="Coordinates" value={coordinates} />
+        <ProofSnapshotItem icon={<Fingerprint size={15} />} label="Blockchain evidence hash" value={evidenceProofHash} />
+        <ProofSnapshotItem icon={<Blocks size={15} />} label="Transaction hash" value={transactionHash} />
+        <ProofSnapshotItem
+          icon={<FileImage size={15} />}
+          label="Repair proof transaction"
+          value={report.repairTxHash ?? "Pending contractor proof"}
+        />
+        <ProofSnapshotItem icon={<ShieldCheck size={15} />} label="Warranty status" value={warrantyStatus} />
+      </div>
+    </section>
+  );
+}
+
+function ProofSnapshotItem({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-zinc-950/55 p-4">
+      <div className="mb-2 flex items-center gap-2 text-[#7df4ff]">
+        {icon}
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#dbc2b0]/70">{label}</p>
+      </div>
+      <p className="break-all text-sm font-semibold text-zinc-100">{value}</p>
     </div>
   );
 }
