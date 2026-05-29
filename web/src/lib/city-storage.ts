@@ -14,6 +14,16 @@ export function getCitySnapshot() {
   return window.localStorage.getItem(SELECTED_CITY_KEY) ?? DEFAULT_CITY_KEY;
 }
 
+export function getCitySelectionSourceSnapshot(): CitySelectionSource | "default" {
+  if (typeof window === "undefined") {
+    return "default";
+  }
+
+  const source = window.localStorage.getItem(SELECTED_CITY_SOURCE_KEY);
+
+  return source === "manual" || source === "auto" ? source : "default";
+}
+
 export function setSelectedCityKey(cityKey: CityKey) {
   setCityKey(cityKey, "manual");
 }

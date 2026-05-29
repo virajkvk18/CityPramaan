@@ -58,7 +58,7 @@ export function LocationDetectButton({ compact = false }: LocationDetectButtonPr
         : isDetected
           ? detectedLocation.cityName
           : isBlocked
-            ? "Location Blocked"
+            ? "Detect City"
             : "Detect City"}
     </button>
   );
