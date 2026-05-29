@@ -116,7 +116,7 @@ export default function Home() {
     : timelineDefaultKeys.map((key) => t(key));
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#050505] text-[#e5e2e3]">
+    <main className="cp-page-shell relative min-h-screen overflow-hidden bg-[#050505] text-[#e5e2e3]">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_14%_8%,rgba(255,153,51,0.16),transparent_24%),radial-gradient(circle_at_82%_12%,rgba(0,219,233,0.14),transparent_28%),radial-gradient(circle_at_48%_94%,rgba(0,235,136,0.08),transparent_30%)]" />
       <div className="pointer-events-none fixed inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:34px_34px] opacity-70" />
 
@@ -151,7 +151,7 @@ export default function Home() {
 
       <section className="grid min-h-screen grid-cols-1 pb-24 pt-36 sm:pb-0 sm:pt-20 xl:grid-cols-[320px_1fr_400px]">
         <aside className="hidden border-r border-[#ff9933]/15 bg-[linear-gradient(180deg,rgba(255,153,51,0.08),rgba(0,0,0,0.5)_22%,rgba(0,219,233,0.045))] p-5 shadow-[8px_0_40px_rgba(0,0,0,0.35)] backdrop-blur-xl xl:flex xl:flex-col">
-          <nav className="space-y-3">
+          <nav className="cp-stagger-nav space-y-3">
             {navItems.map((item) => {
               const Icon = item.icon;
 
@@ -227,7 +227,7 @@ export default function Home() {
           <div className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-[#00dbe9]/55 to-transparent" />
           <div className="relative z-10 flex h-full min-h-[calc(100vh-5rem)] flex-col">
             <div className="mb-5 flex flex-col gap-4 sm:mb-6 sm:gap-5 2xl:flex-row 2xl:items-end 2xl:justify-between">
-              <div>
+              <div className="cp-fade-up">
                 <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#00dbe9] sm:text-xs sm:tracking-[0.24em]">
                   {t("commandCenterSubtitle")}
                 </p>
@@ -268,7 +268,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="mb-4 grid grid-cols-2 gap-2 sm:mb-5 sm:gap-3 lg:grid-cols-4">
+            <div className="cp-stagger-grid mb-4 grid grid-cols-2 gap-2 sm:mb-5 sm:gap-3 lg:grid-cols-4">
               <PulseStat
                 icon={<Gauge size={17} />}
                 label={t("activeReports")}
@@ -307,7 +307,7 @@ export default function Home() {
               <FilterChip label={t("repeatFailure")} color="bg-[#d946ef]" active />
             </div>
 
-            <div className="cp-command-frame relative">
+            <div className="cp-command-frame cp-map-enter relative">
               <AnimatedCityMap
                 reports={activeDashboardReports}
                 city={selectedCity}
@@ -367,8 +367,8 @@ export default function Home() {
           </div>
         </section>
 
-        <aside className="max-h-none overflow-y-auto bg-[#181615]/95 p-4 backdrop-blur-xl sm:p-5 xl:max-h-screen">
-          <section className="relative overflow-hidden rounded-2xl border border-[#ffb4ab]/30 bg-[radial-gradient(circle_at_14%_10%,rgba(255,180,171,0.18),transparent_28%),linear-gradient(145deg,rgba(255,153,51,0.12),rgba(217,70,239,0.08),rgba(0,0,0,0.3))] p-5 shadow-[0_0_36px_rgba(255,77,109,0.12)]">
+        <aside className="cp-stagger-col max-h-none overflow-y-auto bg-[#181615]/95 p-4 backdrop-blur-xl sm:p-5 xl:max-h-screen">
+          <section className="cp-incident-card relative overflow-hidden rounded-2xl border border-[#ffb4ab]/30 bg-[radial-gradient(circle_at_14%_10%,rgba(255,180,171,0.18),transparent_28%),linear-gradient(145deg,rgba(255,153,51,0.12),rgba(217,70,239,0.08),rgba(0,0,0,0.3))] p-5 shadow-[0_0_36px_rgba(255,77,109,0.12)]">
             <div className="absolute right-0 top-0 h-24 w-24 rounded-bl-full bg-[#ffb4ab]/10 blur-sm" />
             <div className="relative">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -383,7 +383,7 @@ export default function Home() {
                   {isPowerIncident ? "Utility outage" : isNewLocalReport ? t("newProof") : t("highPriority")}
                 </div>
                 <span className="inline-flex items-center gap-2 rounded-full border border-[#00eb88]/25 bg-[#00eb88]/10 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#5bffa1]">
-                  <span className="h-2 w-2 rounded-full bg-[#00eb88] shadow-[0_0_12px_rgba(0,235,136,0.8)]" />
+                  <span className="cp-live-pulse h-2 w-2 rounded-full bg-[#00eb88] shadow-[0_0_12px_rgba(0,235,136,0.8)]" />
                   Live
                 </span>
               </div>
@@ -439,7 +439,7 @@ export default function Home() {
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-white/10">
                   <div
-                    className="h-full rounded-full bg-[linear-gradient(90deg,#ff9933,#ff4d6d,#d946ef)] shadow-[0_0_18px_rgba(255,77,109,0.45)]"
+                    className="cp-bar-fill h-full rounded-full bg-[linear-gradient(90deg,#ff9933,#ff4d6d,#d946ef)] shadow-[0_0_18px_rgba(255,77,109,0.45)]"
                     style={{ width: `${selected.aiPriorityScore ?? selected.confidence}%` }}
                   />
                 </div>
@@ -504,7 +504,7 @@ export default function Home() {
             <p className="mb-5 font-mono text-xs font-bold uppercase tracking-[0.2em] text-[#dbc2b0]">
               {t("proofTimeline")}
             </p>
-            <div className="border-l border-white/10 pl-5">
+            <div className="cp-timeline-stagger border-l border-white/10 pl-5">
               {timelineEvents.map((event, index) => (
                 <div key={event} className="relative pb-7 last:pb-0">
                   <div
@@ -612,7 +612,7 @@ function TrustSignal({
 
   return (
     <div
-      className={`cp-trust-signal flex items-center gap-3 rounded-md border bg-white/[0.035] px-4 py-3 ${tones[tone]}`}
+      className={`cp-trust-signal cp-hover-lift flex items-center gap-3 rounded-md border bg-white/[0.035] px-4 py-3 ${tones[tone]}`}
     >
       <span className="grid h-9 w-9 shrink-0 place-items-center rounded-sm border border-current/25 bg-black/25">
         {icon}
@@ -702,7 +702,7 @@ function FilterChip({ label, color, active }: { label: string; color: string; ac
     <button
       className={`flex items-center gap-2 rounded-full border px-3 py-2 text-xs transition sm:px-4 sm:text-sm ${
         active
-          ? "border-[#ffc08d]/50 bg-[#ffc08d]/10 text-[#ffc08d] shadow-[0_0_18px_rgba(255,192,141,0.1)]"
+          ? "cp-filter-active border-[#ffc08d]/50 bg-[#ffc08d]/10 text-[#ffc08d] shadow-[0_0_18px_rgba(255,192,141,0.1)]"
           : "border-white/15 bg-white/[0.04] text-[#e5e2e3] hover:border-white/30"
       }`}
     >

@@ -22,7 +22,7 @@ export function ChainProofCard({ compact = false, proofData }: ChainProofCardPro
   const displayProof = { ...proof, ...proofData };
 
   return (
-    <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-4">
+    <div className="cp-fade-in rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-emerald-200">
           <Blocks size={18} />

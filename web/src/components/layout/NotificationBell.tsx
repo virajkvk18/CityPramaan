@@ -56,14 +56,14 @@ export function NotificationBell({ className = "" }: NotificationBellProps) {
       >
         <Bell size={16} />
         {unreadCount > 0 && (
-          <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#ff4d6d] px-1 font-mono text-[9px] font-bold text-white shadow-[0_0_14px_rgba(255,77,109,0.55)]">
+          <span className="cp-notification-badge absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#ff4d6d] px-1 font-mono text-[9px] font-bold text-white shadow-[0_0_14px_rgba(255,77,109,0.55)]">
             {unreadCount}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 z-[80] w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-[#00dbe9]/20 bg-[#050607]/95 shadow-[0_18px_55px_rgba(0,0,0,0.55),0_0_28px_rgba(0,219,233,0.12)] backdrop-blur-2xl">
+        <div className="cp-dropdown-panel absolute right-0 top-12 z-[80] w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-[#00dbe9]/20 bg-[#050607]/95 shadow-[0_18px_55px_rgba(0,0,0,0.55),0_0_28px_rgba(0,219,233,0.12)] backdrop-blur-2xl">
           <div className="border-b border-white/10 bg-[linear-gradient(135deg,rgba(0,219,233,0.12),rgba(255,153,51,0.08))] px-4 py-3">
             <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#00dbe9]">
               Civic Notifications

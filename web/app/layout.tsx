@@ -43,9 +43,9 @@ export default function RootLayout({
         <ThemeInit />
         <LocationCityInit />
         <div className="buildverse-backdrop" aria-hidden="true">
-          <span className="buildverse-orbit buildverse-orbit-a" />
-          <span className="buildverse-orbit buildverse-orbit-b" />
-          <span className="buildverse-orbit buildverse-orbit-c" />
+          <span className="buildverse-orbit buildverse-orbit-a cp-orbit-drift" />
+          <span className="buildverse-orbit buildverse-orbit-b cp-orbit-drift" />
+          <span className="buildverse-orbit buildverse-orbit-c cp-orbit-drift" />
         </div>
         {children}
       </body>

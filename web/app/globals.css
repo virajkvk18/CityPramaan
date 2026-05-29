@@ -424,6 +424,20 @@ label:has(select) {
     0 0 20px rgba(0, 219, 233, 0.06);
 }
 
+.theme-toggle svg,
+label:has(select) svg {
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.theme-toggle:hover svg,
+label:has(select):hover svg {
+  transform: rotate(-10deg) scale(1.06);
+}
+
+.cp-notification-badge {
+  animation: cp-badge-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @keyframes buildverse-stage-sweep {
   0%,
   48% {
@@ -1127,6 +1141,378 @@ label:has(select) {
   100% {
     opacity: 0;
     top: 100%;
+  }
+}
+
+/* —— Page & section motion (presentation only) —— */
+.cp-page-shell {
+  animation: cp-page-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.cp-page-shell > header {
+  animation: cp-header-enter 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.cp-page-shell nav.fixed {
+  animation: cp-dock-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
+}
+
+.cp-stagger-grid > * {
+  animation: cp-fade-up 0.62s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.cp-stagger-grid > *:nth-child(1) {
+  animation-delay: 0.06s;
+}
+.cp-stagger-grid > *:nth-child(2) {
+  animation-delay: 0.12s;
+}
+.cp-stagger-grid > *:nth-child(3) {
+  animation-delay: 0.18s;
+}
+.cp-stagger-grid > *:nth-child(4) {
+  animation-delay: 0.24s;
+}
+.cp-stagger-grid > *:nth-child(5) {
+  animation-delay: 0.3s;
+}
+.cp-stagger-grid > *:nth-child(6) {
+  animation-delay: 0.36s;
+}
+.cp-stagger-grid > *:nth-child(7) {
+  animation-delay: 0.42s;
+}
+.cp-stagger-grid > *:nth-child(8) {
+  animation-delay: 0.48s;
+}
+
+.cp-stagger-col > * {
+  animation: cp-fade-up 0.68s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.cp-stagger-col > *:nth-child(1) {
+  animation-delay: 0.14s;
+}
+.cp-stagger-col > *:nth-child(2) {
+  animation-delay: 0.24s;
+}
+.cp-stagger-col > *:nth-child(3) {
+  animation-delay: 0.34s;
+}
+.cp-stagger-col > *:nth-child(4) {
+  animation-delay: 0.44s;
+}
+.cp-stagger-col > *:nth-child(5) {
+  animation-delay: 0.54s;
+}
+.cp-stagger-col > *:nth-child(6) {
+  animation-delay: 0.64s;
+}
+
+.cp-stagger-nav > * {
+  animation: cp-slide-in-left 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.cp-stagger-nav > *:nth-child(1) {
+  animation-delay: 0.08s;
+}
+.cp-stagger-nav > *:nth-child(2) {
+  animation-delay: 0.14s;
+}
+.cp-stagger-nav > *:nth-child(3) {
+  animation-delay: 0.2s;
+}
+.cp-stagger-nav > *:nth-child(4) {
+  animation-delay: 0.26s;
+}
+.cp-stagger-nav > *:nth-child(5) {
+  animation-delay: 0.32s;
+}
+.cp-stagger-nav > *:nth-child(6) {
+  animation-delay: 0.38s;
+}
+
+.cp-timeline-stagger > * {
+  animation: cp-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.cp-timeline-stagger > *:nth-child(1) {
+  animation-delay: 0.2s;
+}
+.cp-timeline-stagger > *:nth-child(2) {
+  animation-delay: 0.32s;
+}
+.cp-timeline-stagger > *:nth-child(3) {
+  animation-delay: 0.44s;
+}
+.cp-timeline-stagger > *:nth-child(4) {
+  animation-delay: 0.56s;
+}
+.cp-timeline-stagger > *:nth-child(5) {
+  animation-delay: 0.68s;
+}
+
+.cp-fade-up {
+  animation: cp-fade-up 0.62s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.cp-fade-in {
+  animation: cp-fade-in 0.55s ease both;
+}
+
+.cp-map-enter {
+  animation: cp-scale-in 0.75s cubic-bezier(0.22, 1, 0.36, 1) 0.18s both;
+}
+
+.cp-live-pulse {
+  animation: cp-live-dot 2s ease-in-out infinite;
+}
+
+.cp-bar-fill {
+  transform-origin: left center;
+  animation: cp-bar-grow 1.1s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both;
+}
+
+.cp-filter-active {
+  animation: cp-filter-glow 2.6s ease-in-out infinite;
+}
+
+.cp-dropdown-panel {
+  animation: cp-dropdown-enter 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: top right;
+}
+
+.cp-orbit-drift {
+  animation: cp-orbit-drift 20s ease-in-out infinite;
+}
+
+.buildverse-orbit-a.cp-orbit-drift {
+  animation-duration: 24s;
+}
+
+.buildverse-orbit-b.cp-orbit-drift {
+  animation-duration: 30s;
+  animation-delay: -4s;
+}
+
+.buildverse-orbit-c.cp-orbit-drift {
+  animation-duration: 18s;
+  animation-delay: -2s;
+}
+
+.cp-hover-lift {
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cp-hover-lift:hover {
+  transform: translateY(-2px);
+}
+
+.cp-incident-card {
+  animation: cp-card-glow-in 0.72s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
+}
+
+.cp-command-frame.cp-map-enter {
+  animation:
+    cp-scale-in 0.75s cubic-bezier(0.22, 1, 0.36, 1) 0.18s both,
+    cp-frame-pulse 4.5s ease-in-out 1.1s infinite;
+}
+
+@keyframes cp-page-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cp-header-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cp-dock-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cp-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cp-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cp-slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes cp-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes cp-dropdown-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes cp-live-dot {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 235, 136, 0.55);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(0, 235, 136, 0);
+    transform: scale(1.08);
+  }
+}
+
+@keyframes cp-bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes cp-filter-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 18px rgba(255, 192, 141, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 26px rgba(255, 192, 141, 0.22);
+  }
+}
+
+@keyframes cp-orbit-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.72;
+  }
+  50% {
+    transform: translate(6px, -8px) scale(1.02);
+    opacity: 0.88;
+  }
+}
+
+@keyframes cp-card-glow-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+    filter: brightness(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: brightness(1);
+  }
+}
+
+@keyframes cp-frame-pulse {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 rgba(0, 219, 233, 0);
+  }
+  50% {
+    box-shadow: inset 0 0 42px rgba(0, 219, 233, 0.04);
+  }
+}
+
+@keyframes cp-badge-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  70% {
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .cp-page-shell,
+  .cp-page-shell > header,
+  .cp-stagger-grid > *,
+  .cp-stagger-col > *,
+  .cp-stagger-nav > *,
+  .cp-timeline-stagger > *,
+  .cp-map-enter,
+  .cp-incident-card,
+  .cp-dropdown-panel {
+    animation: none !important;
+  }
+
+  .cp-live-pulse,
+  .cp-filter-active,
+  .cp-orbit-drift,
+  .cp-command-frame,
+  .buildverse-orbit::before,
+  body > main::after {
+    animation: none !important;
   }
 }
 

@@ -264,7 +264,7 @@ export default function ProofTimelinePage() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#050505] text-zinc-100">
+    <main className="cp-page-shell relative min-h-screen overflow-hidden bg-[#050505] text-zinc-100">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_14%_8%,rgba(255,153,51,0.16),transparent_24%),radial-gradient(circle_at_82%_12%,rgba(0,219,233,0.14),transparent_28%),radial-gradient(circle_at_48%_94%,rgba(0,235,136,0.08),transparent_30%)]" />
       <div className="bg-holo-grid pointer-events-none fixed inset-0" />
       <div className="stitch-cityline pointer-events-none fixed bottom-0 left-0 right-0 h-44 opacity-20" />
