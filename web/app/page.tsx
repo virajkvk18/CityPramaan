@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   AlertTriangle,
   ArrowRight,
@@ -57,6 +57,8 @@ const timelineDefaultKeys: TranslationKey[] = [
   "repeatFailure",
 ];
 
+const SAFETY_INTRO_STORAGE_KEY = "citypramaan-safety-intro-seen";
+
 const navItems = [
   { labelKey: "commandCenter" as const, icon: Gauge, href: "/", active: true },
   { labelKey: "verifiedRepairs" as const, icon: BadgeCheck, href: "/proof/CP-004" },
@@ -67,6 +69,7 @@ const navItems = [
 
 export default function Home() {
   const { t } = useLanguage();
+  const [showSafetyIntro, setShowSafetyIntro] = useState(false);
   const localReportsSnapshot = useSyncExternalStore(
     subscribeLocalReports,
     getLocalReportsSnapshot,
@@ -114,6 +117,34 @@ export default function Home() {
   const timelineEvents = isNewLocalReport
     ? [t("citizenReport"), t("aiPreVerification"), t("newProof"), t("awaitingContractorAssignment")]
     : timelineDefaultKeys.map((key) => t(key));
+
+  useEffect(() => {
+    try {
+      const introSeen = window.localStorage.getItem(SAFETY_INTRO_STORAGE_KEY);
+
+      if (introSeen) {
+        return;
+      }
+    } catch {
+      // If storage is blocked, still show the intro for the current visit.
+    }
+
+    const timer = window.setTimeout(() => {
+      setShowSafetyIntro(true);
+    }, 450);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const closeSafetyIntro = () => {
+    try {
+      window.localStorage.setItem(SAFETY_INTRO_STORAGE_KEY, "true");
+    } catch {
+      // Storage may be unavailable in strict privacy modes.
+    }
+
+    setShowSafetyIntro(false);
+  };
 
   return (
     <main className="cp-page-shell relative min-h-screen overflow-hidden bg-[#050505] text-[#e5e2e3]">
@@ -537,6 +568,8 @@ export default function Home() {
         </aside>
       </section>
 
+      {showSafetyIntro && <SafetyRiskIntro onClose={closeSafetyIntro} />}
+
       <nav className="cp-mobile-dock fixed inset-x-3 bottom-3 z-50 grid grid-cols-5 overflow-hidden rounded-2xl border border-[#ff9933]/20 bg-[#030507]/90 shadow-[0_0_34px_rgba(0,219,233,0.12)] backdrop-blur-2xl sm:hidden">
         <MobileNavLink href="/" label="Home" icon={<Gauge size={17} />} active />
         <MobileNavLink href="/report" label="Report" icon={<AlertTriangle size={17} />} />
@@ -545,6 +578,75 @@ export default function Home() {
         <MobileNavLink href={`/proof/${selected.id}`} label="Proof" icon={<Blocks size={17} />} />
       </nav>
     </main>
+  );
+}
+
+function SafetyRiskIntro({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="cp-safety-intro fixed inset-0 z-[1000] flex items-center justify-center bg-[#020304]/82 px-4 py-6 backdrop-blur-xl">
+      <section className="cp-safety-card relative w-full max-w-3xl overflow-hidden rounded-2xl border border-[#ffc08d]/30 bg-[linear-gradient(145deg,rgba(10,8,6,0.96),rgba(0,22,24,0.94))] p-5 shadow-[0_0_60px_rgba(255,153,51,0.16)] sm:p-7">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 z-20 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#dbc2b0] hover:border-[#00dbe9]/45 hover:text-[#7df4ff]"
+        >
+          Skip
+        </button>
+
+        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+          <div className="cp-safety-scene relative min-h-[260px] overflow-hidden rounded-xl border border-white/10 bg-[radial-gradient(circle_at_50%_18%,rgba(255,153,51,0.18),transparent_32%),linear-gradient(180deg,#071013,#020304)]">
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(0,219,233,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:28px_28px]" />
+            <div className="cp-safety-road absolute inset-x-0 bottom-0 h-28" />
+            <div className="cp-safety-pothole absolute bottom-12 left-1/2 h-14 w-36 -translate-x-1/2 rounded-[50%] bg-black shadow-[inset_0_14px_28px_rgba(0,0,0,0.95),0_0_28px_rgba(255,180,171,0.2)]" />
+            <div className="cp-safety-impact absolute bottom-[92px] left-1/2 h-14 w-14 -translate-x-1/2 rounded-full border border-[#ffb4ab]/45" />
+            <div className="cp-safety-car absolute bottom-24 left-8 h-16 w-28 rounded-[18px_26px_12px_12px] bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] shadow-[0_0_24px_rgba(255,153,51,0.4)]">
+              <div className="absolute left-5 top-3 h-6 w-10 rounded-md bg-[#071013]/75" />
+              <div className="absolute right-4 top-4 h-5 w-7 rounded-md bg-[#071013]/75" />
+              <div className="absolute -bottom-3 left-5 h-6 w-6 rounded-full border-[5px] border-[#050505] bg-[#00dbe9]" />
+              <div className="absolute -bottom-3 right-5 h-6 w-6 rounded-full border-[5px] border-[#050505] bg-[#00dbe9]" />
+              <div className="cp-safety-crack absolute -right-2 top-6 h-7 w-7 border-r-2 border-t-2 border-[#ffb4ab]" />
+            </div>
+            <div className="absolute left-5 top-5 rounded-full border border-[#ffb4ab]/40 bg-[#ffb4ab]/10 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#ffb4ab]">
+              High Risk Zone
+            </div>
+          </div>
+
+          <div className="relative z-10">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-[#00dbe9] sm:text-xs">
+              Why CityPramaan Matters
+            </p>
+            <h2 className="mt-3 text-3xl font-black leading-tight text-white sm:text-4xl">
+              A pothole can become a serious accident in seconds.
+            </h2>
+            <p className="mt-4 text-sm leading-6 text-[#dbc2b0] sm:text-base">
+              Road damage creates risk for riders, cars, pedestrians, and emergency vehicles. Report it early so the issue gets tracked with location, proof, repair status, and public accountability.
+            </p>
+            <div className="cp-safety-message mt-5 rounded-xl border border-[#ffb4ab]/30 bg-[#ffb4ab]/10 p-4">
+              <p className="font-semibold text-[#ffdcc2]">
+                Spot a dangerous pothole or damaged road? Report it as soon as possible.
+              </p>
+            </div>
+            <div className="cp-safety-actions mt-6 flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/report"
+                onClick={onClose}
+                className="cp-command-link inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] px-5 py-3 font-mono text-xs font-black uppercase tracking-[0.18em] text-[#4c2700] shadow-[0_0_28px_rgba(255,153,51,0.26)]"
+              >
+                Report Issue
+                <ArrowRight size={16} />
+              </Link>
+              <button
+                type="button"
+                onClick={onClose}
+                className="min-h-12 rounded-md border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-5 py-3 font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#7df4ff] hover:bg-[#00dbe9]/15"
+              >
+                View Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }
 
