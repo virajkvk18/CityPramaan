@@ -20,6 +20,8 @@ import {
   Wallet,
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
+import { AuthModal } from "@/src/components/layout/AuthModal";
+import { AuthStatusButton } from "@/src/components/layout/AuthStatusButton";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { NotificationBell } from "@/src/components/layout/NotificationBell";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
@@ -45,6 +47,7 @@ import {
   MOCK_WALLET_ADDRESS,
   subscribeWallet,
 } from "@/src/lib/wallet-storage";
+import type { AuthMode } from "@/src/lib/auth-storage";
 import { useLanguage } from "@/src/lib/use-language";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 import type { TranslationKey } from "@/src/lib/language-context";
@@ -70,6 +73,8 @@ const navItems = [
 export default function Home() {
   const { t } = useLanguage();
   const [showSafetyIntro, setShowSafetyIntro] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<AuthMode>("signIn");
   const localReportsSnapshot = useSyncExternalStore(
     subscribeLocalReports,
     getLocalReportsSnapshot,
@@ -146,6 +151,12 @@ export default function Home() {
     setShowSafetyIntro(false);
   };
 
+  const openAuthFromIntro = (mode: AuthMode) => {
+    closeSafetyIntro();
+    setAuthModalMode(mode);
+    setAuthModalOpen(true);
+  };
+
   return (
     <main className="cp-page-shell relative min-h-screen overflow-hidden bg-[#050505] text-[#e5e2e3]">
       <div className="cp-ambient-mesh pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_14%_8%,rgba(255,153,51,0.16),transparent_24%),radial-gradient(circle_at_82%_12%,rgba(0,219,233,0.14),transparent_28%),radial-gradient(circle_at_48%_94%,rgba(0,235,136,0.08),transparent_30%)]" />
@@ -156,7 +167,7 @@ export default function Home() {
           <BrandLogo className="min-w-0" />
         </Link>
 
-        <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:gap-3">
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:flex-nowrap sm:gap-3">
           <Link
             href="/about"
             className="hidden rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.2em] text-[#ffdcc2] transition hover:border-[#00dbe9]/35 hover:bg-[#00dbe9]/10 hover:text-[#7df4ff] md:inline-flex"
@@ -166,6 +177,7 @@ export default function Home() {
           <NotificationBell />
           <ThemeToggle />
           <LanguageSelector compact />
+          <AuthStatusButton />
           <button
             onClick={walletConnected ? disconnectMockWallet : connectMockWallet}
             className={`relative min-h-9 max-w-[136px] overflow-hidden truncate rounded-sm border px-3 py-2 text-center font-mono text-[10px] font-bold uppercase tracking-[0.08em] transition sm:min-h-0 sm:max-w-none sm:px-5 sm:py-3 sm:text-xs sm:tracking-[0.2em] ${
@@ -568,7 +580,12 @@ export default function Home() {
         </aside>
       </section>
 
-      {showSafetyIntro && <SafetyRiskIntro onClose={closeSafetyIntro} />}
+      {showSafetyIntro && (
+        <SafetyRiskIntro onAuthRequested={openAuthFromIntro} onClose={closeSafetyIntro} />
+      )}
+      {authModalOpen && (
+        <AuthModal open initialMode={authModalMode} onClose={() => setAuthModalOpen(false)} />
+      )}
 
       <nav className="cp-mobile-dock fixed inset-x-3 bottom-3 z-50 grid grid-cols-5 overflow-hidden rounded-2xl border border-[#ff9933]/20 bg-[#030507]/90 shadow-[0_0_34px_rgba(0,219,233,0.12)] backdrop-blur-2xl sm:hidden">
         <MobileNavLink href="/" label="Home" icon={<Gauge size={17} />} active />
@@ -581,7 +598,13 @@ export default function Home() {
   );
 }
 
-function SafetyRiskIntro({ onClose }: { onClose: () => void }) {
+function SafetyRiskIntro({
+  onAuthRequested,
+  onClose,
+}: {
+  onAuthRequested: (mode: AuthMode) => void;
+  onClose: () => void;
+}) {
   return (
     <div className="cp-safety-intro fixed inset-0 z-[1000] flex items-center justify-center bg-[#020304]/82 px-4 py-6 backdrop-blur-xl">
       <section className="cp-safety-card relative w-full max-w-3xl overflow-hidden rounded-2xl border border-[#ffc08d]/30 bg-[linear-gradient(145deg,rgba(10,8,6,0.96),rgba(0,22,24,0.94))] p-5 shadow-[0_0_60px_rgba(255,153,51,0.16)] sm:p-7">
@@ -626,7 +649,7 @@ function SafetyRiskIntro({ onClose }: { onClose: () => void }) {
                 Spot a dangerous pothole or damaged road? Report it as soon as possible.
               </p>
             </div>
-            <div className="cp-safety-actions mt-6 flex flex-col gap-3 sm:flex-row">
+            <div className="cp-safety-actions mt-6 grid gap-3 sm:grid-cols-3">
               <Link
                 href="/report"
                 onClick={onClose}
@@ -637,10 +660,17 @@ function SafetyRiskIntro({ onClose }: { onClose: () => void }) {
               </Link>
               <button
                 type="button"
-                onClick={onClose}
+                onClick={() => onAuthRequested("signIn")}
                 className="min-h-12 rounded-md border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-5 py-3 font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#7df4ff] hover:bg-[#00dbe9]/15"
               >
-                View Dashboard
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => onAuthRequested("signUp")}
+                className="min-h-12 rounded-md border border-[#00eb88]/35 bg-[#00eb88]/10 px-5 py-3 font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#5bffa1] hover:bg-[#00eb88]/15"
+              >
+                Sign Up
               </button>
             </div>
           </div>
