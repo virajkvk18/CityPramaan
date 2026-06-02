@@ -8,15 +8,19 @@ import {
   BadgeCheck,
   Blocks,
   Building2,
+  CheckCircle2,
   Clock3,
   FileImage,
   Gauge,
+  LogIn,
+  LogOut,
   MapPin,
   RotateCcw,
   ScanSearch,
   ShieldAlert,
   ShieldCheck,
   Sparkles,
+  UserRound,
   Wallet,
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
@@ -48,6 +52,15 @@ import {
 import { useLanguage } from "@/src/lib/use-language";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 import type { TranslationKey } from "@/src/lib/language-context";
+import {
+  type AuthRole,
+  getAuthSnapshot,
+  getCurrentUser,
+  isProfileComplete,
+  logoutUser,
+  roleLabels,
+  subscribeAuth,
+} from "@/src/lib/auth-storage";
 
 const timelineDefaultKeys: TranslationKey[] = [
   "citizenReport",
@@ -59,13 +72,75 @@ const timelineDefaultKeys: TranslationKey[] = [
 
 const SAFETY_INTRO_STORAGE_KEY = "citypramaan-safety-intro-seen";
 
-const navItems = [
-  { labelKey: "commandCenter" as const, icon: Gauge, href: "/", active: true },
-  { labelKey: "verifiedRepairs" as const, icon: BadgeCheck, href: "/proof/CP-004" },
-  { labelKey: "reportIssue" as const, icon: AlertTriangle, href: "/report" },
-  { labelKey: "warrantyScanner" as const, icon: Wallet, href: "/warranty" },
-  { labelKey: "pendingProof" as const, icon: ScanSearch, href: "/pending" },
-];
+type RoleNavItem = {
+  label: string;
+  icon: typeof Gauge;
+  href: string;
+  active?: boolean;
+  tone?: "cyan" | "gold" | "glass";
+};
+
+function getRoleDashboard(role?: AuthRole) {
+  switch (role) {
+    case "WARD_ADMIN":
+      return {
+        title: "Ward review console active",
+        detail: "Approve contractor proof, monitor warranty risk, and track repeat failures for your assigned ward.",
+        action: "Review pending proof",
+        href: "/pending",
+      };
+    case "CONTRACTOR":
+      return {
+        title: "Contractor repair queue active",
+        detail: "Open assigned civic issues, upload after-repair evidence, and generate repair proof hashes.",
+        action: "Open repair queue",
+        href: "/contractor",
+      };
+    case "USER":
+    default:
+      return {
+        title: "Citizen reporting dashboard active",
+        detail: "Report civic issues, follow proof timelines, and verify warranty status after repairs.",
+        action: "Report issue",
+        href: "/report",
+      };
+  }
+}
+
+function getRoleNavItems(role: AuthRole, proofHref: string): RoleNavItem[] {
+  const profile = { label: "Your profile", icon: UserRound, href: "/profile" };
+  const activeReports = { label: "Active reports", icon: Gauge, href: "/", active: true };
+
+  if (role === "CONTRACTOR") {
+    return [
+      activeReports,
+      { label: "Contractor view", icon: Building2, href: "/contractor", tone: "cyan" },
+      { label: "Upload repair proof", icon: BadgeCheck, href: "/contractor", tone: "gold" },
+      { label: "Public proof", icon: Blocks, href: proofHref, tone: "glass" },
+      profile,
+    ];
+  }
+
+  if (role === "WARD_ADMIN") {
+    return [
+      activeReports,
+      { label: "Pending approvals", icon: ScanSearch, href: "/pending", tone: "glass" },
+      { label: "Contractor view", icon: Building2, href: "/contractor", tone: "cyan" },
+      { label: "Warranty scanner", icon: Wallet, href: "/warranty", tone: "gold" },
+      { label: "Report issue", icon: AlertTriangle, href: "/report", tone: "gold" },
+      { label: "Public proof", icon: Blocks, href: proofHref, tone: "glass" },
+      profile,
+    ];
+  }
+
+  return [
+    activeReports,
+    { label: "Report new issue", icon: AlertTriangle, href: "/report", tone: "gold" },
+    { label: "Public proof", icon: Blocks, href: proofHref, tone: "glass" },
+    { label: "Warranty status", icon: Wallet, href: "/warranty", tone: "cyan" },
+    profile,
+  ];
+}
 
 export default function Home() {
   const { t } = useLanguage();
@@ -82,11 +157,15 @@ export default function Home() {
     () => "default"
   );
   const walletSnapshot = useSyncExternalStore(subscribeWallet, getWalletSnapshot, () => "false");
+  const authSnapshot = useSyncExternalStore(subscribeAuth, getAuthSnapshot, () => "");
   const selectedCity = getCityByKey(citySnapshot);
   const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const waitingForAutoCity = !cityDisplay.detectedLocation && citySourceSnapshot !== "manual";
   const dashboardCityName = waitingForAutoCity ? "Current City" : cityDisplay.cityName;
   const walletConnected = walletSnapshot === "true";
+  const currentUser = useMemo(() => getCurrentUser(authSnapshot), [authSnapshot]);
+  const profileComplete = currentUser ? isProfileComplete(currentUser) : false;
+  const roleDashboard = getRoleDashboard(currentUser?.role);
   const localReports = useMemo(
     () => JSON.parse(localReportsSnapshot) as CivicReport[],
     [localReportsSnapshot]
@@ -112,6 +191,8 @@ export default function Home() {
     [localCityReports]
   );
   const selected = activeLocalReports[0] ?? activeDashboardReports[0] ?? cityReports[3];
+  const roleNavItems = currentUser ? getRoleNavItems(currentUser.role, `/proof/${selected.id}`) : [];
+  const roleActionLinks = roleNavItems.filter((item) => !item.active).slice(0, 5);
   const isNewLocalReport = selected.status === "PENDING_PROOF";
   const isPowerIncident = selected.issueCategory === "POWER_OUTAGE";
   const timelineEvents = isNewLocalReport
@@ -146,6 +227,92 @@ export default function Home() {
     setShowSafetyIntro(false);
   };
 
+  if (!currentUser) {
+    return (
+      <main className="cp-page-shell relative min-h-screen overflow-hidden bg-[#050505] text-[#e5e2e3]">
+        <div className="cp-ambient-mesh pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_14%_8%,rgba(255,153,51,0.16),transparent_24%),radial-gradient(circle_at_82%_12%,rgba(0,219,233,0.14),transparent_28%),radial-gradient(circle_at_48%_94%,rgba(0,235,136,0.08),transparent_30%)]" />
+        <div className="cp-grid-drift pointer-events-none fixed inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:34px_34px] opacity-70" />
+
+        <header className="relative z-10 flex flex-col gap-3 border-b border-[#ff9933]/15 bg-[#030507]/85 px-4 py-4 backdrop-blur-2xl sm:flex-row sm:items-center sm:justify-between sm:px-8">
+          <Link href="/" className="flex min-w-0 items-center gap-3">
+            <BrandLogo className="min-w-0" />
+          </Link>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/about"
+              className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.14em] text-[#ffdcc2] transition hover:border-[#00dbe9]/35 hover:text-[#7df4ff]"
+            >
+              About
+            </Link>
+            <Link
+              href="/auth"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] px-4 py-2 font-mono text-xs font-black uppercase tracking-[0.14em] text-[#4c2700] transition hover:brightness-110"
+            >
+              <LogIn size={15} />
+              Login / Signup
+            </Link>
+          </div>
+        </header>
+
+        <section className="relative z-10 mx-auto grid w-full max-w-6xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-12">
+          <div className="rounded-md border border-white/10 bg-[#061015]/86 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.32)] backdrop-blur-xl sm:p-7">
+            <p className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-[#00dbe9]">About CityPramaan</p>
+            <h1 className="mt-3 text-4xl font-black leading-tight text-white sm:text-5xl">
+              Public proof for civic repairs.
+            </h1>
+            <p className="mt-4 text-sm leading-7 text-[#dbc2b0] sm:text-base">
+              CityPramaan lets citizens, contractors, and ward admins track civic issues from report to repair proof, warranty, and repeat-failure audit. Public visitors can view active reports first; role dashboards unlock after login.
+            </p>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              <PublicMetric label="Active reports" value={`${activeDashboardReports.length}`} />
+              <PublicMetric label="Proof records" value={`${214 + localCityReports.length}`} />
+              <PublicMetric label="City node" value={dashboardCityName} />
+            </div>
+          </div>
+
+          <div className="rounded-md border border-white/10 bg-black/30 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.26)] backdrop-blur-xl sm:p-7">
+            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-[#ffc08d]">Active reports</p>
+                <h2 className="mt-2 text-3xl font-black text-white">Live civic issues</h2>
+              </div>
+              <CitySelector
+                value={selectedCity.key}
+                displayCityName={dashboardCityName}
+                useDisplayName={waitingForAutoCity || cityDisplay.isDetectedForSelected}
+              />
+            </div>
+
+            <div className="grid gap-3">
+              {activeDashboardReports.slice(0, 5).map((report) => (
+                <Link
+                  key={report.id}
+                  href={`/proof/${report.id}`}
+                  className="group rounded-md border border-white/10 bg-white/[0.035] p-4 transition hover:border-[#00dbe9]/35 hover:bg-[#00dbe9]/8"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-white">{report.title}</p>
+                      <p className="mt-1 flex items-start gap-2 text-xs leading-5 text-[#dbc2b0]">
+                        <MapPin size={14} className="mt-0.5 shrink-0 text-[#ffc08d]" />
+                        {report.location}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full border border-[#ffc08d]/30 bg-[#ffc08d]/10 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[#ffc08d]">
+                      {report.status.replaceAll("_", " ")}
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="cp-page-shell relative min-h-screen overflow-hidden bg-[#050505] text-[#e5e2e3]">
       <div className="cp-ambient-mesh pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_14%_8%,rgba(255,153,51,0.16),transparent_24%),radial-gradient(circle_at_82%_12%,rgba(0,219,233,0.14),transparent_28%),radial-gradient(circle_at_48%_94%,rgba(0,235,136,0.08),transparent_30%)]" />
@@ -166,6 +333,32 @@ export default function Home() {
           <NotificationBell />
           <ThemeToggle />
           <LanguageSelector compact />
+          {currentUser ? (
+            <div className="flex items-center gap-2">
+              <Link
+                href="/profile"
+                className="inline-flex min-h-9 max-w-[150px] items-center gap-2 overflow-hidden truncate rounded-sm border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[#b8f9ff] transition hover:border-[#00dbe9]/60 sm:max-w-none sm:px-4 sm:py-3 sm:text-xs sm:tracking-[0.14em]"
+              >
+                <UserRound size={15} />
+                <span className="truncate">{currentUser.name}</span>
+              </Link>
+              <button
+                onClick={logoutUser}
+                className="hidden min-h-9 items-center gap-2 rounded-sm border border-white/10 bg-white/[0.03] px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-[#dbc2b0] transition hover:border-[#ffb4ab]/35 hover:text-[#ffcec7] sm:inline-flex"
+              >
+                <LogOut size={14} />
+                Logout
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/auth"
+              className="inline-flex min-h-9 items-center gap-2 rounded-sm border border-[#00eb88]/35 bg-[#00eb88]/10 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-[#8fffc1] transition hover:border-[#00eb88]/60 sm:px-4 sm:py-3 sm:text-xs sm:tracking-[0.14em]"
+            >
+              <LogIn size={15} />
+              Login
+            </Link>
+          )}
           <button
             onClick={walletConnected ? disconnectMockWallet : connectMockWallet}
             className={`relative min-h-9 max-w-[136px] overflow-hidden truncate rounded-sm border px-3 py-2 text-center font-mono text-[10px] font-bold uppercase tracking-[0.08em] transition sm:min-h-0 sm:max-w-none sm:px-5 sm:py-3 sm:text-xs sm:tracking-[0.2em] ${
@@ -183,12 +376,12 @@ export default function Home() {
       <section className="grid min-h-screen grid-cols-1 pb-24 pt-36 sm:pb-0 sm:pt-20 xl:grid-cols-[320px_1fr_400px]">
         <aside className="hidden border-r border-[#ff9933]/15 bg-[linear-gradient(180deg,rgba(255,153,51,0.08),rgba(0,0,0,0.5)_22%,rgba(0,219,233,0.045))] p-5 shadow-[8px_0_40px_rgba(0,0,0,0.35)] backdrop-blur-xl xl:flex xl:flex-col">
           <nav className="cp-stagger-nav space-y-3">
-            {navItems.map((item) => {
+            {roleNavItems.map((item) => {
               const Icon = item.icon;
 
               return (
                 <Link
-                  key={item.labelKey}
+                  key={item.label}
                   href={item.href}
                   className={`flex w-full items-center gap-4 rounded-md border px-4 py-4 text-left transition ${
                     item.active
@@ -198,7 +391,7 @@ export default function Home() {
                 >
                   <Icon size={22} />
                   <span className="font-mono text-xs font-bold uppercase tracking-[0.18em]">
-                    {t(item.labelKey)}
+                    {item.label}
                   </span>
                 </Link>
               );
@@ -280,22 +473,61 @@ export default function Home() {
                   displayCityName={dashboardCityName}
                   useDisplayName={waitingForAutoCity || cityDisplay.isDetectedForSelected}
                 />
-                <CommandLink href="/contractor" label={t("contractorView")} icon={<Building2 size={16} />} tone="cyan" />
-                <CommandLink href="/pending" label={t("pendingProof")} icon={<ScanSearch size={16} />} tone="glass" />
-                <CommandLink href="/warranty" label={t("warrantyScanner")} icon={<ScanSearch size={16} />} tone="gold" />
-                <CommandLink
-                  href={`/proof/${selected.id}`}
-                  label={t("publicProof")}
-                  icon={<Blocks size={16} />}
-                  tone="glass"
-                />
-                <Link
-                  href="/report"
-                  className="cp-command-link relative col-span-2 flex min-h-12 items-center justify-center overflow-hidden rounded-sm bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] px-5 py-3 text-center font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#4c2700] shadow-[0_0_24px_rgba(255,153,51,0.2)] hover:shadow-[0_0_30px_rgba(255,153,51,0.3)] sm:col-auto"
-                >
-                  <span className="stitch-shimmer" />
-                  {t("reportIssue")}
-                </Link>
+                {roleActionLinks.map((item) => {
+                  const Icon = item.icon;
+
+                  return (
+                    <CommandLink
+                      key={item.label}
+                      href={item.href}
+                      label={item.label}
+                      icon={<Icon size={16} />}
+                      tone={item.tone ?? "glass"}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="mb-4 rounded-md border border-white/10 bg-black/28 p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:mb-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-md border ${currentUser ? "border-[#00eb88]/35 bg-[#00eb88]/10 text-[#8fffc1]" : "border-[#ffc08d]/35 bg-[#ff9933]/10 text-[#ffc08d]"}`}>
+                    {currentUser ? <UserRound size={21} /> : <ShieldCheck size={21} />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#00dbe9]">
+                      {currentUser ? roleLabels[currentUser.role] : "Guest access"}
+                    </p>
+                    <h3 className="mt-1 text-xl font-black text-white">{currentUser ? roleDashboard.title : "Login to open your role dashboard"}</h3>
+                    <p className="mt-1 max-w-3xl text-sm leading-6 text-[#dbc2b0]">
+                      {currentUser ? roleDashboard.detail : "Create a citizen, ward admin, or contractor profile to unlock the right workflow and profile proof hash."}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {currentUser && (
+                    <span className={`inline-flex min-h-10 items-center gap-2 rounded-md border px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.12em] ${profileComplete ? "border-[#00eb88]/35 bg-[#00eb88]/10 text-[#8fffc1]" : "border-[#ffc08d]/35 bg-[#ff9933]/10 text-[#ffc08d]"}`}>
+                      <CheckCircle2 size={15} />
+                      {profileComplete ? "Profile complete" : "Complete profile"}
+                    </span>
+                  )}
+                  <Link
+                    href={currentUser ? roleDashboard.href : "/auth"}
+                    className="inline-flex min-h-10 items-center justify-center rounded-md bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] px-4 py-2 font-mono text-xs font-black uppercase tracking-[0.14em] text-[#4c2700] transition hover:brightness-110"
+                  >
+                    {currentUser ? roleDashboard.action : "Login / Signup"}
+                  </Link>
+                  {currentUser && !profileComplete && (
+                    <Link
+                      href="/profile"
+                      className="inline-flex min-h-10 items-center justify-center rounded-md border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.14em] text-[#b8f9ff] transition hover:border-[#00dbe9]/60"
+                    >
+                      Complete profile
+                    </Link>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -655,6 +887,15 @@ function AuditMetric({ label, value, tone }: { label: string; value: string; ton
     <div className="flex items-center justify-between gap-4">
       <span className="text-sm text-[#dbc2b0]">{label}</span>
       <span className={`font-mono text-sm font-bold ${tone}`}>{value}</span>
+    </div>
+  );
+}
+
+function PublicMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-h-24 rounded-md border border-white/10 bg-black/28 p-4">
+      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#a38d7c]">{label}</p>
+      <p className="mt-2 break-words text-2xl font-black text-white">{value}</p>
     </div>
   );
 }
