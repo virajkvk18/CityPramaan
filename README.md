@@ -21,7 +21,7 @@
 
 <br />
 
-> **CityPramaaaaaan** is an AI + Web3 civic accountability platform where a public infrastructure issue is not only reported, but verified, repaired, approved, warrantied, and permanently visible as public proof.
+> **CityPramaan** is an AI + Web3 civic accountability platform where a public infrastructure issue is not only reported, but verified, repaired, approved, warrantied, and permanently visible as public proof.
 
 <br />
 
