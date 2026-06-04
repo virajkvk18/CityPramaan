@@ -304,12 +304,18 @@ body > main::after {
   display: none !important;
 }
 
-.cp-video-landing > video {
+.cp-video-landing > video,
+.cp-video-landing .cp-hero-photo {
   position: absolute !important;
   z-index: 0 !important;
 }
 
-.cp-video-landing > div {
+.cp-video-landing .cp-hero-photo {
+  filter: saturate(0.9) contrast(1.06);
+  transform: scale(1.015);
+}
+
+.cp-video-landing > .cp-hero-content {
   position: relative;
   z-index: 10;
 }
