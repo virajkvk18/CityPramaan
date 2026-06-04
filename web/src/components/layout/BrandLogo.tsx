@@ -49,7 +49,7 @@ export function BrandLogo({
 
       {showText && (
         <div className="flex min-w-0 flex-col gap-0.5">
-          <span className={`${titleSize} font-black leading-none tracking-tight text-white`}>
+          <span className={`${titleSize} whitespace-nowrap font-black leading-none tracking-tight text-white`}>
             City<span className="cp-brand-text">Pramaan</span>
           </span>
           <span className="hidden max-w-[180px] truncate font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-[#dbc2b0] sm:block md:max-w-none">

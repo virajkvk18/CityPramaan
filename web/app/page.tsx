@@ -71,6 +71,8 @@ const timelineDefaultKeys: TranslationKey[] = [
 ];
 
 const SAFETY_INTRO_STORAGE_KEY = "citypramaan-safety-intro-seen";
+const CITY_HERO_VIDEO_URL =
+  "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260403_050628_c4e32401-fab4-4a27-b7a8-6e9291cd5959.mp4";
 
 type RoleNavItem = {
   label: string;
@@ -229,86 +231,103 @@ export default function Home() {
 
   if (!currentUser) {
     return (
-      <main className="cp-page-shell relative min-h-screen overflow-hidden bg-[#050505] text-[#e5e2e3]">
-        <div className="cp-ambient-mesh pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_14%_8%,rgba(255,153,51,0.16),transparent_24%),radial-gradient(circle_at_82%_12%,rgba(0,219,233,0.14),transparent_28%),radial-gradient(circle_at_48%_94%,rgba(0,235,136,0.08),transparent_30%)]" />
-        <div className="cp-grid-drift pointer-events-none fixed inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:34px_34px] opacity-70" />
+      <main className="cp-page-shell cp-video-landing relative min-h-screen overflow-hidden bg-black text-white">
+        <video
+          className="absolute inset-0 h-full w-full object-cover"
+          src={CITY_HERO_VIDEO_URL}
+          autoPlay
+          loop
+          muted
+          playsInline
+          aria-hidden="true"
+        />
 
-        <header className="relative z-10 flex flex-col gap-3 border-b border-[#ff9933]/15 bg-[#030507]/85 px-4 py-4 backdrop-blur-2xl sm:flex-row sm:items-center sm:justify-between sm:px-8">
-          <Link href="/" className="flex min-w-0 items-center gap-3">
-            <BrandLogo className="min-w-0" />
-          </Link>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href="/about"
-              className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.14em] text-[#ffdcc2] transition hover:border-[#00dbe9]/35 hover:text-[#7df4ff]"
-            >
-              About
+        <div className="relative z-10 flex min-h-screen flex-col px-4 pb-7 pt-4 sm:px-6 md:px-10 lg:px-14">
+          <header className="liquid-glass flex flex-wrap items-center justify-between gap-3 rounded-xl px-3 py-3 sm:px-4">
+            <Link href="/" className="flex min-w-0 max-w-[calc(100%-6.5rem)] items-center gap-3 sm:max-w-none">
+              <BrandLogo className="min-w-0" size="sm" />
             </Link>
-            <Link
-              href="/auth"
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] px-4 py-2 font-mono text-xs font-black uppercase tracking-[0.14em] text-[#4c2700] transition hover:brightness-110"
-            >
-              <LogIn size={15} />
-              Login / Signup
-            </Link>
-          </div>
-        </header>
 
-        <section className="relative z-10 mx-auto grid w-full max-w-6xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-12">
-          <div className="rounded-md border border-white/10 bg-[#061015]/86 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.32)] backdrop-blur-xl sm:p-7">
-            <p className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-[#00dbe9]">About CityPramaan</p>
-            <h1 className="mt-3 text-4xl font-black leading-tight text-white sm:text-5xl">
-              Public proof for civic repairs.
-            </h1>
-            <p className="mt-4 text-sm leading-7 text-[#dbc2b0] sm:text-base">
-              CityPramaan lets citizens, contractors, and ward admins track civic issues from report to repair proof, warranty, and repeat-failure audit. Public visitors can view active reports first; role dashboards unlock after login.
-            </p>
+            <nav className="hidden items-center gap-5 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-white/78 lg:flex xl:gap-8">
+              <Link href="/auth" className="transition hover:text-white">
+                Story
+              </Link>
+              <Link href="/auth" className="transition hover:text-white">
+                Warranty
+              </Link>
+              <Link href="/auth" className="transition hover:text-white">
+                Public Proof
+              </Link>
+              <Link href="/auth" className="transition hover:text-white">
+                Report
+              </Link>
+            </nav>
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              <PublicMetric label="Active reports" value={`${activeDashboardReports.length}`} />
-              <PublicMetric label="Proof records" value={`${214 + localCityReports.length}`} />
-              <PublicMetric label="City node" value={dashboardCityName} />
+            <div className="flex shrink-0 items-center gap-2">
+              <Link
+                href="/auth"
+                className="hidden min-h-10 items-center justify-center rounded-lg border border-white/20 px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-white transition hover:bg-white hover:text-black sm:inline-flex"
+              >
+                Report Issue
+              </Link>
+              <Link
+                href="/auth"
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-white px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-black transition hover:bg-gray-100 sm:px-5"
+              >
+                <LogIn size={15} />
+                Start
+              </Link>
             </div>
-          </div>
+          </header>
 
-          <div className="rounded-md border border-white/10 bg-black/30 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.26)] backdrop-blur-xl sm:p-7">
-            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-[#ffc08d]">Active reports</p>
-                <h2 className="mt-2 text-3xl font-black text-white">Live civic issues</h2>
-              </div>
-              <CitySelector
-                value={selectedCity.key}
-                displayCityName={dashboardCityName}
-                useDisplayName={waitingForAutoCity || cityDisplay.isDetectedForSelected}
-              />
-            </div>
-
-            <div className="grid gap-3">
-              {activeDashboardReports.slice(0, 5).map((report) => (
-                <Link
-                  key={report.id}
-                  href={`/proof/${report.id}`}
-                  className="group rounded-md border border-white/10 bg-white/[0.035] p-4 transition hover:border-[#00dbe9]/35 hover:bg-[#00dbe9]/8"
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-white">{report.title}</p>
-                      <p className="mt-1 flex items-start gap-2 text-xs leading-5 text-[#dbc2b0]">
-                        <MapPin size={14} className="mt-0.5 shrink-0 text-[#ffc08d]" />
-                        {report.location}
-                      </p>
-                    </div>
-                    <span className="shrink-0 rounded-full border border-[#ffc08d]/30 bg-[#ffc08d]/10 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[#ffc08d]">
-                      {report.status.replaceAll("_", " ")}
-                    </span>
+          <section className="flex flex-1 flex-col justify-end py-10 sm:py-12 lg:py-14">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)] lg:items-end">
+              <div className="max-w-4xl">
+                <AnimatedHeading
+                  text={`Proof of repair\nfor accountable cities.`}
+                  className="mb-4 text-[2.25rem] font-black leading-[1.05] text-white sm:text-[2.9rem] md:text-[3.55rem] lg:text-[4.1rem] xl:text-[4.85rem]"
+                />
+                <FadeIn delay={800} duration={1000}>
+                  <p className="mb-5 max-w-2xl text-sm leading-6 text-gray-300 sm:text-base md:text-lg md:leading-7">
+                    CityPramaan turns civic complaints into verifiable repair histories with public
+                    proof, contractor accountability, and warranty memory for every city issue.
+                  </p>
+                </FadeIn>
+                <FadeIn delay={1200} duration={1000}>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                    <Link
+                      href="/auth"
+                      className="inline-flex min-h-11 items-center justify-center rounded-lg bg-white px-6 py-3 text-center font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-gray-100 sm:px-8"
+                    >
+                      Start a Report
+                    </Link>
+                    <Link
+                      href="/auth"
+                      className="liquid-glass inline-flex min-h-11 items-center justify-center rounded-lg border border-white/20 px-6 py-3 text-center font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-white transition hover:bg-white hover:text-black sm:px-8"
+                    >
+                      Explore Proof
+                    </Link>
                   </div>
-                </Link>
-              ))}
+                </FadeIn>
+              </div>
+
+              <div className="flex items-end justify-start lg:justify-end">
+                <FadeIn delay={1400} duration={1000}>
+                  <div className="liquid-glass w-full max-w-md rounded-xl border border-white/20 px-5 py-4 sm:px-6">
+                    <p className="text-base font-semibold text-white sm:text-lg md:text-xl">
+                      Report. Repair. Verify.
+                    </p>
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-center sm:gap-3">
+                      <PublicMetric label="Active" value={`${activeDashboardReports.length}`} />
+                      <PublicMetric label="Proofs" value={`${214 + localCityReports.length}`} />
+                      <PublicMetric label="Node" value={dashboardCityName} />
+                    </div>
+                  </div>
+                </FadeIn>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
       </main>
     );
   }
@@ -810,6 +829,86 @@ export default function Home() {
         <MobileNavLink href={`/proof/${selected.id}`} label="Proof" icon={<Blocks size={17} />} />
       </nav>
     </main>
+  );
+}
+
+function FadeIn({
+  children,
+  delay = 0,
+  duration = 700,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  duration?: number;
+}) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setVisible(true), delay);
+    return () => window.clearTimeout(timer);
+  }, [delay]);
+
+  return (
+    <div
+      className={`transition-opacity ${visible ? "opacity-100" : "opacity-0"}`}
+      style={{ transitionDuration: `${duration}ms` }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function AnimatedHeading({ text, className = "" }: { text: string; className?: string }) {
+  const [visible, setVisible] = useState(false);
+  const charDelay = 30;
+  const initialDelay = 200;
+  const lines = text.split("\n");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setVisible(true), initialDelay);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  return (
+    <h1 className={className} style={{ letterSpacing: "0.02em" }}>
+      {lines.map((line, lineIndex) => {
+        const previousLength = lines
+          .slice(0, lineIndex)
+          .reduce((total, currentLine) => total + currentLine.length + 1, 0);
+        let runningLength = previousLength;
+
+        return (
+          <span key={`${line}-${lineIndex}`} className="block">
+            {line.split(" ").map((word, wordIndex) => {
+              const wordStart = runningLength;
+              runningLength += word.length + 1;
+
+              return (
+                <span
+                  key={`${lineIndex}-${wordIndex}-${word}`}
+                  className="mr-[0.2em] inline-block whitespace-nowrap last:mr-0"
+                >
+                  {Array.from(word).map((char, charIndex) => (
+                    <span
+                      key={`${lineIndex}-${wordIndex}-${charIndex}-${char}`}
+                      className="inline-block transition-all ease-out"
+                      style={{
+                        opacity: visible ? 1 : 0,
+                        transform: visible ? "translateX(0)" : "translateX(-18px)",
+                        transitionDelay: `${(wordStart + charIndex) * charDelay}ms`,
+                        transitionDuration: "500ms",
+                      }}
+                    >
+                      {char}
+                    </span>
+                  ))}
+                </span>
+              );
+            })}
+          </span>
+        );
+      })}
+    </h1>
   );
 }
 

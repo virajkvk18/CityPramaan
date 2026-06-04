@@ -299,6 +299,61 @@ body > main::after {
   z-index: 1;
 }
 
+.cp-video-landing::before,
+.cp-video-landing::after {
+  display: none !important;
+}
+
+.cp-video-landing > video {
+  position: absolute !important;
+  z-index: 0 !important;
+}
+
+.cp-video-landing > div {
+  position: relative;
+  z-index: 10;
+}
+
+.cp-video-landing h1 {
+  font-family: var(--font-cp-display), var(--font-cp-sans), Arial, sans-serif;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.liquid-glass {
+  background: rgba(0, 0, 0, 0.4);
+  background-blend-mode: luminosity;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: none;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  position: relative;
+}
+
+.liquid-glass::before {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 255, 255, 0.1) 20%,
+    rgba(255, 255, 255, 0) 40%,
+    rgba(255, 255, 255, 0) 60%,
+    rgba(255, 255, 255, 0.1) 80%,
+    rgba(255, 255, 255, 0.3) 100%
+  );
+  border-radius: inherit;
+  content: "";
+  inset: 0;
+  padding: 1.4px;
+  pointer-events: none;
+  position: absolute;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
 body > main > :not(.buildverse-layer):not(.buildverse-backdrop):not([class*="fixed"]) {
   position: relative;
   z-index: 2;
