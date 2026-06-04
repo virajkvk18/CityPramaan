@@ -90,7 +90,7 @@ function getRoleDashboard(role?: AuthRole) {
         title: "Ward admin control room",
         detail: "Review pending repair proof, activate warranties, monitor SLA risk, and keep public status transparent for your ward.",
         action: "Review pending proof",
-        href: "/pending",
+        href: "/ward-admin",
       };
     case "CONTRACTOR":
       return {
@@ -104,20 +104,18 @@ function getRoleDashboard(role?: AuthRole) {
       return {
         title: "Citizen issue desk",
         detail: "Report civic issues, track your issue progress, review proof history, and verify warranties after repair.",
-        action: "Report issue",
-        href: "/report",
+        action: "Open citizen dashboard",
+        href: "/citizen",
       };
   }
 }
 
 function getRoleNavItems(role: AuthRole, proofHref: string): RoleNavItem[] {
   const profile = { label: "Profile proof", icon: UserRound, href: "/profile" };
-  const activeReports = { label: "Workspace", icon: Gauge, href: "/", active: true };
 
   if (role === "CONTRACTOR") {
     return [
-      activeReports,
-      { label: "Repair queue", icon: Building2, href: "/contractor", tone: "cyan" },
+      { label: "Workspace", icon: Gauge, href: "/contractor", active: true },
       { label: "Submit proof", icon: BadgeCheck, href: "/contractor", tone: "gold" },
       { label: "Public proof", icon: Blocks, href: proofHref, tone: "glass" },
       profile,
@@ -126,8 +124,8 @@ function getRoleNavItems(role: AuthRole, proofHref: string): RoleNavItem[] {
 
   if (role === "WARD_ADMIN") {
     return [
-      activeReports,
-      { label: "Pending approvals", icon: ScanSearch, href: "/pending", tone: "glass" },
+      { label: "Workspace", icon: Gauge, href: "/ward-admin", active: true },
+      { label: "Pending approvals", icon: ScanSearch, href: "/ward-admin", tone: "glass" },
       { label: "Warranty scanner", icon: Wallet, href: "/warranty", tone: "gold" },
       { label: "Public reports", icon: Blocks, href: proofHref, tone: "cyan" },
       profile,
@@ -135,7 +133,7 @@ function getRoleNavItems(role: AuthRole, proofHref: string): RoleNavItem[] {
   }
 
   return [
-    activeReports,
+    { label: "Workspace", icon: Gauge, href: "/citizen", active: true },
     { label: "Report issue", icon: AlertTriangle, href: "/report", tone: "gold" },
     { label: "My progress", icon: Clock3, href: "/warranty", tone: "cyan" },
     { label: "Public proof", icon: Blocks, href: proofHref, tone: "glass" },
@@ -200,7 +198,7 @@ function getRoleIncidentActions(role: AuthRole | undefined, selectedId: string):
   switch (role) {
     case "WARD_ADMIN":
       return [
-        { label: "Review proof", icon: ScanSearch, href: "/pending", tone: "gold" },
+        { label: "Review proof", icon: ScanSearch, href: "/ward-admin", tone: "gold" },
         { label: "Public reports", icon: Blocks, href: "/reports", tone: "cyan" },
       ];
     case "CONTRACTOR":
@@ -225,15 +223,15 @@ function getRoleMobileNavItems(role: AuthRole | undefined): RoleNavItem[] {
   switch (role) {
     case "WARD_ADMIN":
       return [
-        { label: "Home", icon: Gauge, href: "/", active: true },
-        { label: "Review", icon: ScanSearch, href: "/pending" },
+        { label: "Home", icon: Gauge, href: "/ward-admin", active: true },
+        { label: "Review", icon: ScanSearch, href: "/ward-admin" },
         { label: "Warranty", icon: ShieldCheck, href: "/warranty" },
         { label: "Reports", icon: Blocks, href: "/reports" },
         { label: "Profile", icon: UserRound, href: "/profile" },
       ];
     case "CONTRACTOR":
       return [
-        { label: "Home", icon: Gauge, href: "/", active: true },
+        { label: "Home", icon: Gauge, href: "/contractor", active: true },
         { label: "Queue", icon: Building2, href: "/contractor" },
         { label: "Proof", icon: BadgeCheck, href: "/contractor" },
         { label: "Public", icon: Blocks, href: "/reports" },
@@ -241,7 +239,7 @@ function getRoleMobileNavItems(role: AuthRole | undefined): RoleNavItem[] {
       ];
     case "USER":
       return [
-        { label: "Home", icon: Gauge, href: "/", active: true },
+        { label: "Home", icon: Gauge, href: "/citizen", active: true },
         { label: "Report", icon: AlertTriangle, href: "/report" },
         { label: "Track", icon: Clock3, href: "/warranty" },
         { label: "Proof", icon: Blocks, href: "/reports" },

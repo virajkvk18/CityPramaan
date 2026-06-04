@@ -18,12 +18,12 @@ const roleOptions: Array<{ value: AuthRole; icon: typeof User; detail: string }>
 function getRoleLandingPath(role: AuthRole) {
   switch (role) {
     case "WARD_ADMIN":
-      return "/pending";
+      return "/ward-admin";
     case "CONTRACTOR":
       return "/contractor";
     case "USER":
     default:
-      return "/";
+      return "/citizen";
   }
 }
 

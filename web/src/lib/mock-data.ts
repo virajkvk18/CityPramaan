@@ -35,6 +35,12 @@ export type CivicReport = {
   repairImageName?: string;
   repairImageDataUrl?: string;
   repairProofAt?: string;
+  repairNotes?: string;
+  rejectionReason?: string;
+  assignedAt?: string;
+  acceptedAt?: string;
+  workStartedAt?: string;
+  workCompletedAt?: string;
   warrantyActivatedAt?: string;
   warrantyExpiresAt?: string;
   warrantyPeriodDays?: number;

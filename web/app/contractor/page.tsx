@@ -40,6 +40,7 @@ import {
 import { createProofBundleHash, sha256Hex } from "@/src/lib/proof-hashing";
 import { useLanguage } from "@/src/lib/use-language";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
+import { getAuthSnapshot, getCurrentUser, roleLabels, subscribeAuth } from "@/src/lib/auth-storage";
 import {
   buildExplorerTxUrl,
   connectWallet,
@@ -49,13 +50,15 @@ import {
   subscribeWallet,
 } from "@/src/lib/wallet-storage";
 
-const activeStatuses: CivicReport["status"][] = [
+const contractorVisibleStatuses: CivicReport["status"][] = [
   "OPEN",
   "PENDING_PROOF",
   "REPAIR_SUBMITTED",
   "UNDER_WARRANTY",
   "REPEAT_FAILURE",
 ];
+
+const unassignedContractorNames = new Set(["", "not assigned", "awaiting assignment"]);
 
 export default function ContractorPage() {
   const { t } = useLanguage();
@@ -66,7 +69,9 @@ export default function ContractorPage() {
     () => "[]"
   );
   const walletSnapshot = useSyncExternalStore(subscribeWallet, getWalletSnapshot, () => "");
+  const authSnapshot = useSyncExternalStore(subscribeAuth, getAuthSnapshot, () => "");
   const wallet = parseWalletSnapshot(walletSnapshot);
+  const currentUser = useMemo(() => getCurrentUser(authSnapshot), [authSnapshot]);
   const selectedCity = getCityByKey(citySnapshot);
   const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const localReports = useMemo(
@@ -78,11 +83,14 @@ export default function ContractorPage() {
     const localIds = new Set(localForCity.map((report) => report.id));
     return [...localForCity, ...getReportsForCity(selectedCity.key).filter((report) => !localIds.has(report.id))];
   }, [localReports, selectedCity.key]);
-  const repairQueue = allReports.filter((report) => activeStatuses.includes(report.status));
+  const repairQueue = allReports.filter(
+    (report) => contractorVisibleStatuses.includes(report.status) && isAssignedToContractor(report)
+  );
   const [selectedReportId, setSelectedReportId] = useState(repairQueue[0]?.id ?? "");
   const selectedReport = repairQueue.find((report) => report.id === selectedReportId) ?? repairQueue[0];
   const [repairImage, setRepairImage] = useState("");
   const [repairImageDataUrl, setRepairImageDataUrl] = useState("");
+  const [repairNotes, setRepairNotes] = useState("");
   const [repairImageLoading, setRepairImageLoading] = useState(false);
   const [audited, setAudited] = useState(false);
   const [submittedId, setSubmittedId] = useState("");
@@ -91,6 +99,44 @@ export default function ContractorPage() {
   const [actionMessage, setActionMessage] = useState(
     `${t("selectedCase")}, ${t("uploadAfterRepairEvidence")}, then submit proof for issuer approval.`
   );
+
+  function updateWorkStatus(report: CivicReport, stage: "accepted" | "started" | "completed") {
+    const now = new Date();
+    const stageConfig = {
+      accepted: {
+        field: "acceptedAt",
+        label: "Contractor accepted work",
+        detail: `${report.contractor} accepted the assigned work for ${report.location}.`,
+      },
+      started: {
+        field: "workStartedAt",
+        label: "Repair work started",
+        detail: `${report.contractor} started repair work at ${report.location}.`,
+      },
+      completed: {
+        field: "workCompletedAt",
+        label: "Repair work completed",
+        detail: `${report.contractor} marked field work complete and must upload proof for admin verification.`,
+      },
+    }[stage];
+
+    const updated = appendReportEvent(
+      {
+        ...report,
+        status: report.status === "OPEN" ? "PENDING_PROOF" : report.status,
+        [stageConfig.field]: now.toISOString(),
+      },
+      {
+        label: stageConfig.label,
+        detail: stageConfig.detail,
+        time: now.toLocaleString(),
+        tx: `0xwork...${report.id.replace("CP-", "")}${stage}`,
+      }
+    );
+
+    upsertLocalReport(updated);
+    setActionMessage(`${stageConfig.label}. Citizen, Ward Admin, and Public Proof timeline are updated.`);
+  }
 
   async function handleRepairFile(file?: File) {
     if (!file) {
@@ -225,11 +271,14 @@ export default function ContractorPage() {
       {
         ...report,
         cityKey: reportCity.key,
-        contractor: reportCity.contractor,
+        contractor: report.contractor || reportCity.contractor,
         status: "REPAIR_SUBMITTED",
+        workCompletedAt: report.workCompletedAt ?? now.toISOString(),
         warrantyDaysLeft: null,
         warrantyActivatedAt: undefined,
         warrantyExpiresAt: undefined,
+        repairNotes: repairNotes.trim() || report.repairNotes,
+        rejectionReason: undefined,
         repairProofAt: now.toISOString(),
         repairImageName: repairImage || "contractor-after-repair.jpg",
         repairImageDataUrl,
@@ -251,8 +300,8 @@ export default function ContractorPage() {
       {
         label: isPowerOutage ? "Power restoration proof submitted" : "Repair proof submitted",
         detail: isPowerOutage
-          ? `${reportCity.contractor} uploaded transformer / feeder restoration proof for ${report.location}. Waiting for issuer confirmation.`
-          : `${reportCity.contractor} uploaded after-repair proof for ${report.location}. Waiting for report issuer approval before warranty activation.`,
+          ? `${report.contractor || reportCity.contractor} uploaded transformer / feeder restoration proof for ${report.location}. Waiting for issuer confirmation.`
+          : `${report.contractor || reportCity.contractor} uploaded after-repair proof for ${report.location}. Waiting for report issuer approval before warranty activation.${repairNotes.trim() ? ` Notes: ${repairNotes.trim()}` : ""}`,
         time: now.toLocaleString(),
         tx,
       }
@@ -290,7 +339,10 @@ export default function ContractorPage() {
           >
             <ArrowLeft size={17} />
           </Link>
-          <BrandLogo size="sm" subtitle={t("contractorRepairAudit")} />
+          <BrandLogo
+            size="sm"
+            subtitle={currentUser ? roleLabels[currentUser.role] : t("contractorRepairAudit")}
+          />
         </div>
         <div className="flex min-w-0 items-center gap-2 md:gap-3">
           <NotificationBell />
@@ -313,17 +365,9 @@ export default function ContractorPage() {
         <nav className="mt-8 flex flex-1 flex-col gap-1">
           <NavItem href="/" icon={<LayoutDashboard size={18} />} label={t("commandCenter")} />
           <NavItem href="/contractor" icon={<BadgeCheck size={18} />} label={t("verifiedRepairs")} active />
-          <NavItem href="/report" icon={<Camera size={18} />} label={t("reportIssue")} />
-          <NavItem href="/pending" icon={<ShieldCheck size={18} />} label={t("pendingProof")} />
+          <NavItem href="/reports" icon={<ShieldCheck size={18} />} label={t("publicProof")} />
           <NavItem href="/warranty" icon={<BarChart3 size={18} />} label={t("warrantyScanner")} />
         </nav>
-
-        <Link
-          href="/report"
-          className="btn-primary-shimmer grid rounded bg-[#ffc08d] px-4 py-3 text-center font-mono text-xs font-semibold text-[#4c2700]"
-        >
-          {t("submitReport")}
-        </Link>
 
         <div className="mt-5 border-t border-white/5 pt-4">
           <NavItem href="/" icon={<Router size={15} />} label={t("systemStatus")} small />
@@ -385,11 +429,12 @@ export default function ContractorPage() {
                       onClick={() => {
                         setSelectedReportId(report.id);
                         setRepairImage("");
-                        setRepairImageDataUrl("");
-                        setRepairImageLoading(false);
-                        setAudited(false);
-                        setSubmittedId("");
-                      }}
+                          setRepairImageDataUrl("");
+                          setRepairImageLoading(false);
+                          setAudited(false);
+                          setSubmittedId("");
+                          setRepairNotes(report.repairNotes ?? "");
+                        }}
                       className={`w-full rounded border p-4 text-left transition ${
                         selectedReport?.id === report.id
                           ? "border-[#ffc08d]/60 bg-[#ffc08d]/10"
@@ -473,6 +518,30 @@ export default function ContractorPage() {
 
                     <LocationProofStrip report={selectedReport} />
 
+                    {selectedReport.rejectionReason && (
+                      <div className="mb-5 rounded border border-[#ffb4ab]/30 bg-[#ffb4ab]/10 p-4 text-sm leading-6 text-[#ffdad6]">
+                        Ward Admin rejected the last proof: {selectedReport.rejectionReason}
+                      </div>
+                    )}
+
+                    <div className="mb-5 grid gap-3 sm:grid-cols-3">
+                      <WorkStageButton
+                        label="Accept Work"
+                        active={Boolean(selectedReport.acceptedAt)}
+                        onClick={() => updateWorkStatus(selectedReport, "accepted")}
+                      />
+                      <WorkStageButton
+                        label="Work Started"
+                        active={Boolean(selectedReport.workStartedAt)}
+                        onClick={() => updateWorkStatus(selectedReport, "started")}
+                      />
+                      <WorkStageButton
+                        label="Work Completed"
+                        active={Boolean(selectedReport.workCompletedAt)}
+                        onClick={() => updateWorkStatus(selectedReport, "completed")}
+                      />
+                    </div>
+
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                       <EvidenceBox
                         label={t("issueBefore")}
@@ -530,6 +599,19 @@ export default function ContractorPage() {
                         )}
                       </label>
                     </div>
+
+                    <label className="mt-5 block">
+                      <span className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#dbc2b0]/70">
+                        Repair notes for Ward Admin
+                      </span>
+                      <textarea
+                        value={repairNotes}
+                        onChange={(event) => setRepairNotes(event.target.value)}
+                        rows={3}
+                        className="w-full resize-none rounded border border-white/10 bg-black/35 px-3 py-3 text-sm text-white outline-none transition focus:border-[#00dbe9]/60"
+                        placeholder="Example: damaged patch removed, fresh asphalt filled, compaction completed, lane reopened."
+                      />
+                    </label>
 
                     <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                       <button
@@ -661,6 +743,35 @@ function NavItem({
       {label}
     </Link>
   );
+}
+
+function WorkStageButton({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded border px-4 py-3 text-left font-mono text-xs font-bold uppercase transition ${
+        active
+          ? "border-[#00eb88]/35 bg-[#00eb88]/10 text-[#5bffa1]"
+          : "border-white/10 bg-black/30 text-[#dbc2b0] hover:border-[#00dbe9]/35 hover:text-[#7df4ff]"
+      }`}
+    >
+      <span className="mb-1 block h-2 w-2 rounded-full bg-current shadow-[0_0_12px_currentColor]" />
+      {label}
+    </button>
+  );
+}
+
+function isAssignedToContractor(report: CivicReport) {
+  return !unassignedContractorNames.has((report.contractor ?? "").trim().toLowerCase());
 }
 
 function EvidenceBox({

@@ -8,7 +8,6 @@ import {
   ArrowLeft,
   BadgeCheck,
   CalendarClock,
-  Camera,
   ExternalLink,
   LayoutDashboard,
   MapPin,
@@ -74,6 +73,50 @@ export default function PendingApprovalPage() {
     reviewReports.find((report) => report.status === "REPAIR_SUBMITTED") ??
     reviewReports[0];
   const hasRepairProof = Boolean(selectedReport?.repairImageDataUrl || selectedReport?.repairImageName);
+  const contractorChoices = useMemo(
+    () => [
+      selectedCity.contractor,
+      "Shree Infra Works",
+      "Apex Paving Ltd.",
+      "Electricity restoration crew",
+      "Ward Rapid Repair Crew",
+    ].filter((item, index, array) => array.indexOf(item) === index),
+    [selectedCity.contractor]
+  );
+  const [selectedContractor, setSelectedContractor] = useState(selectedCity.contractor);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const activeContractorChoice = contractorChoices.includes(selectedContractor)
+    ? selectedContractor
+    : selectedCity.contractor;
+
+  function assignContractor(report: CivicReport) {
+    if (["UNDER_WARRANTY", "CLOSED"].includes(report.status)) {
+      setActionMessage("This report is already verified. Assignment is locked.");
+      return;
+    }
+
+    const contractorName = activeContractorChoice || selectedCity.contractor;
+    const now = new Date();
+    const updated = appendReportEvent(
+      {
+        ...report,
+        cityKey: report.cityKey ?? selectedCity.key,
+        contractor: contractorName,
+        status: "PENDING_PROOF",
+        assignedAt: now.toISOString(),
+        rejectionReason: undefined,
+      },
+      {
+        label: "Ward Admin assigned contractor",
+        detail: `${contractorName} assigned to resolve ${report.title} at ${report.location}.`,
+        time: now.toLocaleString(),
+        tx: `0xassign...${report.id.replace("CP-", "")}`,
+      }
+    );
+
+    upsertLocalReport(updated);
+    setActionMessage(`${report.id} assigned to ${contractorName}. It will now appear in Contractor dashboard.`);
+  }
 
   function approveRepairAndActivateWarranty(report: CivicReport) {
     if (report.status !== "REPAIR_SUBMITTED") {
@@ -99,6 +142,7 @@ export default function PendingApprovalPage() {
         warrantyPeriodDays: warrantyDays,
         warrantyActivatedAt: now.toISOString(),
         warrantyExpiresAt: warrantyExpiresAt.toISOString(),
+        rejectionReason: undefined,
         utilityRestoration: report.utilityRestoration
           ? {
               ...report.utilityRestoration,
@@ -123,6 +167,66 @@ export default function PendingApprovalPage() {
     setActionMessage(`${report.id} approved. Warranty is now active and visible in Warranty Scanner.`);
   }
 
+  function rejectRepairProof(report: CivicReport) {
+    if (report.status !== "REPAIR_SUBMITTED") {
+      setActionMessage("Only submitted contractor proof can be rejected.");
+      return;
+    }
+
+    const reason = rejectionReason.trim() || "Repair proof is not sufficient. Please upload clearer after-repair evidence.";
+    const now = new Date();
+    const updated = appendReportEvent(
+      {
+        ...report,
+        status: "PENDING_PROOF",
+        rejectionReason: reason,
+        repairAudit: {
+          ...report.repairAudit,
+          materialMatch: report.repairAudit?.materialMatch ?? "Needs recheck",
+          repairIntegrity: "Rejected",
+          geoVariance: report.repairAudit?.geoVariance ?? "Needs recheck",
+          recommendation: reason,
+        },
+      },
+      {
+        label: "Ward Admin rejected repair proof",
+        detail: reason,
+        time: now.toLocaleString(),
+        tx: `0xreject...${report.id.replace("CP-", "")}`,
+      }
+    );
+
+    upsertLocalReport(updated);
+    setRejectionReason("");
+    setActionMessage(`${report.id} sent back to contractor with rejection reason.`);
+  }
+
+  function closeVerifiedIssue(report: CivicReport) {
+    if (!["UNDER_WARRANTY", "REPEAT_FAILURE"].includes(report.status)) {
+      setActionMessage("Approve the repair and activate warranty before closing the issue.");
+      return;
+    }
+
+    const now = new Date();
+    const updated = appendReportEvent(
+      {
+        ...report,
+        status: "CLOSED",
+        closedAt: now.toISOString(),
+        closureNote: "Ward Admin closed the verified issue after proof review.",
+      },
+      {
+        label: "Issue closed by Ward Admin",
+        detail: "Verified repair history is now preserved in the public proof timeline.",
+        time: now.toLocaleString(),
+        tx: `0xclose...${report.id.replace("CP-", "")}`,
+      }
+    );
+
+    upsertLocalReport(updated);
+    setActionMessage(`${report.id} closed. It remains available in Public Proof history.`);
+  }
+
   return (
     <main className="cp-page-shell relative min-h-screen overflow-hidden bg-[#050505] text-[#e5e2e3]">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_14%_8%,rgba(255,153,51,0.16),transparent_24%),radial-gradient(circle_at_82%_12%,rgba(0,219,233,0.14),transparent_28%),radial-gradient(circle_at_48%_94%,rgba(0,235,136,0.08),transparent_30%)]" />
@@ -138,7 +242,7 @@ export default function PendingApprovalPage() {
           >
             <ArrowLeft size={17} />
           </Link>
-          <BrandLogo size="sm" subtitle="Pending Approval" />
+          <BrandLogo size="sm" subtitle="Ward Admin" />
         </div>
         <div className="flex min-w-0 items-center gap-2 md:gap-3">
           <NotificationBell />
@@ -152,15 +256,14 @@ export default function PendingApprovalPage() {
 
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-[#ff9933]/15 bg-[linear-gradient(180deg,rgba(255,153,51,0.08),rgba(0,0,0,0.5)_22%,rgba(0,219,233,0.045))] px-4 pb-5 pt-20 shadow-[5px_0_24px_rgba(0,0,0,0.45)] backdrop-blur-2xl md:flex">
         <div className="mt-2 border-b border-white/10 px-2 pb-5">
-          <BrandLogo size="sm" subtitle="Issuer Review" />
+          <BrandLogo size="sm" subtitle="Ward Admin" />
         </div>
 
         <nav className="mt-8 flex flex-1 flex-col gap-1">
           <NavItem href="/" icon={<LayoutDashboard size={18} />} label={t("commandCenter")} />
-          <NavItem href="/pending" icon={<ScanSearch size={18} />} label={t("pendingProof")} active />
-          <NavItem href="/contractor" icon={<BadgeCheck size={18} />} label={t("contractorView")} />
+          <NavItem href="/ward-admin" icon={<ScanSearch size={18} />} label="Ward Admin Queue" active />
           <NavItem href="/warranty" icon={<Wallet size={18} />} label={t("warrantyScanner")} />
-          <NavItem href="/report" icon={<Camera size={18} />} label={t("reportIssue")} />
+          <NavItem href="/reports" icon={<BadgeCheck size={18} />} label={t("publicProof")} />
         </nav>
       </aside>
 
@@ -173,7 +276,7 @@ export default function PendingApprovalPage() {
                 {t("backToCommandCenter")}
               </Link>
               <p className="font-mono text-xs uppercase text-[#00dbe9]">Issuer Review Queue</p>
-              <h1 className="mt-2 text-3xl font-semibold text-white sm:text-5xl">Pending Approval</h1>
+              <h1 className="mt-2 text-3xl font-semibold text-white sm:text-5xl">Ward Admin Queue</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-[#dbc2b0]">
                 Review citizen report history, contractor proof, AI before/after stats, and approve only
                 when the repair looks solved. Approval activates warranty and syncs the public proof.
@@ -289,6 +392,41 @@ export default function PendingApprovalPage() {
                         "Waiting for contractor proof before approval."}
                     </div>
 
+                    {selectedReport.rejectionReason && (
+                      <div className="mt-4 rounded border border-[#ffb4ab]/30 bg-[#ffb4ab]/10 p-4 text-sm leading-6 text-[#ffdad6]">
+                        Previous rejection reason: {selectedReport.rejectionReason}
+                      </div>
+                    )}
+
+                    <div className="mt-5 rounded border border-[#ffc08d]/20 bg-black/25 p-4">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                        <label className="flex-1">
+                          <span className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#dbc2b0]/70">
+                            Assign contractor
+                          </span>
+                          <select
+                            value={activeContractorChoice}
+                            onChange={(event) => setSelectedContractor(event.target.value)}
+                            className="w-full rounded border border-white/10 bg-black/45 px-3 py-3 font-mono text-sm text-white outline-none focus:border-[#00dbe9]/60"
+                          >
+                            {contractorChoices.map((contractor) => (
+                              <option key={contractor} value={contractor} className="bg-[#050505] text-white">
+                                {contractor}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => assignContractor(selectedReport)}
+                          disabled={["UNDER_WARRANTY", "CLOSED"].includes(selectedReport.status)}
+                          className="rounded border border-[#ffc08d]/45 bg-[#ffc08d]/10 px-4 py-3 font-mono text-xs font-bold uppercase text-[#ffdcc2] transition hover:bg-[#ffc08d]/15 disabled:cursor-not-allowed disabled:opacity-45"
+                        >
+                          Assign / Reassign
+                        </button>
+                      </div>
+                    </div>
+
                     <div className="mt-5 flex flex-col gap-3 sm:flex-row">
                       <button
                         onClick={() => approveRepairAndActivateWarranty(selectedReport)}
@@ -306,6 +444,39 @@ export default function PendingApprovalPage() {
                         <ExternalLink size={15} />
                       </Link>
                     </div>
+
+                    {selectedReport.status === "REPAIR_SUBMITTED" && (
+                      <div className="mt-4 rounded border border-[#ffb4ab]/25 bg-[#ffb4ab]/10 p-4">
+                        <label>
+                          <span className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#ffdad6]">
+                            Reject with reason
+                          </span>
+                          <textarea
+                            value={rejectionReason}
+                            onChange={(event) => setRejectionReason(event.target.value)}
+                            rows={3}
+                            className="w-full resize-none rounded border border-white/10 bg-black/45 px-3 py-3 text-sm text-white outline-none focus:border-[#ffb4ab]/60"
+                            placeholder="Example: After photo is unclear, location mismatch, or repair still visibly incomplete."
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => rejectRepairProof(selectedReport)}
+                          className="mt-3 rounded border border-[#ffb4ab]/40 bg-[#ffb4ab]/10 px-4 py-3 font-mono text-xs font-bold uppercase text-[#ffdad6] transition hover:bg-[#ffb4ab]/15"
+                        >
+                          Reject Proof
+                        </button>
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => closeVerifiedIssue(selectedReport)}
+                      disabled={!["UNDER_WARRANTY", "REPEAT_FAILURE"].includes(selectedReport.status)}
+                      className="mt-4 w-full rounded border border-[#00eb88]/35 bg-[#00eb88]/10 px-4 py-3 font-mono text-xs font-bold uppercase text-[#5bffa1] transition hover:bg-[#00eb88]/15 disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                      Mark Issue Closed
+                    </button>
 
                     {actionMessage && (
                       <p className="mt-4 rounded border border-[#ffc08d]/20 bg-[#ffc08d]/10 px-3 py-2 text-sm text-[#ffdcc2]">
