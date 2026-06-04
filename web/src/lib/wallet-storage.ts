@@ -2,7 +2,7 @@
 
 import { BrowserProvider, Contract, getBytes } from "ethers";
 
-export type SupportedChainKey = "polygon-amoy" | "base-sepolia" | "hardhat-local";
+export type SupportedChainKey = "polygon-amoy" | "base-sepolia" | "hardhat-local" | "custom-private";
 
 export type WalletSnapshot = {
   connected: boolean;
@@ -55,6 +55,18 @@ export const supportedChains: Record<
     nativeCurrency: { name: "Local Ether", symbol: "ETH", decimals: 18 },
     rpcUrls: ["http://127.0.0.1:8545"],
     blockExplorerUrls: [""],
+  },
+  "custom-private": {
+    chainId: getCustomChainId(),
+    chainIdHex: `0x${getCustomChainId().toString(16)}`,
+    name: process.env.NEXT_PUBLIC_CITYPRAMAAN_CHAIN_NAME ?? "CityPramaan Private TestNet",
+    nativeCurrency: {
+      name: process.env.NEXT_PUBLIC_CITYPRAMAAN_NATIVE_NAME ?? "Test Ether",
+      symbol: process.env.NEXT_PUBLIC_CITYPRAMAAN_NATIVE_SYMBOL ?? "ETH",
+      decimals: 18,
+    },
+    rpcUrls: [process.env.NEXT_PUBLIC_CITYPRAMAAN_RPC_URL ?? ""].filter(Boolean),
+    blockExplorerUrls: [process.env.NEXT_PUBLIC_CITYPRAMAAN_EXPLORER_URL ?? ""].filter(Boolean),
   },
 };
 
@@ -233,7 +245,7 @@ export function buildExplorerTxUrl(txHash: string, chainKey: SupportedChainKey =
     return "";
   }
 
-  return `${explorer}/tx/${txHash}`;
+  return `${explorer.replace(/\/$/, "")}/tx/${txHash}`;
 }
 
 export function shortWalletAddress(address: string) {
@@ -350,6 +362,11 @@ function requireEthereumProvider() {
   }
 
   return ethereum;
+}
+
+function getCustomChainId() {
+  const value = Number(process.env.NEXT_PUBLIC_CITYPRAMAAN_CHAIN_ID);
+  return Number.isFinite(value) && value > 0 ? value : 9991;
 }
 
 let listenersAttached = false;

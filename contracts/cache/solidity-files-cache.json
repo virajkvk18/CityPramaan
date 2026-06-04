@@ -1,0 +1,41 @@
+{
+  "_format": "hh-sol-cache-2",
+  "files": {
+    "C:\\Users\\Asus\\OneDrive\\Desktop\\Projects\\CityPramaan\\contracts\\contracts\\CityPramaanRegistry.sol": {
+      "lastModificationDate": 1780600652601,
+      "contentHash": "8ef1efa9ab2776d099ffdb21c33cb0b7",
+      "sourceName": "contracts/CityPramaanRegistry.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.24"
+      ],
+      "artifacts": [
+        "CityPramaanRegistry"
+      ]
+    }
+  }
+}
