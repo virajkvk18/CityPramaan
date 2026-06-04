@@ -2,7 +2,7 @@
 
 import { BrowserProvider, Contract, getBytes } from "ethers";
 
-export type SupportedChainKey = "polygon-amoy" | "base-sepolia";
+export type SupportedChainKey = "polygon-amoy" | "base-sepolia" | "hardhat-local";
 
 export type WalletSnapshot = {
   connected: boolean;
@@ -46,6 +46,14 @@ export const supportedChains: Record<
     nativeCurrency: { name: "Sepolia Ether", symbol: "ETH", decimals: 18 },
     rpcUrls: ["https://sepolia.base.org"],
     blockExplorerUrls: ["https://sepolia.basescan.org"],
+  },
+  "hardhat-local": {
+    chainId: 31337,
+    chainIdHex: "0x7a69",
+    name: "Hardhat Local",
+    nativeCurrency: { name: "Local Ether", symbol: "ETH", decimals: 18 },
+    rpcUrls: ["http://127.0.0.1:8545"],
+    blockExplorerUrls: [""],
   },
 };
 
@@ -187,6 +195,10 @@ export async function submitRepairTransaction(publicId: string, repairHash: stri
 
 export function buildExplorerTxUrl(txHash: string, chainKey: SupportedChainKey = getPreferredChainKey()) {
   const explorer = supportedChains[chainKey].blockExplorerUrls[0];
+  if (!explorer) {
+    return "";
+  }
+
   return `${explorer}/tx/${txHash}`;
 }
 
