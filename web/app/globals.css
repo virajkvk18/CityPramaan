@@ -305,7 +305,10 @@ body > main::after {
 }
 
 .cp-video-landing > video {
+  backface-visibility: hidden;
   position: absolute !important;
+  transform: translate3d(0, 0, 0) scale(1.01);
+  will-change: transform;
   z-index: 0 !important;
 }
 

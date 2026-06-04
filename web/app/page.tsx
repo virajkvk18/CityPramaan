@@ -237,6 +237,7 @@ export default function Home() {
           autoPlay
           loop
           muted
+          preload="auto"
           playsInline
           aria-hidden="true"
         />
