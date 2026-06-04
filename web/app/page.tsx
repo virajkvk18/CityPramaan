@@ -244,6 +244,7 @@ export default function Home() {
           <source src={CITY_HERO_MOBILE_VIDEO_URL} type="video/mp4" media="(max-width: 639px)" />
           <source src={CITY_HERO_VIDEO_URL} type="video/mp4" media="(min-width: 640px)" />
         </video>
+        <div className="cp-landing-video-scrim pointer-events-none absolute inset-0" />
 
         <div className="relative z-10 flex min-h-[100svh] flex-col px-3 pb-5 pt-3 sm:px-6 sm:pb-7 sm:pt-4 md:px-10 lg:px-14">
           <header className="liquid-glass flex flex-col gap-2 rounded-xl px-3 py-3 sm:px-4">
@@ -308,10 +309,10 @@ export default function Home() {
               <div className="max-w-4xl">
                 <AnimatedHeading
                   text={`Proof of repair\nfor accountable cities.`}
-                  className="mb-4 text-[1.85rem] font-black leading-[1.08] text-white min-[390px]:text-[2.05rem] sm:text-[2.9rem] md:text-[3.55rem] lg:text-[4.1rem] xl:text-[4.85rem]"
+                  className="cp-landing-title mb-4 text-[1.85rem] font-black leading-[1.08] text-white min-[390px]:text-[2.05rem] sm:text-[2.9rem] md:text-[3.55rem] lg:text-[4.1rem] xl:text-[4.85rem]"
                 />
                 <FadeIn delay={800} duration={1000}>
-                  <p className="mb-5 max-w-2xl text-[13px] leading-6 text-gray-300 sm:text-base md:text-lg md:leading-7">
+                  <p className="cp-landing-subtitle mb-5 max-w-2xl rounded-xl border border-white/10 bg-black/24 px-3 py-2 text-[13px] font-medium leading-6 text-white/92 shadow-[0_12px_38px_rgba(0,0,0,0.24)] backdrop-blur-[2px] sm:bg-black/20 sm:px-4 sm:py-3 sm:text-base md:text-lg md:leading-7">
                     CityPramaan turns civic complaints into verifiable repair histories with public
                     proof, contractor accountability, and warranty memory for every city issue.
                   </p>
@@ -320,13 +321,13 @@ export default function Home() {
                   <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                     <Link
                       href="/auth"
-                      className="inline-flex min-h-11 items-center justify-center rounded-lg bg-white px-5 py-3 text-center font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-black transition hover:bg-gray-100 sm:px-8 sm:text-[11px] sm:tracking-[0.16em]"
+                      className="cp-landing-primary-cta inline-flex min-h-11 items-center justify-center rounded-lg bg-white px-5 py-3 text-center font-mono text-[10px] font-black uppercase tracking-[0.14em] text-black transition hover:bg-gray-100 sm:px-8 sm:text-[11px] sm:tracking-[0.16em]"
                     >
                       Start a Report
                     </Link>
                     <Link
                       href="/auth"
-                      className="liquid-glass inline-flex min-h-11 items-center justify-center rounded-lg border border-white/20 px-5 py-3 text-center font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-white transition hover:bg-white hover:text-black sm:px-8 sm:text-[11px] sm:tracking-[0.16em]"
+                      className="cp-landing-secondary-cta liquid-glass inline-flex min-h-11 items-center justify-center rounded-lg border border-white/25 px-5 py-3 text-center font-mono text-[10px] font-black uppercase tracking-[0.14em] text-white transition hover:bg-white hover:text-black sm:px-8 sm:text-[11px] sm:tracking-[0.16em]"
                     >
                       Explore Proof
                     </Link>
