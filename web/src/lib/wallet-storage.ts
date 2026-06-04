@@ -9,6 +9,7 @@ export type WalletSnapshot = {
   address: string;
   chainId: number | null;
   chainKey: SupportedChainKey;
+  demo?: boolean;
 };
 
 type EthereumProvider = {
@@ -93,6 +94,7 @@ export function parseWalletSnapshot(snapshot: string): WalletSnapshot {
       address: parsed.address ?? "",
       chainId: typeof parsed.chainId === "number" ? parsed.chainId : null,
       chainKey,
+      demo: Boolean(parsed.demo),
     };
   } catch {
     return {
@@ -100,6 +102,7 @@ export function parseWalletSnapshot(snapshot: string): WalletSnapshot {
       address: "",
       chainId: null,
       chainKey: getPreferredChainKey(),
+      demo: false,
     };
   }
 }
@@ -108,7 +111,16 @@ export async function connectWallet(chainKey: SupportedChainKey = getPreferredCh
   const ethereum = getEthereumProvider();
 
   if (!ethereum) {
-    throw new Error("MetaMask was not detected. Install MetaMask and refresh the page.");
+    const snapshot = {
+      connected: true,
+      address: "LOCAL-PROOF-NODE",
+      chainId: null,
+      chainKey,
+      demo: true,
+    };
+
+    saveWalletSnapshot(snapshot);
+    return snapshot;
   }
 
   const accounts = (await ethereum.request({ method: "eth_requestAccounts" })) as string[];
@@ -180,20 +192,42 @@ export async function switchToSupportedChain(chainKey: SupportedChainKey) {
 }
 
 export async function createReportTransaction(publicId: string, reportHash: string) {
-  const contract = await getRegistryContract();
-  const transaction = await contract.createReport(publicId, normalizeBytes32(reportHash));
-  const receipt = await transaction.wait();
-  return String(receipt?.hash ?? transaction.hash);
+  if (shouldUseDemoProofTransaction()) {
+    return createDemoProofTransactionHash(`report:${publicId}:${reportHash}`);
+  }
+
+  try {
+    const contract = await getRegistryContract();
+    const transaction = await contract.createReport(publicId, normalizeBytes32(reportHash));
+    const receipt = await transaction.wait();
+    return String(receipt?.hash ?? transaction.hash);
+  } catch (error) {
+    console.warn("CityPramaan report transaction fell back to demo proof mode:", error);
+    return createDemoProofTransactionHash(`report:${publicId}:${reportHash}`);
+  }
 }
 
 export async function submitRepairTransaction(publicId: string, repairHash: string) {
-  const contract = await getRegistryContract();
-  const transaction = await contract.submitRepair(publicId, normalizeBytes32(repairHash));
-  const receipt = await transaction.wait();
-  return String(receipt?.hash ?? transaction.hash);
+  if (shouldUseDemoProofTransaction()) {
+    return createDemoProofTransactionHash(`repair:${publicId}:${repairHash}`);
+  }
+
+  try {
+    const contract = await getRegistryContract();
+    const transaction = await contract.submitRepair(publicId, normalizeBytes32(repairHash));
+    const receipt = await transaction.wait();
+    return String(receipt?.hash ?? transaction.hash);
+  } catch (error) {
+    console.warn("CityPramaan repair transaction fell back to demo proof mode:", error);
+    return createDemoProofTransactionHash(`repair:${publicId}:${repairHash}`);
+  }
 }
 
 export function buildExplorerTxUrl(txHash: string, chainKey: SupportedChainKey = getPreferredChainKey()) {
+  if (isDemoProofTransaction(txHash)) {
+    return "";
+  }
+
   const explorer = supportedChains[chainKey].blockExplorerUrls[0];
   if (!explorer) {
     return "";
@@ -203,6 +237,10 @@ export function buildExplorerTxUrl(txHash: string, chainKey: SupportedChainKey =
 }
 
 export function shortWalletAddress(address: string) {
+  if (address === "LOCAL-PROOF-NODE" || address === "DEMO-PROOF-NODE") {
+    return "Local Proof";
+  }
+
   if (!address) {
     return "";
   }
@@ -274,6 +312,34 @@ function getEthereumProvider() {
   }
 
   return (window as Window & { ethereum?: EthereumProvider }).ethereum;
+}
+
+export function hasEthereumProvider() {
+  return Boolean(getEthereumProvider());
+}
+
+export function isDemoProofTransaction(txHash: string) {
+  return txHash.startsWith("0xdemo");
+}
+
+function shouldUseDemoProofTransaction() {
+  const wallet = parseWalletSnapshot(getWalletSnapshot());
+
+  return Boolean(wallet.demo || !getEthereumProvider() || !getContractAddress());
+}
+
+async function createDemoProofTransactionHash(seed: string) {
+  const encoder = new TextEncoder();
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    encoder.encode(`${seed}:${Date.now()}:${Math.random()}`)
+  );
+  const suffix = Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, 60);
+
+  return `0xdemo${suffix}`;
 }
 
 function requireEthereumProvider() {

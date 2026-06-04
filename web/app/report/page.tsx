@@ -61,6 +61,7 @@ import {
   connectWallet,
   createReportTransaction,
   getWalletSnapshot,
+  hasEthereumProvider,
   parseWalletSnapshot,
   shortWalletAddress,
   subscribeWallet,
@@ -202,6 +203,13 @@ export default function ReportIssuePage() {
   const wallet = parseWalletSnapshot(walletSnapshot);
   const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const tr = (key: Parameters<typeof translate>[1]) => translate(languageSnapshot, key);
+  const [ethereumAvailable, setEthereumAvailable] = useState(false);
+  const localProofMode = wallet.demo || !ethereumAvailable;
+  const walletLabel = wallet.connected
+    ? shortWalletAddress(wallet.address)
+    : localProofMode
+      ? "Local proof mode ready"
+      : "Connect MetaMask to sign";
   const [imageName, setImageName] = useState("");
   const [imageDataUrl, setImageDataUrl] = useState("");
   const [imageLoading, setImageLoading] = useState(false);
@@ -235,6 +243,14 @@ export default function ReportIssuePage() {
     manual: "Manual coordinates",
     maps: "Google Maps link",
   }[locationSource];
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setEthereumAvailable(hasEthereumProvider());
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   function runAiVerification() {
     setVerified(false);
@@ -1090,7 +1106,7 @@ export default function ReportIssuePage() {
                   </div>
                   <div>
                     <p className="break-all font-mono text-sm text-white">
-                      {wallet.connected ? wallet.address : "Connect MetaMask to sign"}
+                      {wallet.connected ? wallet.address : walletLabel}
                     </p>
                     <p className="font-mono text-xs text-[#dbc2b0]/60">
                       Node ID: {selectedCity.key.toUpperCase()}-9942
@@ -1224,18 +1240,25 @@ export default function ReportIssuePage() {
                 <div className="shimmer-bg h-full w-full" />
               </div>
               <p className="font-mono text-sm text-white">{tr("readyToSign")}</p>
-              <p className="font-mono text-sm text-[#ffc08d]">
-                {wallet.connected ? shortWalletAddress(wallet.address) : "MetaMask connection required"}
-              </p>
+              <p className="font-mono text-sm text-[#ffc08d]">{walletLabel}</p>
             </div>
 
             <div className="mb-5 space-y-2 rounded border border-white/5 bg-black/40 p-4">
-              <SignRow label="Contract" value="CityPramaanRegistry" />
+              <SignRow
+                label="Contract"
+                value={localProofMode ? "CityPramaan Proof Registry" : "CityPramaanRegistry"}
+              />
               <SignRow label="Method" value="createReport(publicId, reportHash)" />
               <SignRow label="Issue" value={aiResult?.issueType ?? "Infrastructure issue"} />
               <SignRow label="Proof Tag" value={aiResult?.proofTag ?? "CIVIC_ASSET_PROOF"} />
-              <SignRow label="Network" value={wallet.chainKey.replace("-", " ")} />
-              <SignRow label="Gas" value="Uses real testnet gas from your wallet" />
+              <SignRow
+                label="Network"
+                value={localProofMode ? "Local proof ledger" : wallet.chainKey.replace("-", " ")}
+              />
+              <SignRow
+                label="Gas"
+                value={localProofMode ? "No gas needed for local proof mode" : "Uses real testnet gas from your wallet"}
+              />
             </div>
 
             <div className="rounded border border-[#00eb88]/20 bg-[#00eb88]/10 p-4">
@@ -1244,7 +1267,8 @@ export default function ReportIssuePage() {
                 <p className="font-semibold">{tr("blockchainProof")}</p>
               </div>
               <p className="mt-2 text-sm text-[#dbc2b0]">
-                A public report record will be created for {location}.
+                A public report record will be created for {location}.{" "}
+                {localProofMode ? "MetaMask can be connected later for live testnet signing." : ""}
               </p>
             </div>
 
