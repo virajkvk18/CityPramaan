@@ -249,7 +249,7 @@ export default function Home() {
             </Link>
 
             <nav className="hidden items-center gap-5 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-white/78 lg:flex xl:gap-8">
-              <Link href="/auth" className="transition hover:text-white">
+              <Link href="/story" className="transition hover:text-white">
                 Story
               </Link>
               <Link href="/auth" className="transition hover:text-white">
@@ -265,10 +265,10 @@ export default function Home() {
 
             <div className="flex shrink-0 items-center gap-2">
               <Link
-                href="/auth"
+                href="/about"
                 className="hidden min-h-10 items-center justify-center rounded-lg border border-white/20 px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-white transition hover:bg-white hover:text-black sm:inline-flex"
               >
-                Report Issue
+                About
               </Link>
               <Link
                 href="/auth"
