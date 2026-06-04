@@ -336,14 +336,14 @@ export default function Home() {
 
               <div className="flex items-end justify-start lg:justify-end">
                 <FadeIn delay={1400} duration={1000}>
-                  <div className="liquid-glass w-full max-w-md rounded-xl border border-white/20 px-5 py-4 sm:px-6">
+                  <div className="liquid-glass w-full max-w-md rounded-xl border border-white/20 px-4 py-4 sm:px-6">
                     <p className="text-base font-semibold text-white sm:text-lg md:text-xl">
                       Report. Repair. Verify.
                     </p>
-                    <div className="mt-3 grid grid-cols-3 gap-2 text-center sm:gap-3">
+                    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
                       <PublicMetric label="Active" value={`${activeDashboardReports.length}`} />
                       <PublicMetric label="Proofs" value={`${214 + localCityReports.length}`} />
-                      <PublicMetric label="Node" value={dashboardCityName} />
+                      <PublicMetric label="Node" value={dashboardCityName} wide />
                     </div>
                   </div>
                 </FadeIn>
@@ -1013,11 +1013,17 @@ function AuditMetric({ label, value, tone }: { label: string; value: string; ton
   );
 }
 
-function PublicMetric({ label, value }: { label: string; value: string }) {
+function PublicMetric({ label, value, wide = false }: { label: string; value: string; wide?: boolean }) {
   return (
-    <div className="min-h-[74px] rounded-md border border-white/10 bg-black/28 p-3 sm:min-h-24 sm:p-4">
+    <div
+      className={`min-h-[74px] rounded-md border border-white/10 bg-black/28 p-3 sm:min-h-24 sm:p-4 ${
+        wide ? "col-span-2 text-left sm:col-span-1" : "text-center sm:text-left"
+      }`}
+    >
       <p className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[#a38d7c] sm:text-[10px] sm:tracking-[0.16em]">{label}</p>
-      <p className="mt-1 break-words text-lg font-black text-white sm:mt-2 sm:text-2xl">{value}</p>
+      <p className={`mt-1 text-lg font-black leading-tight text-white sm:mt-2 sm:text-2xl ${wide ? "break-words" : "break-normal"}`}>
+        {value}
+      </p>
     </div>
   );
 }
