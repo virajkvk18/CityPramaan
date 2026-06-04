@@ -148,6 +148,7 @@ function getRoleNavItems(role: AuthRole, proofHref: string): RoleNavItem[] {
 export default function Home() {
   const { t } = useLanguage();
   const [showSafetyIntro, setShowSafetyIntro] = useState(false);
+  const [backendReports, setBackendReports] = useState<CivicReport[]>([]);
   const localReportsSnapshot = useSyncExternalStore(
     subscribeLocalReports,
     getLocalReportsSnapshot,
@@ -175,10 +176,58 @@ export default function Home() {
     () => JSON.parse(localReportsSnapshot) as CivicReport[],
     [localReportsSnapshot]
   );
+  useEffect(() => {
+    let active = true;
+
+    async function loadBackendReports() {
+      try {
+        const response = await fetch(`/api/reports?cityKey=${encodeURIComponent(selectedCity.key)}`, {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          setBackendReports([]);
+          return;
+        }
+
+        const result = (await response.json()) as { reports?: CivicReport[] };
+
+        if (active) {
+          setBackendReports(Array.isArray(result.reports) ? result.reports : []);
+        }
+      } catch (error) {
+        console.warn("CityPramaan backend reports unavailable:", error);
+
+        if (active) {
+          setBackendReports([]);
+        }
+      }
+    }
+
+    void loadBackendReports();
+
+    return () => {
+      active = false;
+    };
+  }, [selectedCity.key]);
+
   const cityReports = useMemo(() => getReportsForCity(citySnapshot), [citySnapshot]);
+  const savedReports = useMemo(() => {
+    const reportsById = new Map<string, CivicReport>();
+
+    for (const report of backendReports) {
+      reportsById.set(report.id, report);
+    }
+
+    for (const report of localReports) {
+      reportsById.set(report.id, report);
+    }
+
+    return Array.from(reportsById.values());
+  }, [backendReports, localReports]);
   const localCityReports = useMemo(
-    () => localReports.filter((report) => !report.cityKey || report.cityKey === selectedCity.key),
-    [localReports, selectedCity.key]
+    () => savedReports.filter((report) => !report.cityKey || report.cityKey === selectedCity.key),
+    [savedReports, selectedCity.key]
   );
   const dashboardReports = useMemo(
     () => {

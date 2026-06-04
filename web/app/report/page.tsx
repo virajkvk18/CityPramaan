@@ -49,7 +49,7 @@ import {
 } from "@/src/lib/infrastructure-analyzer";
 import { getLanguageSnapshot, subscribeLanguage } from "@/src/lib/language-storage";
 import { translate } from "@/src/lib/language-context";
-import { buildGoogleMapsUrl } from "@/src/lib/mock-data";
+import { buildGoogleMapsUrl, type CivicReport } from "@/src/lib/mock-data";
 import {
   createLocalReportId,
   readFileAsDataUrl,
@@ -129,6 +129,30 @@ function getDistanceKm(fromLat: number, fromLng: number, toLat: number, toLng: n
 
 function toRadians(value: number) {
   return (value * Math.PI) / 180;
+}
+
+async function syncReportToBackend(report: CivicReport) {
+  const metadataReport: Partial<CivicReport> = { ...report };
+
+  delete metadataReport.issueImageDataUrl;
+  delete metadataReport.repairImageDataUrl;
+
+  try {
+    const response = await fetch("/api/reports", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(metadataReport),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => null);
+      console.warn("CityPramaan report backend sync failed:", errorBody ?? response.statusText);
+    }
+  } catch (error) {
+    console.warn("CityPramaan report backend sync unavailable:", error);
+  }
 }
 
 async function reverseGeocodeArea(latitude: number, longitude: number) {
@@ -440,7 +464,7 @@ export default function ReportIssuePage() {
       const txUrl = buildExplorerTxUrl(txHash, connectedWallet.chainKey);
       const aiTxHash = await deriveTransactionHash(`${reportId}:${result.proofTag}:aiVerification`);
 
-      saveLocalReport({
+      const newReport: CivicReport = {
         id: reportId,
         cityKey: reportCity.key,
         title: `${result.issueType} awaiting repair in ${reportCity.name}`,
@@ -507,7 +531,10 @@ export default function ReportIssuePage() {
               ]
             : []),
         ],
-      });
+      };
+
+      saveLocalReport(newReport);
+      await syncReportToBackend(newReport);
 
       setAiResult(result);
       setSelectedCityKey(reportCity.key);

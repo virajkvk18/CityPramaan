@@ -1,1 +1,18 @@
 
+-- Hackathon mode:
+-- You can keep RLS disabled on public.reports while testing quickly.
+--
+-- Safer demo mode:
+-- Uncomment these statements if you want public reads and anon inserts only.
+--
+-- alter table public.reports enable row level security;
+--
+-- create policy "Public can read civic reports"
+-- on public.reports
+-- for select
+-- using (true);
+--
+-- create policy "Public can submit civic reports"
+-- on public.reports
+-- for insert
+-- with check (true);
