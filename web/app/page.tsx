@@ -87,23 +87,23 @@ function getRoleDashboard(role?: AuthRole) {
   switch (role) {
     case "WARD_ADMIN":
       return {
-        title: "Ward review console active",
-        detail: "Approve contractor proof, monitor warranty risk, and track repeat failures for your assigned ward.",
+        title: "Ward admin control room",
+        detail: "Review pending repair proof, activate warranties, monitor SLA risk, and keep public status transparent for your ward.",
         action: "Review pending proof",
         href: "/pending",
       };
     case "CONTRACTOR":
       return {
-        title: "Contractor repair queue active",
-        detail: "Open assigned civic issues, upload after-repair evidence, and generate repair proof hashes.",
+        title: "Contractor repair workspace",
+        detail: "See assigned issues, compare before/after evidence, upload repair proof, and send it for issuer approval.",
         action: "Open repair queue",
         href: "/contractor",
       };
     case "USER":
     default:
       return {
-        title: "Citizen reporting dashboard active",
-        detail: "Report civic issues, follow proof timelines, and verify warranty status after repairs.",
+        title: "Citizen issue desk",
+        detail: "Report civic issues, track your issue progress, review proof history, and verify warranties after repair.",
         action: "Report issue",
         href: "/report",
       };
@@ -111,14 +111,14 @@ function getRoleDashboard(role?: AuthRole) {
 }
 
 function getRoleNavItems(role: AuthRole, proofHref: string): RoleNavItem[] {
-  const profile = { label: "Your profile", icon: UserRound, href: "/profile" };
-  const activeReports = { label: "Active reports", icon: Gauge, href: "/", active: true };
+  const profile = { label: "Profile proof", icon: UserRound, href: "/profile" };
+  const activeReports = { label: "Workspace", icon: Gauge, href: "/", active: true };
 
   if (role === "CONTRACTOR") {
     return [
       activeReports,
-      { label: "Contractor view", icon: Building2, href: "/contractor", tone: "cyan" },
-      { label: "Upload repair proof", icon: BadgeCheck, href: "/contractor", tone: "gold" },
+      { label: "Repair queue", icon: Building2, href: "/contractor", tone: "cyan" },
+      { label: "Submit proof", icon: BadgeCheck, href: "/contractor", tone: "gold" },
       { label: "Public proof", icon: Blocks, href: proofHref, tone: "glass" },
       profile,
     ];
@@ -128,21 +128,134 @@ function getRoleNavItems(role: AuthRole, proofHref: string): RoleNavItem[] {
     return [
       activeReports,
       { label: "Pending approvals", icon: ScanSearch, href: "/pending", tone: "glass" },
-      { label: "Contractor view", icon: Building2, href: "/contractor", tone: "cyan" },
       { label: "Warranty scanner", icon: Wallet, href: "/warranty", tone: "gold" },
-      { label: "Report issue", icon: AlertTriangle, href: "/report", tone: "gold" },
-      { label: "Public proof", icon: Blocks, href: proofHref, tone: "glass" },
+      { label: "Public reports", icon: Blocks, href: proofHref, tone: "cyan" },
       profile,
     ];
   }
 
   return [
     activeReports,
-    { label: "Report new issue", icon: AlertTriangle, href: "/report", tone: "gold" },
+    { label: "Report issue", icon: AlertTriangle, href: "/report", tone: "gold" },
+    { label: "My progress", icon: Clock3, href: "/warranty", tone: "cyan" },
     { label: "Public proof", icon: Blocks, href: proofHref, tone: "glass" },
-    { label: "Warranty status", icon: Wallet, href: "/warranty", tone: "cyan" },
     profile,
   ];
+}
+
+function getRoleWorkspaceTitle(role?: AuthRole) {
+  switch (role) {
+    case "WARD_ADMIN":
+      return "Ward Admin Console";
+    case "CONTRACTOR":
+      return "Contractor Console";
+    case "USER":
+      return "Citizen Console";
+    default:
+      return "Command Center";
+  }
+}
+
+function getRoleWorkspaceSubtitle(role?: AuthRole) {
+  switch (role) {
+    case "WARD_ADMIN":
+      return "Approval queue | warranty risk | ward SLA";
+    case "CONTRACTOR":
+      return "Assigned repairs | AI audit | proof upload";
+    case "USER":
+      return "Report issue | track progress | verify proof";
+    default:
+      return "Public civic proof network";
+  }
+}
+
+function getRoleAuditMetrics(role: AuthRole | undefined, activeCount: number, localCount: number) {
+  switch (role) {
+    case "WARD_ADMIN":
+      return [
+        { label: "Pending approvals", value: `${2 + localCount}`, tone: "text-[#ffc08d]" },
+        { label: "SLA risks", value: "11", tone: "text-[#ffb4ab]" },
+        { label: "Warranty cases", value: "31", tone: "text-[#00eb88]" },
+        { label: "Proof records", value: `${214 + localCount}`, tone: "text-[#00dbe9]" },
+      ];
+    case "CONTRACTOR":
+      return [
+        { label: "Repair queue", value: `${5 + activeCount}`, tone: "text-[#ffc08d]" },
+        { label: "Proof submitted", value: "18", tone: "text-[#00eb88]" },
+        { label: "AI audits", value: "42", tone: "text-[#00dbe9]" },
+        { label: "Rating", value: "4.8", tone: "text-[#ffc08d]" },
+      ];
+    case "USER":
+    default:
+      return [
+        { label: "My active reports", value: `${activeCount}`, tone: "text-[#ffc08d]" },
+        { label: "Awaiting proof", value: `${Math.max(1, activeCount)}`, tone: "text-[#00dbe9]" },
+        { label: "Warranty watch", value: "Ready", tone: "text-[#00eb88]" },
+        { label: "Public proofs", value: `${214 + localCount}`, tone: "text-[#00dbe9]" },
+      ];
+  }
+}
+
+function getRoleIncidentActions(role: AuthRole | undefined, selectedId: string): RoleNavItem[] {
+  switch (role) {
+    case "WARD_ADMIN":
+      return [
+        { label: "Review proof", icon: ScanSearch, href: "/pending", tone: "gold" },
+        { label: "Public reports", icon: Blocks, href: "/reports", tone: "cyan" },
+      ];
+    case "CONTRACTOR":
+      return [
+        { label: "Open repair queue", icon: Building2, href: "/contractor", tone: "cyan" },
+        { label: "Upload proof", icon: BadgeCheck, href: "/contractor", tone: "gold" },
+      ];
+    case "USER":
+      return [
+        { label: "Track progress", icon: Clock3, href: `/warranty?issue=${selectedId}#issue-progress`, tone: "gold" },
+        { label: "Public proof", icon: FileImage, href: `/proof/${selectedId}`, tone: "cyan" },
+      ];
+    default:
+      return [
+        { label: "Public reports", icon: Blocks, href: "/reports", tone: "cyan" },
+        { label: "Login / signup", icon: LogIn, href: "/auth", tone: "gold" },
+      ];
+  }
+}
+
+function getRoleMobileNavItems(role: AuthRole | undefined): RoleNavItem[] {
+  switch (role) {
+    case "WARD_ADMIN":
+      return [
+        { label: "Home", icon: Gauge, href: "/", active: true },
+        { label: "Review", icon: ScanSearch, href: "/pending" },
+        { label: "Warranty", icon: ShieldCheck, href: "/warranty" },
+        { label: "Reports", icon: Blocks, href: "/reports" },
+        { label: "Profile", icon: UserRound, href: "/profile" },
+      ];
+    case "CONTRACTOR":
+      return [
+        { label: "Home", icon: Gauge, href: "/", active: true },
+        { label: "Queue", icon: Building2, href: "/contractor" },
+        { label: "Proof", icon: BadgeCheck, href: "/contractor" },
+        { label: "Public", icon: Blocks, href: "/reports" },
+        { label: "Profile", icon: UserRound, href: "/profile" },
+      ];
+    case "USER":
+      return [
+        { label: "Home", icon: Gauge, href: "/", active: true },
+        { label: "Report", icon: AlertTriangle, href: "/report" },
+        { label: "Track", icon: Clock3, href: "/warranty" },
+        { label: "Proof", icon: Blocks, href: "/reports" },
+        { label: "Profile", icon: UserRound, href: "/profile" },
+      ];
+    default:
+      return [
+        { label: "Home", icon: Gauge, href: "/", active: true },
+        { label: "Reports", icon: Blocks, href: "/reports" },
+        { label: "Story", icon: FileImage, href: "/story" },
+        { label: "About", icon: ShieldCheck, href: "/about" },
+        { label: "Login", icon: LogIn, href: "/auth" },
+      ];
+  }
 }
 
 export default function Home() {
@@ -247,6 +360,13 @@ export default function Home() {
   const selected = activeLocalReports[0] ?? activeDashboardReports[0] ?? cityReports[3];
   const roleNavItems = currentUser ? getRoleNavItems(currentUser.role, "/reports") : [];
   const roleActionLinks = roleNavItems.filter((item) => !item.active).slice(0, 5);
+  const roleAuditMetrics = getRoleAuditMetrics(
+    currentUser?.role,
+    activeLocalReports.length,
+    localCityReports.length
+  );
+  const roleIncidentActions = getRoleIncidentActions(currentUser?.role, selected.id);
+  const mobileNavItems = getRoleMobileNavItems(currentUser?.role);
   const isNewLocalReport = selected.status === "PENDING_PROOF";
   const isPowerIncident = selected.issueCategory === "POWER_OUTAGE";
   const timelineEvents = isNewLocalReport
@@ -515,13 +635,17 @@ export default function Home() {
 
           <div className="mt-8 border-t border-white/10 pt-6">
             <p className="mb-5 px-3 font-mono text-xs font-bold uppercase tracking-[0.2em] text-[#dbc2b0]">
-              {t("publicAudit")}
+              {currentUser ? "Role metrics" : t("publicAudit")}
             </p>
             <div className="space-y-4 px-3">
-              <AuditMetric label={t("activeReports")} value={`${128 + activeLocalReports.length}`} tone="text-[#ffc08d]" />
-              <AuditMetric label={t("verifiedRepairs")} value="76" tone="text-[#00eb88]" />
-              <AuditMetric label={t("repeatFailure")} value="09" tone="text-[#ffb4ab]" />
-              <AuditMetric label={t("onChainProofs")} value={`${214 + localCityReports.length}`} tone="text-[#00dbe9]" />
+              {roleAuditMetrics.map((metric) => (
+                <AuditMetric
+                  key={metric.label}
+                  label={metric.label}
+                  value={metric.value}
+                  tone={metric.tone}
+                />
+              ))}
             </div>
           </div>
 
@@ -568,10 +692,10 @@ export default function Home() {
             <div className="mb-5 flex flex-col gap-4 sm:mb-6 sm:gap-5 2xl:flex-row 2xl:items-end 2xl:justify-between">
               <div className="cp-fade-up">
                 <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#00dbe9] sm:text-xs sm:tracking-[0.24em]">
-                  {t("commandCenterSubtitle")}
+                  {getRoleWorkspaceSubtitle(currentUser?.role)}
                 </p>
                 <h2 className="mt-2 max-w-xl text-[2rem] font-black leading-[1.05] tracking-tight text-white sm:text-4xl">
-                  {dashboardCityName} {t("commandCenter")}
+                  {dashboardCityName} {getRoleWorkspaceTitle(currentUser?.role)}
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-[#dbc2b0]">
                   {waitingForAutoCity
@@ -833,26 +957,27 @@ export default function Home() {
               </div>
 
               <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-1">
-                <Link
-                  href={`/warranty?issue=${selected.id}#issue-progress`}
-                  className="group flex items-center justify-between gap-3 rounded-lg border border-[#ffc08d]/35 bg-[#ffc08d]/10 px-4 py-3 text-sm font-semibold text-[#ffdcc2] transition hover:bg-[#ffc08d]/15"
-                >
-                  <span className="flex items-center gap-2">
-                    <Clock3 size={16} />
-                    Track progress
-                  </span>
-                  <ArrowRight size={15} className="transition group-hover:translate-x-1" />
-                </Link>
-                <Link
-                  href={`/proof/${selected.id}`}
-                  className="group flex items-center justify-between gap-3 rounded-lg border border-[#00dbe9]/30 bg-[#00dbe9]/10 px-4 py-3 text-sm font-semibold text-[#7df4ff] transition hover:bg-[#00dbe9]/15"
-                >
-                  <span className="flex items-center gap-2">
-                    <FileImage size={16} />
-                    Public proof
-                  </span>
-                  <ArrowRight size={15} className="transition group-hover:translate-x-1" />
-                </Link>
+                {roleIncidentActions.map((action) => {
+                  const Icon = action.icon;
+                  const tone =
+                    action.tone === "gold"
+                      ? "border-[#ffc08d]/35 bg-[#ffc08d]/10 text-[#ffdcc2] hover:bg-[#ffc08d]/15"
+                      : "border-[#00dbe9]/30 bg-[#00dbe9]/10 text-[#7df4ff] hover:bg-[#00dbe9]/15";
+
+                  return (
+                    <Link
+                      key={action.label}
+                      href={action.href}
+                      className={`group flex items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm font-semibold transition ${tone}`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Icon size={16} />
+                        {action.label}
+                      </span>
+                      <ArrowRight size={15} className="transition group-hover:translate-x-1" />
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           </section>
@@ -918,11 +1043,19 @@ export default function Home() {
       {showSafetyIntro && <SafetyRiskIntro onClose={closeSafetyIntro} />}
 
       <nav className="cp-mobile-dock fixed inset-x-3 bottom-3 z-50 grid grid-cols-5 overflow-hidden rounded-2xl border border-[#ff9933]/20 bg-[#030507]/90 shadow-[0_0_34px_rgba(0,219,233,0.12)] backdrop-blur-2xl sm:hidden">
-        <MobileNavLink href="/" label="Home" icon={<Gauge size={17} />} active />
-        <MobileNavLink href="/report" label="Report" icon={<AlertTriangle size={17} />} />
-        <MobileNavLink href="/pending" label="Review" icon={<ScanSearch size={17} />} />
-        <MobileNavLink href="/warranty" label="Ledger" icon={<ShieldCheck size={17} />} />
-        <MobileNavLink href="/reports" label="Proof" icon={<Blocks size={17} />} />
+        {mobileNavItems.map((item) => {
+          const Icon = item.icon;
+
+          return (
+            <MobileNavLink
+              key={item.label}
+              href={item.href}
+              label={item.label}
+              icon={<Icon size={17} />}
+              active={item.active}
+            />
+          );
+        })}
       </nav>
     </main>
   );

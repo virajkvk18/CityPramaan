@@ -15,6 +15,18 @@ const roleOptions: Array<{ value: AuthRole; icon: typeof User; detail: string }>
   { value: "CONTRACTOR", icon: Wrench, detail: "Submit repair evidence and proof records." },
 ];
 
+function getRoleLandingPath(role: AuthRole) {
+  switch (role) {
+    case "WARD_ADMIN":
+      return "/pending";
+    case "CONTRACTOR":
+      return "/contractor";
+    case "USER":
+    default:
+      return "/";
+  }
+}
+
 export default function AuthPage() {
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "signup">("signup");
@@ -37,8 +49,8 @@ export default function AuthPage() {
         await signUpUser({ email, password, name, contactNumber, role });
         router.push("/profile");
       } else {
-        await loginUser(email, password);
-        router.push("/");
+        const user = await loginUser(email, password);
+        router.push(getRoleLandingPath(user.role));
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Authentication failed.");
