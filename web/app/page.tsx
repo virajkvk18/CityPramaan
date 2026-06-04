@@ -253,7 +253,7 @@ export default function Home() {
                 <BrandLogo className="min-w-0" size="sm" />
               </Link>
 
-              <nav className="hidden items-center gap-5 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-white/78 lg:flex xl:gap-8">
+              <nav className="hidden items-center gap-5 font-mono text-[11px] font-black uppercase tracking-[0.2em] text-white/88 lg:flex xl:gap-8">
                 <Link href="/story" className="transition hover:text-white">
                   Story
                 </Link>
@@ -271,13 +271,13 @@ export default function Home() {
               <div className="flex shrink-0 items-center gap-2">
                 <Link
                   href="/about"
-                  className="hidden min-h-9 items-center justify-center rounded-lg border border-white/20 px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-white hover:text-black sm:inline-flex lg:min-h-10 lg:px-4 lg:text-[11px]"
+                  className="hidden min-h-9 items-center justify-center rounded-lg border border-white/25 px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-white transition hover:bg-white hover:text-black sm:inline-flex lg:min-h-10 lg:px-4 lg:text-[11px]"
                 >
                   About
                 </Link>
                 <Link
                   href="/auth"
-                  className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg bg-white px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-black transition hover:bg-gray-100 sm:px-4 lg:min-h-10 lg:gap-2 lg:text-[11px]"
+                  className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg bg-white px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-black transition hover:bg-gray-100 sm:px-4 lg:min-h-10 lg:gap-2 lg:text-[11px]"
                 >
                   <LogIn size={14} />
                   Start
@@ -312,7 +312,7 @@ export default function Home() {
                   className="cp-landing-title mb-4 text-[1.85rem] font-black leading-[1.08] text-white min-[390px]:text-[2.05rem] sm:text-[2.9rem] md:text-[3.55rem] lg:text-[4.1rem] xl:text-[4.85rem]"
                 />
                 <FadeIn delay={800} duration={1000}>
-                  <p className="cp-landing-subtitle mb-5 max-w-2xl rounded-xl border border-white/10 bg-black/24 px-3 py-2 text-[13px] font-medium leading-6 text-white/92 shadow-[0_12px_38px_rgba(0,0,0,0.24)] backdrop-blur-[2px] sm:bg-black/20 sm:px-4 sm:py-3 sm:text-base md:text-lg md:leading-7">
+                  <p className="cp-landing-subtitle mb-5 max-w-2xl rounded-xl border border-white/10 bg-black/24 px-3 py-2 text-[13px] font-semibold leading-6 text-white/95 shadow-[0_12px_38px_rgba(0,0,0,0.24)] backdrop-blur-[2px] sm:bg-black/20 sm:px-4 sm:py-3 sm:text-base md:text-lg md:leading-7">
                     CityPramaan turns civic complaints into verifiable repair histories with public
                     proof, contractor accountability, and warranty memory for every city issue.
                   </p>
@@ -321,13 +321,13 @@ export default function Home() {
                   <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                     <Link
                       href="/auth"
-                      className="cp-landing-primary-cta inline-flex min-h-11 items-center justify-center rounded-lg bg-white px-5 py-3 text-center font-mono text-[10px] font-black uppercase tracking-[0.14em] text-black transition hover:bg-gray-100 sm:px-8 sm:text-[11px] sm:tracking-[0.16em]"
+                      className="cp-landing-primary-cta inline-flex min-h-11 items-center justify-center rounded-lg bg-white px-5 py-3 text-center font-mono text-[10px] font-black uppercase tracking-[0.18em] text-black transition hover:bg-gray-100 sm:px-8 sm:text-[11px] sm:tracking-[0.2em]"
                     >
                       Start a Report
                     </Link>
                     <Link
                       href="/auth"
-                      className="cp-landing-secondary-cta liquid-glass inline-flex min-h-11 items-center justify-center rounded-lg border border-white/25 px-5 py-3 text-center font-mono text-[10px] font-black uppercase tracking-[0.14em] text-white transition hover:bg-white hover:text-black sm:px-8 sm:text-[11px] sm:tracking-[0.16em]"
+                      className="cp-landing-secondary-cta liquid-glass inline-flex min-h-11 items-center justify-center rounded-lg border border-white/25 px-5 py-3 text-center font-mono text-[10px] font-black uppercase tracking-[0.18em] text-white transition hover:bg-white hover:text-black sm:px-8 sm:text-[11px] sm:tracking-[0.2em]"
                     >
                       Explore Proof
                     </Link>
