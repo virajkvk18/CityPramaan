@@ -245,7 +245,7 @@ export default function Home() {
     [localCityReports]
   );
   const selected = activeLocalReports[0] ?? activeDashboardReports[0] ?? cityReports[3];
-  const roleNavItems = currentUser ? getRoleNavItems(currentUser.role, `/proof/${selected.id}`) : [];
+  const roleNavItems = currentUser ? getRoleNavItems(currentUser.role, "/reports") : [];
   const roleActionLinks = roleNavItems.filter((item) => !item.active).slice(0, 5);
   const isNewLocalReport = selected.status === "PENDING_PROOF";
   const isPowerIncident = selected.issueCategory === "POWER_OUTAGE";
@@ -327,7 +327,7 @@ export default function Home() {
                 <Link href="/auth" className="transition hover:text-white">
                   Warranty
                 </Link>
-                <Link href="/auth" className="transition hover:text-white">
+                <Link href="/reports" className="transition hover:text-white">
                   Public Proof
                 </Link>
                 <Link href="/auth" className="transition hover:text-white">
@@ -362,7 +362,7 @@ export default function Home() {
               <Link href="/auth" className="landing-nav-chip">
                 Warranty
               </Link>
-              <Link href="/auth" className="landing-nav-chip">
+              <Link href="/reports" className="landing-nav-chip">
                 Public Proof
               </Link>
               <Link href="/auth" className="landing-nav-chip">
@@ -922,7 +922,7 @@ export default function Home() {
         <MobileNavLink href="/report" label="Report" icon={<AlertTriangle size={17} />} />
         <MobileNavLink href="/pending" label="Review" icon={<ScanSearch size={17} />} />
         <MobileNavLink href="/warranty" label="Ledger" icon={<ShieldCheck size={17} />} />
-        <MobileNavLink href={`/proof/${selected.id}`} label="Proof" icon={<Blocks size={17} />} />
+        <MobileNavLink href="/reports" label="Proof" icon={<Blocks size={17} />} />
       </nav>
     </main>
   );
