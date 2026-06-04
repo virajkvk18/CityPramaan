@@ -56,7 +56,15 @@ import {
   saveLocalReport,
 } from "@/src/lib/report-storage";
 import { createProofBundleHash, deriveTransactionHash, sha256Hex } from "@/src/lib/proof-hashing";
-import { MOCK_WALLET_ADDRESS } from "@/src/lib/wallet-storage";
+import {
+  buildExplorerTxUrl,
+  connectWallet,
+  createReportTransaction,
+  getWalletSnapshot,
+  parseWalletSnapshot,
+  shortWalletAddress,
+  subscribeWallet,
+} from "@/src/lib/wallet-storage";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 
 const issuePresets = [
@@ -160,12 +168,14 @@ async function reverseGeocodeArea(latitude: number, longitude: number) {
 
 export default function ReportIssuePage() {
   const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => DEFAULT_CITY_KEY);
+  const walletSnapshot = useSyncExternalStore(subscribeWallet, getWalletSnapshot, () => "");
   const languageSnapshot = useSyncExternalStore(
     subscribeLanguage,
     getLanguageSnapshot,
     () => "en"
   );
   const selectedCity = getCityByKey(citySnapshot);
+  const wallet = parseWalletSnapshot(walletSnapshot);
   const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const tr = (key: Parameters<typeof translate>[1]) => translate(languageSnapshot, key);
   const [imageName, setImageName] = useState("");
@@ -188,6 +198,7 @@ export default function ReportIssuePage() {
   const [proofCreating, setProofCreating] = useState(false);
   const [proofError, setProofError] = useState("");
   const [createdTxHash, setCreatedTxHash] = useState("");
+  const [createdTxUrl, setCreatedTxUrl] = useState("");
   const [createdProofHash, setCreatedProofHash] = useState("");
   const [aiProcessing, setAiProcessing] = useState(false);
   const [aiResult, setAiResult] = useState<InfrastructureAnalysis | null>(null);
@@ -233,6 +244,7 @@ export default function ReportIssuePage() {
     setSubmitted(false);
     setProofError("");
     setCreatedTxHash("");
+    setCreatedTxUrl("");
     setCreatedProofHash("");
 
     try {
@@ -261,6 +273,7 @@ export default function ReportIssuePage() {
     setSubmitted(false);
     setProofError("");
     setCreatedTxHash("");
+    setCreatedTxUrl("");
     setCreatedProofHash("");
   }
 
@@ -282,6 +295,7 @@ export default function ReportIssuePage() {
     setSubmitted(false);
     setProofError("");
     setCreatedTxHash("");
+    setCreatedTxUrl("");
     setCreatedProofHash("");
 
     const detectedArea = await reverseGeocodeArea(nextLatitude, nextLongitude);
@@ -372,6 +386,7 @@ export default function ReportIssuePage() {
     setSubmitted(false);
     setProofError("");
     setCreatedTxHash("");
+    setCreatedTxUrl("");
     setCreatedProofHash("");
   }
 
@@ -420,7 +435,9 @@ export default function ReportIssuePage() {
         savedLocation,
         now,
       ]);
-      const txHash = await deriveTransactionHash(`${reportId}:${proofBundleHash}:submitProof`);
+      const connectedWallet = wallet.connected ? wallet : await connectWallet(wallet.chainKey);
+      const txHash = await createReportTransaction(reportId, proofBundleHash);
+      const txUrl = buildExplorerTxUrl(txHash, connectedWallet.chainKey);
       const aiTxHash = await deriveTransactionHash(`${reportId}:${result.proofTag}:aiVerification`);
 
       saveLocalReport({
@@ -498,10 +515,13 @@ export default function ReportIssuePage() {
       setSubmitted(true);
       setSigning(false);
       setCreatedTxHash(txHash);
+      setCreatedTxUrl(txUrl);
       setCreatedProofHash(proofBundleHash);
-    } catch {
+    } catch (error) {
       const message =
-        "Could not save this proof in browser storage. Clear old local reports or try a smaller image.";
+        error instanceof Error
+          ? error.message
+          : "Could not create the on-chain report transaction. Check MetaMask, testnet gas, and contract config.";
 
       setProofError(message);
       setLocationMessage(message);
@@ -531,6 +551,7 @@ export default function ReportIssuePage() {
     setProofCreating(false);
     setProofError("");
     setCreatedTxHash("");
+    setCreatedTxUrl("");
     setCreatedProofHash("");
   }
 
@@ -1041,7 +1062,9 @@ export default function ReportIssuePage() {
                     <Fingerprint size={25} />
                   </div>
                   <div>
-                    <p className="font-mono text-sm text-white">{MOCK_WALLET_ADDRESS}</p>
+                    <p className="break-all font-mono text-sm text-white">
+                      {wallet.connected ? wallet.address : "Connect MetaMask to sign"}
+                    </p>
                     <p className="font-mono text-xs text-[#dbc2b0]/60">
                       Node ID: {selectedCity.key.toUpperCase()}-9942
                     </p>
@@ -1120,6 +1143,16 @@ export default function ReportIssuePage() {
                       <span className="uppercase text-[#dbc2b0]/55">Tx hash</span>
                       <span className="truncate text-[#00eb88]">{createdTxHash || "Created"}</span>
                     </div>
+                    {createdTxUrl && (
+                      <a
+                        href={createdTxUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block truncate text-[#7df4ff] underline-offset-4 hover:underline"
+                      >
+                        Open transaction in explorer
+                      </a>
+                    )}
                     <div className="flex items-center justify-between gap-3">
                       <span className="uppercase text-[#dbc2b0]/55">Proof bundle</span>
                       <span className="truncate text-[#7df4ff]">{createdProofHash || "Stored"}</span>
@@ -1164,16 +1197,18 @@ export default function ReportIssuePage() {
                 <div className="shimmer-bg h-full w-full" />
               </div>
               <p className="font-mono text-sm text-white">{tr("readyToSign")}</p>
-              <p className="font-mono text-sm text-[#ffc08d]">{MOCK_WALLET_ADDRESS}</p>
+              <p className="font-mono text-sm text-[#ffc08d]">
+                {wallet.connected ? shortWalletAddress(wallet.address) : "MetaMask connection required"}
+              </p>
             </div>
 
             <div className="mb-5 space-y-2 rounded border border-white/5 bg-black/40 p-4">
-              <SignRow label="Contract" value="ReportRegistry_v2" />
-              <SignRow label="Method" value="submitProof()" />
+              <SignRow label="Contract" value="CityPramaanRegistry" />
+              <SignRow label="Method" value="createReport(publicId, reportHash)" />
               <SignRow label="Issue" value={aiResult?.issueType ?? "Infrastructure issue"} />
               <SignRow label="Proof Tag" value={aiResult?.proofTag ?? "CIVIC_ASSET_PROOF"} />
-              <SignRow label="Network" value="Base Sepolia" />
-              <SignRow label="Gas" value="No testnet gas required" />
+              <SignRow label="Network" value={wallet.chainKey.replace("-", " ")} />
+              <SignRow label="Gas" value="Uses real testnet gas from your wallet" />
             </div>
 
             <div className="rounded border border-[#00eb88]/20 bg-[#00eb88]/10 p-4">

@@ -37,9 +37,17 @@ import {
   subscribeLocalReports,
   upsertLocalReport,
 } from "@/src/lib/report-storage";
-import { createProofBundleHash, deriveTransactionHash, sha256Hex } from "@/src/lib/proof-hashing";
+import { createProofBundleHash, sha256Hex } from "@/src/lib/proof-hashing";
 import { useLanguage } from "@/src/lib/use-language";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
+import {
+  buildExplorerTxUrl,
+  connectWallet,
+  getWalletSnapshot,
+  parseWalletSnapshot,
+  submitRepairTransaction,
+  subscribeWallet,
+} from "@/src/lib/wallet-storage";
 
 const activeStatuses: CivicReport["status"][] = [
   "OPEN",
@@ -57,6 +65,8 @@ export default function ContractorPage() {
     getLocalReportsSnapshot,
     () => "[]"
   );
+  const walletSnapshot = useSyncExternalStore(subscribeWallet, getWalletSnapshot, () => "");
+  const wallet = parseWalletSnapshot(walletSnapshot);
   const selectedCity = getCityByKey(citySnapshot);
   const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const localReports = useMemo(
@@ -76,6 +86,7 @@ export default function ContractorPage() {
   const [repairImageLoading, setRepairImageLoading] = useState(false);
   const [audited, setAudited] = useState(false);
   const [submittedId, setSubmittedId] = useState("");
+  const [submittedTxUrl, setSubmittedTxUrl] = useState("");
   const [auditProcessing, setAuditProcessing] = useState(false);
   const [actionMessage, setActionMessage] = useState(
     `${t("selectedCase")}, ${t("uploadAfterRepairEvidence")}, then submit proof for issuer approval.`
@@ -91,6 +102,7 @@ export default function ContractorPage() {
     setRepairImageLoading(true);
     setAudited(false);
     setSubmittedId("");
+    setSubmittedTxUrl("");
     setActionMessage("Preparing repair proof image for public record...");
 
     try {
@@ -173,6 +185,7 @@ export default function ContractorPage() {
     let repairEvidenceHash = "";
     let proofBundleHash = "";
     let tx = "";
+    let txUrl = "";
 
     try {
       repairEvidenceHash = await sha256Hex(repairImageDataUrl);
@@ -184,9 +197,15 @@ export default function ContractorPage() {
         report.status,
         now.toISOString(),
       ]);
-      tx = await deriveTransactionHash(`${report.id}:${proofBundleHash}:repairProof`);
-    } catch {
-      setActionMessage("Could not create repair proof hash. Try uploading the repair image again.");
+      const connectedWallet = wallet.connected ? wallet : await connectWallet(wallet.chainKey);
+      tx = await submitRepairTransaction(report.id, repairEvidenceHash);
+      txUrl = buildExplorerTxUrl(tx, connectedWallet.chainKey);
+    } catch (error) {
+      setActionMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not create the repair proof transaction. Check MetaMask, testnet gas, and contract config."
+      );
       return;
     }
 
@@ -241,7 +260,8 @@ export default function ContractorPage() {
 
     upsertLocalReport(updated);
     setSubmittedId(report.id);
-    setActionMessage(`${t("repairProof")} submitted. Status is now ${t("repairSubmitted")} / ${t("pending")}. Issuer must approve it from ${t("publicProof")}.`);
+    setSubmittedTxUrl(txUrl);
+    setActionMessage(`${t("repairProof")} submitted on-chain. Status is now ${t("repairSubmitted")} / ${t("pending")}. Issuer must approve it from ${t("publicProof")}.`);
   }
 
   function chooseCity(cityKey: CityKey) {
@@ -251,6 +271,7 @@ export default function ContractorPage() {
     setRepairImageLoading(false);
     setAudited(false);
     setSubmittedId("");
+    setSubmittedTxUrl("");
     setActionMessage(`${t("city")} ${t("active")}. ${t("selectedCase")} / ${t("uploadAfterRepairEvidence")}.`);
   }
 
@@ -569,6 +590,16 @@ export default function ContractorPage() {
                           <p className="mt-2 text-sm text-[#dbc2b0]">
                             Contractor proof is now visible in {t("publicProof")}. Issuer approval will activate warranty.
                           </p>
+                          {submittedTxUrl && (
+                            <a
+                              href={submittedTxUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-3 block truncate font-mono text-xs text-[#7df4ff] underline-offset-4 hover:underline"
+                            >
+                              Open repair transaction in explorer
+                            </a>
+                          )}
                           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                             <Link
                               href="/warranty"
