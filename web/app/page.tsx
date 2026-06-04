@@ -144,8 +144,76 @@ function getRoleNavItems(role: AuthRole, proofHref: string): RoleNavItem[] {
   ];
 }
 
+function getPublicNavItems(proofHref: string): RoleNavItem[] {
+  return [
+    { label: "Public dashboard", icon: Gauge, href: "/", active: true },
+    { label: "Public proof", icon: Blocks, href: proofHref, tone: "glass" },
+    { label: "Issue history", icon: ScanSearch, href: "/warranty", tone: "cyan" },
+    { label: "Warranty scanner", icon: Wallet, href: "/warranty", tone: "gold" },
+    { label: "Login for actions", icon: LogIn, href: "/auth", tone: "glass" },
+  ];
+}
+
+type SectorPanel = {
+  title: string;
+  access: string;
+  detail: string;
+  action: string;
+  href: string;
+  icon: typeof Gauge;
+  tone: "public" | "citizen" | "contractor" | "admin";
+  locked?: boolean;
+};
+
+function getSectorPanels(currentUser: ReturnType<typeof getCurrentUser>, proofHref: string): SectorPanel[] {
+  const userRole = currentUser?.role;
+
+  return [
+    {
+      title: "Public",
+      access: "No login needed",
+      detail: "View local proof records, repair history, warranty status, and public feedback from the dashboard.",
+      action: "View public proof",
+      href: proofHref,
+      icon: Blocks,
+      tone: "public",
+    },
+    {
+      title: "Citizen",
+      access: userRole === "USER" ? "Citizen panel active" : "Login as citizen",
+      detail: "Report issues, review contractor repair proof, approve repair quality, and close solved cases.",
+      action: userRole === "USER" ? "Report issue" : "Login / Signup",
+      href: userRole === "USER" ? "/report" : "/auth",
+      icon: AlertTriangle,
+      tone: "citizen",
+      locked: userRole !== "USER",
+    },
+    {
+      title: "Contractor",
+      access: userRole === "CONTRACTOR" ? "Contractor panel active" : "Contractor login required",
+      detail: "Open assigned issues, inspect citizen evidence, upload after-repair proof, and submit for approval.",
+      action: userRole === "CONTRACTOR" ? "Open repair queue" : "Login / Signup",
+      href: userRole === "CONTRACTOR" ? "/contractor" : "/auth",
+      icon: Building2,
+      tone: "contractor",
+      locked: userRole !== "CONTRACTOR",
+    },
+    {
+      title: "Admin",
+      access: userRole === "WARD_ADMIN" ? "Admin panel active" : "Ward admin login required",
+      detail: "Assign contractors, monitor ward incidents, track SLA risk, and keep city operations accountable.",
+      action: userRole === "WARD_ADMIN" ? "Open admin panel" : "Login / Signup",
+      href: userRole === "WARD_ADMIN" ? "/admin" : "/auth",
+      icon: ScanSearch,
+      tone: "admin",
+      locked: userRole !== "WARD_ADMIN",
+    },
+  ];
+}
+
 export default function Home() {
   const { t } = useLanguage();
+  const showIntroLanding = false;
   const [showSafetyIntro, setShowSafetyIntro] = useState(false);
   const localReportsSnapshot = useSyncExternalStore(
     subscribeLocalReports,
@@ -193,8 +261,10 @@ export default function Home() {
     [localCityReports]
   );
   const selected = activeLocalReports[0] ?? activeDashboardReports[0] ?? cityReports[3];
-  const roleNavItems = currentUser ? getRoleNavItems(currentUser.role, `/proof/${selected.id}`) : [];
+  const proofHref = `/proof/${selected.id}`;
+  const roleNavItems = currentUser ? getRoleNavItems(currentUser.role, proofHref) : getPublicNavItems(proofHref);
   const roleActionLinks = roleNavItems.filter((item) => !item.active).slice(0, 5);
+  const sectorPanels = getSectorPanels(currentUser, proofHref);
   const isNewLocalReport = selected.status === "PENDING_PROOF";
   const isPowerIncident = selected.issueCategory === "POWER_OUTAGE";
   const timelineEvents = isNewLocalReport
@@ -229,7 +299,7 @@ export default function Home() {
     setShowSafetyIntro(false);
   };
 
-  if (!currentUser) {
+  if (!currentUser && showIntroLanding) {
     return (
       <main className="cp-page-shell cp-video-landing cp-theme-locked-dark relative min-h-[100svh] overflow-hidden bg-black text-white">
         <video
@@ -542,9 +612,11 @@ export default function Home() {
                     <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#00dbe9]">
                       {currentUser ? roleLabels[currentUser.role] : "Guest access"}
                     </p>
-                    <h3 className="mt-1 text-xl font-black text-white">{currentUser ? roleDashboard.title : "Login to open your role dashboard"}</h3>
+                    <h3 className="mt-1 text-xl font-black text-white">{currentUser ? roleDashboard.title : "Public city dashboard active"}</h3>
                     <p className="mt-1 max-w-3xl text-sm leading-6 text-[#dbc2b0]">
-                      {currentUser ? roleDashboard.detail : "Create a citizen, ward admin, or contractor profile to unlock the right workflow and profile proof hash."}
+                      {currentUser
+                        ? roleDashboard.detail
+                        : "Anyone can view local issue status, proof history, warranty records, map pins, and public feedback without login."}
                     </p>
                   </div>
                 </div>
@@ -557,11 +629,19 @@ export default function Home() {
                     </span>
                   )}
                   <Link
-                    href={currentUser ? roleDashboard.href : "/auth"}
+                    href={currentUser ? roleDashboard.href : proofHref}
                     className="inline-flex min-h-10 items-center justify-center rounded-md bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] px-4 py-2 font-mono text-xs font-black uppercase tracking-[0.14em] text-[#4c2700] transition hover:brightness-110"
                   >
-                    {currentUser ? roleDashboard.action : "Login / Signup"}
+                    {currentUser ? roleDashboard.action : "View public proof"}
                   </Link>
+                  {!currentUser && (
+                    <Link
+                      href="/auth"
+                      className="inline-flex min-h-10 items-center justify-center rounded-md border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.14em] text-[#b8f9ff] transition hover:border-[#00dbe9]/60"
+                    >
+                      Login for actions
+                    </Link>
+                  )}
                   {currentUser && !profileComplete && (
                     <Link
                       href="/profile"
@@ -572,6 +652,12 @@ export default function Home() {
                   )}
                 </div>
               </div>
+            </div>
+
+            <div className="mb-4 grid gap-3 sm:mb-5 lg:grid-cols-2 2xl:grid-cols-4">
+              {sectorPanels.map((panel) => (
+                <SectorPanelCard key={panel.title} panel={panel} />
+              ))}
             </div>
 
             <div className="cp-stagger-grid mb-4 grid grid-cols-2 gap-2 sm:mb-5 sm:gap-3 lg:grid-cols-4">
@@ -847,10 +933,14 @@ export default function Home() {
 
       <nav className="cp-mobile-dock fixed inset-x-3 bottom-3 z-50 grid grid-cols-5 overflow-hidden rounded-2xl border border-[#ff9933]/20 bg-[#030507]/90 shadow-[0_0_34px_rgba(0,219,233,0.12)] backdrop-blur-2xl sm:hidden">
         <MobileNavLink href="/" label="Home" icon={<Gauge size={17} />} active />
-        <MobileNavLink href="/report" label="Report" icon={<AlertTriangle size={17} />} />
-        <MobileNavLink href="/pending" label="Review" icon={<ScanSearch size={17} />} />
-        <MobileNavLink href="/warranty" label="Ledger" icon={<ShieldCheck size={17} />} />
-        <MobileNavLink href={`/proof/${selected.id}`} label="Proof" icon={<Blocks size={17} />} />
+        <MobileNavLink href={proofHref} label="Proof" icon={<Blocks size={17} />} />
+        <MobileNavLink href="/warranty" label="History" icon={<ShieldCheck size={17} />} />
+        <MobileNavLink
+          href={currentUser ? roleDashboard.href : "/auth"}
+          label={currentUser ? "Panel" : "Login"}
+          icon={currentUser ? <ScanSearch size={17} /> : <LogIn size={17} />}
+        />
+        <MobileNavLink href={currentUser?.role === "USER" ? "/report" : "/auth"} label="Report" icon={<AlertTriangle size={17} />} />
       </nav>
     </main>
   );
@@ -1066,6 +1156,54 @@ function PulseStat({
       <p className="mt-1 text-[1.45rem] font-black leading-tight tracking-tight text-white sm:text-xl">{value}</p>
       <p className="mt-1 text-[11px] leading-4 text-[#dbc2b0]">{detail}</p>
     </div>
+  );
+}
+
+function SectorPanelCard({ panel }: { panel: SectorPanel }) {
+  const Icon = panel.icon;
+  const toneClass =
+    panel.tone === "public"
+      ? "border-[#00dbe9]/30 bg-[#00dbe9]/10 text-[#7df4ff]"
+      : panel.tone === "citizen"
+        ? "border-[#ffc08d]/35 bg-[#ff9933]/10 text-[#ffdcc2]"
+        : panel.tone === "contractor"
+          ? "border-[#00eb88]/30 bg-[#00eb88]/10 text-[#8fffc1]"
+          : "border-[#d946ef]/35 bg-[#d946ef]/10 text-[#f0abfc]";
+  const buttonClass =
+    panel.tone === "public"
+      ? "border-[#00dbe9]/35 bg-[#00dbe9]/10 text-[#7df4ff] hover:bg-[#00dbe9]/15"
+      : panel.locked
+        ? "border-white/10 bg-white/[0.04] text-[#dbc2b0] hover:border-[#ffc08d]/35 hover:text-[#ffdcc2]"
+        : "border-[#00eb88]/35 bg-[#00eb88]/10 text-[#8fffc1] hover:bg-[#00eb88]/15";
+
+  return (
+    <article className="group relative overflow-hidden rounded-xl border border-white/10 bg-black/24 p-4 shadow-[0_18px_46px_rgba(0,0,0,0.18)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-[#00dbe9]/30">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+      <div className={`grid h-10 w-10 place-items-center rounded-md border ${toneClass}`}>
+        <Icon size={19} />
+      </div>
+      <div className="mt-4 flex items-start justify-between gap-3">
+        <div>
+          <p className="font-mono text-[10px] font-black uppercase tracking-[0.18em] text-[#dbc2b0]/70">
+            {panel.access}
+          </p>
+          <h3 className="mt-1 text-lg font-black text-white">{panel.title} Panel</h3>
+        </div>
+        {panel.locked && (
+          <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-[#a38d7c]">
+            Protected
+          </span>
+        )}
+      </div>
+      <p className="mt-3 min-h-[72px] text-sm leading-6 text-[#dbc2b0]">{panel.detail}</p>
+      <Link
+        href={panel.href}
+        className={`mt-4 inline-flex min-h-10 w-full items-center justify-between rounded-md border px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.14em] transition ${buttonClass}`}
+      >
+        {panel.action}
+        <ArrowRight size={14} className="transition group-hover:translate-x-1" />
+      </Link>
+    </article>
   );
 }
 
