@@ -71,29 +71,8 @@ const timelineDefaultKeys: TranslationKey[] = [
 ];
 
 const SAFETY_INTRO_STORAGE_KEY = "citypramaan-safety-intro-seen";
-
-const HERO_CIVIC_SCENES = [
-  {
-    label: "Indian city streets",
-    url: "https://images.unsplash.com/photo-1596176530529-78163a4f7af2?w=1600&q=82&auto=format&fit=crop",
-  },
-  {
-    label: "Public roads",
-    url: "https://images.unsplash.com/photo-1529253355930-ddbe423a2ac7?w=1600&q=82&auto=format&fit=crop",
-  },
-  {
-    label: "Civic repair zones",
-    url: "https://images.unsplash.com/photo-1587474260584-136574528ed5?w=1600&q=82&auto=format&fit=crop",
-  },
-  {
-    label: "Drainage and streets",
-    url: "https://images.unsplash.com/photo-1561361513-2d000a50f0dc?w=1600&q=82&auto=format&fit=crop",
-  },
-  {
-    label: "City night safety",
-    url: "https://images.unsplash.com/photo-1599661046289-e31897846e41?w=1600&q=82&auto=format&fit=crop",
-  },
-];
+const CITY_HERO_VIDEO_URL =
+  "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260403_050628_c4e32401-fab4-4a27-b7a8-6e9291cd5959.mp4";
 
 type RoleNavItem = {
   label: string;
@@ -168,7 +147,6 @@ function getRoleNavItems(role: AuthRole, proofHref: string): RoleNavItem[] {
 export default function Home() {
   const { t } = useLanguage();
   const [showSafetyIntro, setShowSafetyIntro] = useState(false);
-  const [heroSceneIndex, setHeroSceneIndex] = useState(0);
   const localReportsSnapshot = useSyncExternalStore(
     subscribeLocalReports,
     getLocalReportsSnapshot,
@@ -215,7 +193,6 @@ export default function Home() {
     [localCityReports]
   );
   const selected = activeLocalReports[0] ?? activeDashboardReports[0] ?? cityReports[3];
-  const heroScene = HERO_CIVIC_SCENES[heroSceneIndex];
   const roleNavItems = currentUser ? getRoleNavItems(currentUser.role, `/proof/${selected.id}`) : [];
   const roleActionLinks = roleNavItems.filter((item) => !item.active).slice(0, 5);
   const isNewLocalReport = selected.status === "PENDING_PROOF";
@@ -242,18 +219,6 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    if (currentUser) {
-      return undefined;
-    }
-
-    const timer = window.setInterval(() => {
-      setHeroSceneIndex((current) => (current + 1) % HERO_CIVIC_SCENES.length);
-    }, 5200);
-
-    return () => window.clearInterval(timer);
-  }, [currentUser]);
-
   const closeSafetyIntro = () => {
     try {
       window.localStorage.setItem(SAFETY_INTRO_STORAGE_KEY, "true");
@@ -267,29 +232,26 @@ export default function Home() {
   if (!currentUser) {
     return (
       <main className="cp-page-shell cp-video-landing relative min-h-screen overflow-hidden bg-black text-white">
-        <div className="absolute inset-0 bg-[#020304]">
-          {HERO_CIVIC_SCENES.map((scene, index) => (
-            <div
-              key={scene.label}
-              aria-hidden="true"
-              className={`cp-hero-photo absolute inset-0 bg-cover bg-center transition-opacity duration-[1200ms] ${
-                index === heroSceneIndex ? "opacity-100" : "opacity-0"
-              }`}
-              style={{ backgroundImage: `url(${scene.url})` }}
-            />
-          ))}
-        </div>
-        <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,0.9)_0%,rgba(0,0,0,0.55)_45%,rgba(0,0,0,0.28)_100%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_20%,rgba(255,153,51,0.22),transparent_28%),radial-gradient(circle_at_82%_28%,rgba(0,219,233,0.18),transparent_32%),radial-gradient(circle_at_58%_88%,rgba(0,235,136,0.16),transparent_32%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:42px_42px] opacity-60" />
+        <video
+          className="absolute inset-0 h-full w-full object-cover"
+          src={CITY_HERO_VIDEO_URL}
+          autoPlay
+          loop
+          muted
+          playsInline
+          aria-hidden="true"
+        />
 
-        <div className="cp-hero-content relative z-10 flex min-h-screen flex-col px-4 pb-7 pt-4 sm:px-6 md:px-10 lg:px-14">
+        <div className="relative z-10 flex min-h-screen flex-col px-4 pb-7 pt-4 sm:px-6 md:px-10 lg:px-14">
           <header className="liquid-glass flex flex-wrap items-center justify-between gap-3 rounded-xl px-3 py-3 sm:px-4">
             <Link href="/" className="flex min-w-0 max-w-[calc(100%-6.5rem)] items-center gap-3 sm:max-w-none">
               <BrandLogo className="min-w-0" size="sm" />
             </Link>
 
             <nav className="hidden items-center gap-5 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-white/78 lg:flex xl:gap-8">
+              <Link href="/auth" className="transition hover:text-white">
+                Story
+              </Link>
               <Link href="/auth" className="transition hover:text-white">
                 Warranty
               </Link>
@@ -298,9 +260,6 @@ export default function Home() {
               </Link>
               <Link href="/auth" className="transition hover:text-white">
                 Report
-              </Link>
-              <Link href="/auth" className="transition hover:text-white">
-                About
               </Link>
             </nav>
 
@@ -324,20 +283,14 @@ export default function Home() {
           <section className="flex flex-1 flex-col justify-end py-10 sm:py-12 lg:py-14">
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)] lg:items-end">
               <div className="max-w-4xl">
-                <FadeIn duration={900}>
-                  <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#b8f9ff]">
-                    <span className="h-2 w-2 rounded-full bg-[#00eb88] shadow-[0_0_16px_rgba(0,235,136,0.9)]" />
-                    {heroScene.label}
-                  </div>
-                </FadeIn>
                 <AnimatedHeading
-                  text={`Proof of repair\nfor accountable cities`}
+                  text={`Proof of repair\nfor accountable cities.`}
                   className="mb-4 text-[2.25rem] font-black leading-[1.05] text-white sm:text-[2.9rem] md:text-[3.55rem] lg:text-[4.1rem] xl:text-[4.85rem]"
                 />
                 <FadeIn delay={800} duration={1000}>
                   <p className="mb-5 max-w-2xl text-sm leading-6 text-gray-300 sm:text-base md:text-lg md:leading-7">
-                    Report civic issues, verify repairs, activate warranties, and make every public
-                    repair traceable with AI-assisted review and Web3 proof.
+                    CityPramaan turns civic complaints into verifiable repair histories with public
+                    proof, contractor accountability, and warranty memory for every city issue.
                   </p>
                 </FadeIn>
                 <FadeIn delay={1200} duration={1000}>
@@ -346,13 +299,13 @@ export default function Home() {
                       href="/auth"
                       className="inline-flex min-h-11 items-center justify-center rounded-lg bg-white px-6 py-3 text-center font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-gray-100 sm:px-8"
                     >
-                      Report Issue
+                      Start a Report
                     </Link>
                     <Link
                       href="/auth"
                       className="liquid-glass inline-flex min-h-11 items-center justify-center rounded-lg border border-white/20 px-6 py-3 text-center font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-white transition hover:bg-white hover:text-black sm:px-8"
                     >
-                      View Public Proof
+                      Explore Proof
                     </Link>
                   </div>
                 </FadeIn>
@@ -361,36 +314,13 @@ export default function Home() {
               <div className="flex items-end justify-start lg:justify-end">
                 <FadeIn delay={1400} duration={1000}>
                   <div className="liquid-glass w-full max-w-md rounded-xl border border-white/20 px-5 py-4 sm:px-6">
-                    <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#ffc08d]">
-                      Proof network preview
+                    <p className="text-base font-semibold text-white sm:text-lg md:text-xl">
+                      Report. Repair. Verify.
                     </p>
-                    <p className="mt-2 text-base font-semibold text-white sm:text-lg md:text-xl">
-                      Report. Verify. Remember.
-                    </p>
-                    <div className="mt-4 grid grid-cols-3 gap-2 text-center sm:gap-3">
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-center sm:gap-3">
                       <PublicMetric label="Active" value={`${activeDashboardReports.length}`} />
                       <PublicMetric label="Proofs" value={`${214 + localCityReports.length}`} />
                       <PublicMetric label="Node" value={dashboardCityName} />
-                    </div>
-                    <div className="mt-4 flex items-center justify-between gap-2 border-t border-white/10 pt-3">
-                      <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-white/55">
-                        City scenes
-                      </span>
-                      <div className="flex gap-2">
-                        {HERO_CIVIC_SCENES.map((scene, index) => (
-                          <button
-                            key={scene.label}
-                            type="button"
-                            aria-label={`Show ${scene.label}`}
-                            onClick={() => setHeroSceneIndex(index)}
-                            className={`h-2.5 w-2.5 rounded-full transition ${
-                              index === heroSceneIndex
-                                ? "scale-125 bg-[#00eb88] shadow-[0_0_14px_rgba(0,235,136,0.85)]"
-                                : "bg-white/35 hover:bg-white/70"
-                            }`}
-                          />
-                        ))}
-                      </div>
                     </div>
                   </div>
                 </FadeIn>
