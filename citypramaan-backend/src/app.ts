@@ -21,7 +21,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/issues', issuesRouter);
-app.use('/api/warranty', warrantyRouter) ;
+app.use('/api/warranty', warrantyRouter);
 
 app.listen(PORT, () => {
   console.log('Server running on http://localhost:' + PORT);
