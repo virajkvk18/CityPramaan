@@ -72,6 +72,7 @@ const timelineDefaultKeys: TranslationKey[] = [
 
 const SAFETY_INTRO_STORAGE_KEY = "citypramaan-safety-intro-seen";
 const CITY_HERO_VIDEO_URL = "/videos/indian-cities-loop.mp4";
+const CITY_HERO_MOBILE_VIDEO_URL = "/videos/indian-cities-loop-mobile.mp4";
 
 type RoleNavItem = {
   label: string;
@@ -233,14 +234,16 @@ export default function Home() {
       <main className="cp-page-shell cp-video-landing relative min-h-[100svh] overflow-hidden bg-black text-white">
         <video
           className="absolute inset-0 h-full w-full object-cover"
-          src={CITY_HERO_VIDEO_URL}
           autoPlay
           loop
           muted
           preload="auto"
           playsInline
           aria-hidden="true"
-        />
+        >
+          <source src={CITY_HERO_MOBILE_VIDEO_URL} type="video/mp4" media="(max-width: 639px)" />
+          <source src={CITY_HERO_VIDEO_URL} type="video/mp4" media="(min-width: 640px)" />
+        </video>
 
         <div className="relative z-10 flex min-h-[100svh] flex-col px-3 pb-5 pt-3 sm:px-6 sm:pb-7 sm:pt-4 md:px-10 lg:px-14">
           <header className="liquid-glass flex flex-col gap-2 rounded-xl px-3 py-3 sm:px-4">
@@ -292,7 +295,7 @@ export default function Home() {
                 Warranty
               </Link>
               <Link href="/auth" className="landing-nav-chip">
-                Proof
+                Public Proof
               </Link>
               <Link href="/auth" className="landing-nav-chip">
                 Report
