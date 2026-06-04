@@ -8,7 +8,7 @@ router.get('/', (req: Request, res: Response) => {
   res.json({
     message: 'Get all issues',
     filters: { city, status },
-    data: [] // will connect to DB later
+    data: [] 
   });
 });
 
