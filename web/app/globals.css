@@ -320,6 +320,48 @@ body > main::after {
   text-transform: uppercase;
 }
 
+.cp-mobile-landing-nav {
+  scrollbar-width: none;
+}
+
+.cp-mobile-landing-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.landing-nav-chip {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.625rem;
+  color: rgba(255, 255, 255, 0.78);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  font-weight: 800;
+  justify-content: center;
+  letter-spacing: 0.12em;
+  min-height: 36px;
+  padding: 0.55rem 0.72rem;
+  text-transform: uppercase;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+  white-space: nowrap;
+}
+
+.landing-nav-chip:active {
+  transform: translateY(1px);
+}
+
+.landing-nav-chip:hover {
+  background: rgba(0, 219, 233, 0.12);
+  border-color: rgba(0, 219, 233, 0.34);
+  color: #d3fbff;
+}
+
 .liquid-glass {
   background: rgba(0, 0, 0, 0.4);
   background-blend-mode: luminosity;

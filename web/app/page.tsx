@@ -231,7 +231,7 @@ export default function Home() {
 
   if (!currentUser) {
     return (
-      <main className="cp-page-shell cp-video-landing relative min-h-screen overflow-hidden bg-black text-white">
+      <main className="cp-page-shell cp-video-landing relative min-h-[100svh] overflow-hidden bg-black text-white">
         <video
           className="absolute inset-0 h-full w-full object-cover"
           src={CITY_HERO_VIDEO_URL}
@@ -242,53 +242,73 @@ export default function Home() {
           aria-hidden="true"
         />
 
-        <div className="relative z-10 flex min-h-screen flex-col px-4 pb-7 pt-4 sm:px-6 md:px-10 lg:px-14">
-          <header className="liquid-glass flex flex-wrap items-center justify-between gap-3 rounded-xl px-3 py-3 sm:px-4">
-            <Link href="/" className="flex min-w-0 max-w-[calc(100%-6.5rem)] items-center gap-3 sm:max-w-none">
-              <BrandLogo className="min-w-0" size="sm" />
-            </Link>
+        <div className="relative z-10 flex min-h-[100svh] flex-col px-3 pb-5 pt-3 sm:px-6 sm:pb-7 sm:pt-4 md:px-10 lg:px-14">
+          <header className="liquid-glass flex flex-col gap-2 rounded-xl px-3 py-3 sm:px-4">
+            <div className="flex w-full items-center justify-between gap-2">
+              <Link href="/" className="flex min-w-0 flex-1 items-center gap-3">
+                <BrandLogo className="min-w-0" size="sm" />
+              </Link>
 
-            <nav className="hidden items-center gap-5 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-white/78 lg:flex xl:gap-8">
-              <Link href="/story" className="transition hover:text-white">
+              <nav className="hidden items-center gap-5 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-white/78 lg:flex xl:gap-8">
+                <Link href="/story" className="transition hover:text-white">
+                  Story
+                </Link>
+                <Link href="/auth" className="transition hover:text-white">
+                  Warranty
+                </Link>
+                <Link href="/auth" className="transition hover:text-white">
+                  Public Proof
+                </Link>
+                <Link href="/auth" className="transition hover:text-white">
+                  Report
+                </Link>
+              </nav>
+
+              <div className="flex shrink-0 items-center gap-2">
+                <Link
+                  href="/about"
+                  className="hidden min-h-9 items-center justify-center rounded-lg border border-white/20 px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-white hover:text-black sm:inline-flex lg:min-h-10 lg:px-4 lg:text-[11px]"
+                >
+                  About
+                </Link>
+                <Link
+                  href="/auth"
+                  className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg bg-white px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-black transition hover:bg-gray-100 sm:px-4 lg:min-h-10 lg:gap-2 lg:text-[11px]"
+                >
+                  <LogIn size={14} />
+                  Start
+                </Link>
+              </div>
+            </div>
+
+            <nav className="cp-mobile-landing-nav flex w-full gap-2 overflow-x-auto pt-1 lg:hidden">
+              <Link href="/story" className="landing-nav-chip">
                 Story
               </Link>
-              <Link href="/auth" className="transition hover:text-white">
+              <Link href="/about" className="landing-nav-chip">
+                About
+              </Link>
+              <Link href="/auth" className="landing-nav-chip">
                 Warranty
               </Link>
-              <Link href="/auth" className="transition hover:text-white">
-                Public Proof
+              <Link href="/auth" className="landing-nav-chip">
+                Proof
               </Link>
-              <Link href="/auth" className="transition hover:text-white">
+              <Link href="/auth" className="landing-nav-chip">
                 Report
               </Link>
             </nav>
-
-            <div className="flex shrink-0 items-center gap-2">
-              <Link
-                href="/about"
-                className="hidden min-h-10 items-center justify-center rounded-lg border border-white/20 px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-white transition hover:bg-white hover:text-black sm:inline-flex"
-              >
-                About
-              </Link>
-              <Link
-                href="/auth"
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-white px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-black transition hover:bg-gray-100 sm:px-5"
-              >
-                <LogIn size={15} />
-                Start
-              </Link>
-            </div>
           </header>
 
-          <section className="flex flex-1 flex-col justify-end py-10 sm:py-12 lg:py-14">
+          <section className="flex flex-1 flex-col justify-end py-7 sm:py-12 lg:py-14">
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)] lg:items-end">
               <div className="max-w-4xl">
                 <AnimatedHeading
                   text={`Proof of repair\nfor accountable cities.`}
-                  className="mb-4 text-[2.25rem] font-black leading-[1.05] text-white sm:text-[2.9rem] md:text-[3.55rem] lg:text-[4.1rem] xl:text-[4.85rem]"
+                  className="mb-4 text-[1.85rem] font-black leading-[1.08] text-white min-[390px]:text-[2.05rem] sm:text-[2.9rem] md:text-[3.55rem] lg:text-[4.1rem] xl:text-[4.85rem]"
                 />
                 <FadeIn delay={800} duration={1000}>
-                  <p className="mb-5 max-w-2xl text-sm leading-6 text-gray-300 sm:text-base md:text-lg md:leading-7">
+                  <p className="mb-5 max-w-2xl text-[13px] leading-6 text-gray-300 sm:text-base md:text-lg md:leading-7">
                     CityPramaan turns civic complaints into verifiable repair histories with public
                     proof, contractor accountability, and warranty memory for every city issue.
                   </p>
@@ -297,13 +317,13 @@ export default function Home() {
                   <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                     <Link
                       href="/auth"
-                      className="inline-flex min-h-11 items-center justify-center rounded-lg bg-white px-6 py-3 text-center font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-gray-100 sm:px-8"
+                      className="inline-flex min-h-11 items-center justify-center rounded-lg bg-white px-5 py-3 text-center font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-black transition hover:bg-gray-100 sm:px-8 sm:text-[11px] sm:tracking-[0.16em]"
                     >
                       Start a Report
                     </Link>
                     <Link
                       href="/auth"
-                      className="liquid-glass inline-flex min-h-11 items-center justify-center rounded-lg border border-white/20 px-6 py-3 text-center font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-white transition hover:bg-white hover:text-black sm:px-8"
+                      className="liquid-glass inline-flex min-h-11 items-center justify-center rounded-lg border border-white/20 px-5 py-3 text-center font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-white transition hover:bg-white hover:text-black sm:px-8 sm:text-[11px] sm:tracking-[0.16em]"
                     >
                       Explore Proof
                     </Link>
@@ -992,9 +1012,9 @@ function AuditMetric({ label, value, tone }: { label: string; value: string; ton
 
 function PublicMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-h-24 rounded-md border border-white/10 bg-black/28 p-4">
-      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#a38d7c]">{label}</p>
-      <p className="mt-2 break-words text-2xl font-black text-white">{value}</p>
+    <div className="min-h-[74px] rounded-md border border-white/10 bg-black/28 p-3 sm:min-h-24 sm:p-4">
+      <p className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[#a38d7c] sm:text-[10px] sm:tracking-[0.16em]">{label}</p>
+      <p className="mt-1 break-words text-lg font-black text-white sm:mt-2 sm:text-2xl">{value}</p>
     </div>
   );
 }
