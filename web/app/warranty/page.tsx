@@ -65,7 +65,21 @@ export default function WarrantyScannerPage() {
   }, [localReports, selectedCity.key]);
   const warrantyReports = allReports
     .filter((report) =>
-      ["UNDER_WARRANTY", "REPEAT_FAILURE", "REPAIR_SUBMITTED", "PENDING_PROOF", "OPEN", "CLOSED"].includes(report.status)
+      [
+        "UNDER_WARRANTY",
+        "REPEAT_FAILURE",
+        "REPAIR_SUBMITTED",
+        "ADMIN_APPROVED",
+        "REPAIR_REJECTED",
+        "CITIZEN_DISPUTED",
+        "ASSIGNED_TO_CONTRACTOR",
+        "WORK_ACCEPTED",
+        "WORK_STARTED",
+        "WORK_COMPLETED",
+        "PENDING_PROOF",
+        "OPEN",
+        "CLOSED",
+      ].includes(report.status)
     )
     .sort(sortWarrantyReports);
   const [selectedReportId, setSelectedReportId] = useState("");
@@ -459,8 +473,8 @@ function WarrantyBadge({
   notActiveText: string;
   closedText: string;
 }) {
-  const active = report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE";
-  const pending = report.status === "REPAIR_SUBMITTED";
+  const active = report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE" || report.warrantyStatus === "ACTIVE";
+  const pending = ["REPAIR_SUBMITTED", "ADMIN_APPROVED", "ASSIGNED_TO_CONTRACTOR", "WORK_ACCEPTED", "WORK_STARTED", "WORK_COMPLETED"].includes(report.status);
   const closed = report.status === "CLOSED";
 
   return (
@@ -483,7 +497,10 @@ function WarrantyBadge({
 function IssueProgressPanel({ report }: { report: CivicReport }) {
   const isPowerOutage = report.issueCategory === "POWER_OUTAGE";
   const approved =
-    report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE" || report.status === "CLOSED";
+    report.status === "ADMIN_APPROVED" ||
+    report.status === "UNDER_WARRANTY" ||
+    report.status === "REPEAT_FAILURE" ||
+    report.status === "CLOSED";
   const hasRepairProof = Boolean(report.repairImageName || report.repairImageDataUrl || report.repairProofAt);
   const crewProgress = Boolean(
     report.utilityRestoration?.progressStage &&
@@ -542,8 +559,8 @@ function IssueProgressPanel({ report }: { report: CivicReport }) {
         },
         {
           label: "Warranty active",
-          detail: approved ? `${report.warrantyDaysLeft ?? report.warrantyPeriodDays ?? 90} days monitoring` : "Activates after approval",
-          done: approved,
+          detail: report.warrantyStatus === "ACTIVE" ? `${report.warrantyDaysLeft ?? report.warrantyPeriodDays ?? 90} days monitoring` : "Activates after citizen confirmation",
+          done: report.warrantyStatus === "ACTIVE",
         },
       ];
   const completed = steps.filter((step) => step.done).length;
@@ -635,7 +652,14 @@ function statusLabel(report: CivicReport, tr: (key: "active" | "pending" | "notA
   const labels = {
     OPEN: tr("openIssues"),
     PENDING_PROOF: tr("pending"),
+    ASSIGNED_TO_CONTRACTOR: "Assigned",
+    WORK_ACCEPTED: "Accepted",
+    WORK_STARTED: "Work started",
+    WORK_COMPLETED: "Work completed",
     REPAIR_SUBMITTED: tr("repairSubmitted"),
+    ADMIN_APPROVED: "Admin approved",
+    REPAIR_REJECTED: "Proof rejected",
+    CITIZEN_DISPUTED: "Citizen disputed",
     UNDER_WARRANTY: tr("active"),
     REPEAT_FAILURE: tr("repeatFailure"),
     CLOSED: "Closed",
@@ -646,7 +670,7 @@ function statusLabel(report: CivicReport, tr: (key: "active" | "pending" | "notA
 
 function warrantyLabel(report: CivicReport, tr: (key: "notActive" | "pending" | "warranty") => string) {
   if (report.status === "CLOSED") {
-    return "Closed";
+    return report.warrantyStatus === "ACTIVE" ? "Closed + Warranty Active" : "Closed";
   }
 
   if (report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE") {
@@ -655,6 +679,10 @@ function warrantyLabel(report: CivicReport, tr: (key: "notActive" | "pending" | 
 
   if (report.status === "REPAIR_SUBMITTED") {
     return tr("pending");
+  }
+
+  if (report.status === "ADMIN_APPROVED") {
+    return "Awaiting citizen confirmation";
   }
 
   return tr("notActive");
@@ -666,19 +694,23 @@ function sortWarrantyReports(a: CivicReport, b: CivicReport) {
       return 0;
     }
 
-    if (report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE") {
+    if (report.status === "ADMIN_APPROVED") {
       return 1;
     }
 
-    if (report.status === "REPAIR_SUBMITTED") {
+    if (report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE" || report.warrantyStatus === "ACTIVE") {
       return 2;
     }
 
-    if (report.status === "PENDING_PROOF" || report.status === "OPEN") {
+    if (report.status === "REPAIR_SUBMITTED") {
       return 3;
     }
 
-    return 4;
+    if (["PENDING_PROOF", "OPEN", "ASSIGNED_TO_CONTRACTOR", "WORK_ACCEPTED", "WORK_STARTED", "WORK_COMPLETED", "REPAIR_REJECTED", "CITIZEN_DISPUTED"].includes(report.status)) {
+      return 4;
+    }
+
+    return 5;
   };
 
   const time = (report: CivicReport) =>
@@ -826,7 +858,7 @@ function GoogleMapPreview({
 }
 
 function fallbackHistory(report: CivicReport) {
-  const repaired = report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE" || report.status === "CLOSED";
+  const repaired = report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE" || report.warrantyStatus === "ACTIVE";
 
   return [
     {

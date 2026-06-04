@@ -29,7 +29,7 @@ import { NotificationBell } from "@/src/components/layout/NotificationBell";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { DEFAULT_CITY_KEY, demoCities, getCityByKey, type CityKey } from "@/src/lib/city-context";
 import { getCitySnapshot, setSelectedCityKey, subscribeCity } from "@/src/lib/city-storage";
-import { getReportsForCity, type CivicReport } from "@/src/lib/mock-data";
+import { getReportsForCity, type CivicReport, type ContractorProfile } from "@/src/lib/mock-data";
 import {
   appendReportEvent,
   getLocalReportsSnapshot,
@@ -41,6 +41,7 @@ import { createProofBundleHash, sha256Hex } from "@/src/lib/proof-hashing";
 import { useLanguage } from "@/src/lib/use-language";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 import { getAuthSnapshot, getCurrentUser, roleLabels, subscribeAuth } from "@/src/lib/auth-storage";
+import { getContractorsSnapshot, specializationLabels, subscribeContractors } from "@/src/lib/contractor-storage";
 import {
   buildExplorerTxUrl,
   connectWallet,
@@ -53,8 +54,14 @@ import {
 const contractorVisibleStatuses: CivicReport["status"][] = [
   "OPEN",
   "PENDING_PROOF",
+  "ASSIGNED_TO_CONTRACTOR",
+  "WORK_ACCEPTED",
+  "WORK_STARTED",
+  "WORK_COMPLETED",
   "REPAIR_SUBMITTED",
-  "UNDER_WARRANTY",
+  "ADMIN_APPROVED",
+  "REPAIR_REJECTED",
+  "CITIZEN_DISPUTED",
   "REPEAT_FAILURE",
 ];
 
@@ -70,8 +77,22 @@ export default function ContractorPage() {
   );
   const walletSnapshot = useSyncExternalStore(subscribeWallet, getWalletSnapshot, () => "");
   const authSnapshot = useSyncExternalStore(subscribeAuth, getAuthSnapshot, () => "");
+  const contractorsSnapshot = useSyncExternalStore(
+    subscribeContractors,
+    getContractorsSnapshot,
+    () => "[]"
+  );
   const wallet = parseWalletSnapshot(walletSnapshot);
   const currentUser = useMemo(() => getCurrentUser(authSnapshot), [authSnapshot]);
+  const contractors = useMemo(
+    () => JSON.parse(contractorsSnapshot) as ContractorProfile[],
+    [contractorsSnapshot]
+  );
+  const currentContractor = contractors.find(
+    (contractor) =>
+      (currentUser?.id && contractor.userId === currentUser.id) ||
+      (currentUser?.email && contractor.email.toLowerCase() === currentUser.email.toLowerCase())
+  );
   const selectedCity = getCityByKey(citySnapshot);
   const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const localReports = useMemo(
@@ -84,7 +105,10 @@ export default function ContractorPage() {
     return [...localForCity, ...getReportsForCity(selectedCity.key).filter((report) => !localIds.has(report.id))];
   }, [localReports, selectedCity.key]);
   const repairQueue = allReports.filter(
-    (report) => contractorVisibleStatuses.includes(report.status) && isAssignedToContractor(report)
+    (report) =>
+      contractorVisibleStatuses.includes(report.status) &&
+      isAssignedToContractor(report) &&
+      (!currentContractor || report.assignedContractorId === currentContractor.contractorId)
   );
   const [selectedReportId, setSelectedReportId] = useState(repairQueue[0]?.id ?? "");
   const selectedReport = repairQueue.find((report) => report.id === selectedReportId) ?? repairQueue[0];
@@ -123,7 +147,14 @@ export default function ContractorPage() {
     const updated = appendReportEvent(
       {
         ...report,
-        status: report.status === "OPEN" ? "PENDING_PROOF" : report.status,
+        status:
+          stage === "accepted"
+            ? "WORK_ACCEPTED"
+            : stage === "started"
+              ? "WORK_STARTED"
+              : stage === "completed"
+                ? "WORK_COMPLETED"
+                : report.status,
         [stageConfig.field]: now.toISOString(),
       },
       {
@@ -273,6 +304,9 @@ export default function ContractorPage() {
         cityKey: reportCity.key,
         contractor: report.contractor || reportCity.contractor,
         status: "REPAIR_SUBMITTED",
+        adminApprovalStatus: "PENDING",
+        citizenFinalApproval: "PENDING",
+        warrantyStatus: "NOT_ACTIVE",
         workCompletedAt: report.workCompletedAt ?? now.toISOString(),
         warrantyDaysLeft: null,
         warrantyActivatedAt: undefined,
@@ -451,7 +485,14 @@ export default function ContractorPage() {
                           labels={{
                             OPEN: t("openIssues"),
                             PENDING_PROOF: t("pendingProof"),
+                            ASSIGNED_TO_CONTRACTOR: "Assigned",
+                            WORK_ACCEPTED: "Accepted",
+                            WORK_STARTED: "Work started",
+                            WORK_COMPLETED: "Work completed",
                             REPAIR_SUBMITTED: t("repairSubmitted"),
+                            ADMIN_APPROVED: "Admin approved",
+                            REPAIR_REJECTED: "Rejected",
+                            CITIZEN_DISPUTED: "Citizen disputed",
                             UNDER_WARRANTY: t("underWarranty"),
                             REPEAT_FAILURE: t("repeatFailure"),
                             CLOSED: "Closed",
@@ -476,14 +517,25 @@ export default function ContractorPage() {
                     <Building2 size={28} />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-semibold text-white">{selectedCity.contractor}</h3>
-                    <p className="mt-1 font-mono text-sm text-[#00dbe9]">ID: CNT-44X-99</p>
-                  </div>
+                    <h3 className="text-2xl font-semibold text-white">
+                      {currentContractor?.agencyName ?? selectedCity.contractor}
+                    </h3>
+                  <p className="mt-1 font-mono text-sm text-[#00dbe9]">
+                    ID: {currentContractor?.contractorId ?? "CNT-44X-99"}
+                  </p>
+                  {currentContractor && (
+                    <p className="mt-1 text-xs leading-5 text-[#dbc2b0]/75">
+                      {currentContractor.ward} | {currentContractor.area} |{" "}
+                      {specializationLabels[currentContractor.specialization as keyof typeof specializationLabels] ??
+                        currentContractor.specialization}
+                    </p>
+                  )}
                 </div>
+              </div>
 
                 <div className="relative mt-6 grid grid-cols-2 gap-3">
-                  <Metric icon={<ShieldCheck size={15} />} label={t("status")} value={t("nodeSynced")} tone="emerald" />
-                  <Metric icon={<Star size={15} />} label="SLA" value="4.92 / 5.0" tone="amber" />
+                  <Metric icon={<ShieldCheck size={15} />} label={t("status")} value={currentContractor?.availabilityStatus ?? t("nodeSynced")} tone="emerald" />
+                  <Metric icon={<Star size={15} />} label="Verified" value={currentContractor?.verificationStatus ?? "4.92 / 5.0"} tone="amber" />
                   <Metric icon={<Hammer size={15} />} label={t("activeReports")} value={String(repairQueue.length).padStart(2, "0")} tone="cyan" />
                   <Metric icon={<BadgeCheck size={15} />} label="SLA" value="96%" tone="emerald" />
                 </div>
@@ -828,7 +880,14 @@ function StatusBadge({
   const colors = {
     OPEN: "border-[#ffb4ab]/30 bg-[#ffb4ab]/10 text-[#ffb4ab]",
     PENDING_PROOF: "border-[#00dbe9]/30 bg-[#00dbe9]/10 text-[#7df4ff]",
+    ASSIGNED_TO_CONTRACTOR: "border-[#00dbe9]/30 bg-[#00dbe9]/10 text-[#7df4ff]",
+    WORK_ACCEPTED: "border-[#00dbe9]/30 bg-[#00dbe9]/10 text-[#7df4ff]",
+    WORK_STARTED: "border-[#00dbe9]/30 bg-[#00dbe9]/10 text-[#7df4ff]",
+    WORK_COMPLETED: "border-[#ffc08d]/30 bg-[#ffc08d]/10 text-[#ffc08d]",
     REPAIR_SUBMITTED: "border-[#ffc08d]/30 bg-[#ffc08d]/10 text-[#ffc08d]",
+    ADMIN_APPROVED: "border-[#00eb88]/30 bg-[#00eb88]/10 text-[#00eb88]",
+    REPAIR_REJECTED: "border-[#ffb4ab]/30 bg-[#ffb4ab]/10 text-[#ffb4ab]",
+    CITIZEN_DISPUTED: "border-[#d946ef]/30 bg-[#d946ef]/10 text-[#f0abfc]",
     UNDER_WARRANTY: "border-[#00eb88]/30 bg-[#00eb88]/10 text-[#00eb88]",
     REPEAT_FAILURE: "border-[#d946ef]/30 bg-[#d946ef]/10 text-[#f0abfc]",
     CLOSED: "border-[#00eb88]/30 bg-[#00eb88]/10 text-[#00eb88]",

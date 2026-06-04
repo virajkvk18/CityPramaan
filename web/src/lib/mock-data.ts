@@ -3,10 +3,43 @@ import { DEFAULT_CITY_KEY, formatCityLocation, getCityByKey, type CityKey } from
 export type ReportStatus =
   | "OPEN"
   | "PENDING_PROOF"
+  | "ASSIGNED_TO_CONTRACTOR"
+  | "WORK_ACCEPTED"
+  | "WORK_STARTED"
+  | "WORK_COMPLETED"
   | "REPAIR_SUBMITTED"
+  | "ADMIN_APPROVED"
+  | "REPAIR_REJECTED"
+  | "CITIZEN_DISPUTED"
   | "UNDER_WARRANTY"
   | "REPEAT_FAILURE"
   | "CLOSED";
+
+export type ContractorSpecialization =
+  | "ROAD_DAMAGE"
+  | "DRAINAGE"
+  | "STREETLIGHT"
+  | "GARBAGE"
+  | "WATER_LEAKAGE"
+  | "FOOTPATH"
+  | "POWER_OUTAGE"
+  | "GENERAL";
+
+export type ContractorProfile = {
+  contractorId: string;
+  userId?: string;
+  name: string;
+  identityNumber: string;
+  email: string;
+  phone: string;
+  area: string;
+  ward: string;
+  specialization: ContractorSpecialization | string;
+  agencyName?: string;
+  verificationStatus: "Verified" | "Pending" | "Suspended";
+  availabilityStatus: "Available" | "Busy" | "Offline";
+  assignedReports?: string[];
+};
 
 export type CivicReport = {
   id: string;
@@ -17,6 +50,16 @@ export type CivicReport = {
   severity: string;
   confidence: number;
   contractor: string;
+  citizenId?: string;
+  citizenName?: string;
+  citizenContact?: string;
+  assignedContractorId?: string;
+  assignedContractorDetails?: ContractorProfile;
+  assignedByAdmin?: string;
+  assignedByAdminId?: string;
+  adminApprovalStatus?: "PENDING" | "APPROVED" | "REJECTED";
+  citizenFinalApproval?: "PENDING" | "CONFIRMED" | "DISPUTED";
+  warrantyStatus?: "NOT_ACTIVE" | "ACTIVE" | "EXPIRED" | "REOPENED";
   txHash: string;
   warrantyDaysLeft: number | null;
   location: string;

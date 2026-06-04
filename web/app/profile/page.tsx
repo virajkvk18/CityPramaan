@@ -75,6 +75,14 @@ function ProfileEditor({ initialProfile, onLogout }: { initialProfile: PublicUse
   const [ward, setWard] = useState(() => initialProfile.ward ?? "");
   const [department, setDepartment] = useState(() => initialProfile.department ?? "");
   const [contractorLicense, setContractorLicense] = useState(() => initialProfile.contractorLicense ?? "");
+  const [contractorIdentityNumber, setContractorIdentityNumber] = useState(
+    () => initialProfile.contractorIdentityNumber ?? initialProfile.contractorLicense ?? ""
+  );
+  const [contractorArea, setContractorArea] = useState(() => initialProfile.contractorArea ?? initialProfile.address ?? "");
+  const [contractorSpecialization, setContractorSpecialization] = useState(
+    () => initialProfile.contractorSpecialization ?? "ROAD_DAMAGE"
+  );
+  const [agencyName, setAgencyName] = useState(() => initialProfile.agencyName ?? "");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -92,6 +100,10 @@ function ProfileEditor({ initialProfile, onLogout }: { initialProfile: PublicUse
         ward,
         department,
         contractorLicense,
+        contractorIdentityNumber,
+        contractorArea,
+        contractorSpecialization,
+        agencyName,
       });
       setProfile(updated);
       setMessage("Profile saved and proof hash refreshed.");
@@ -200,7 +212,32 @@ function ProfileEditor({ initialProfile, onLogout }: { initialProfile: PublicUse
           )}
 
           {profile.role === "CONTRACTOR" && (
-            <Field icon={<Wrench size={17} />} label="Contractor license / registration ID" value={contractorLicense} onChange={setContractorLicense} required />
+            <>
+              <Field icon={<Wrench size={17} />} label="Contractor license / registration ID" value={contractorLicense} onChange={setContractorLicense} required />
+              <Field icon={<Fingerprint size={17} />} label="Contractor identity number" value={contractorIdentityNumber} onChange={setContractorIdentityNumber} required />
+              <Field icon={<MapPin size={17} />} label="Assigned contractor area" value={contractorArea} onChange={setContractorArea} required />
+              <Field icon={<Building2 size={17} />} label="Agency / company name" value={agencyName} onChange={setAgencyName} required />
+              <label className="mt-4 block">
+                <span className="mb-2 block font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#dbc2b0]">Work specialization</span>
+                <span className="flex items-center gap-3 rounded-md border border-white/10 bg-black/35 px-3 transition focus-within:border-[#00dbe9]/55">
+                  <Wrench size={17} className="text-[#00dbe9]" />
+                  <select
+                    value={contractorSpecialization}
+                    onChange={(event) => setContractorSpecialization(event.target.value)}
+                    className="min-h-12 w-full bg-transparent text-sm text-white outline-none"
+                  >
+                    <option value="ROAD_DAMAGE" className="bg-[#050505] text-white">Road repair</option>
+                    <option value="DRAINAGE" className="bg-[#050505] text-white">Drainage</option>
+                    <option value="STREETLIGHT" className="bg-[#050505] text-white">Streetlight</option>
+                    <option value="GARBAGE" className="bg-[#050505] text-white">Garbage cleanup</option>
+                    <option value="WATER_LEAKAGE" className="bg-[#050505] text-white">Water leakage</option>
+                    <option value="FOOTPATH" className="bg-[#050505] text-white">Footpath repair</option>
+                    <option value="POWER_OUTAGE" className="bg-[#050505] text-white">Power outage</option>
+                    <option value="GENERAL" className="bg-[#050505] text-white">General civic repair</option>
+                  </select>
+                </span>
+              </label>
+            </>
           )}
 
           {message && <p className="mt-4 rounded-md border border-[#00dbe9]/25 bg-[#00dbe9]/10 px-4 py-3 text-sm text-[#b8f9ff]">{message}</p>}

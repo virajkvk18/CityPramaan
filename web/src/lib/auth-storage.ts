@@ -1,5 +1,7 @@
 "use client";
 
+import { buildContractorFromSignup, upsertContractorProfile } from "./contractor-storage";
+
 export type AuthRole = "USER" | "WARD_ADMIN" | "CONTRACTOR";
 
 export type UserProfile = {
@@ -16,6 +18,12 @@ export type UserProfile = {
   ward?: string;
   department?: string;
   contractorLicense?: string;
+  contractorIdentityNumber?: string;
+  contractorArea?: string;
+  contractorSpecialization?: string;
+  agencyName?: string;
+  verificationStatus?: "Verified" | "Pending" | "Suspended";
+  availabilityStatus?: "Available" | "Busy" | "Offline";
   profileHash?: string;
   profileChainTxHash?: string;
   profileCompletedAt?: string;
@@ -80,6 +88,11 @@ export async function signUpUser(input: {
   name: string;
   contactNumber: string;
   role: AuthRole;
+  contractorIdentityNumber?: string;
+  contractorArea?: string;
+  contractorWard?: string;
+  contractorSpecialization?: string;
+  agencyName?: string;
 }) {
   const email = normalizeEmail(input.email);
   const users = loadUsers();
@@ -102,6 +115,13 @@ export async function signUpUser(input: {
     name: input.name.trim(),
     contactNumber: input.contactNumber.trim(),
     role: input.role,
+    contractorIdentityNumber: input.contractorIdentityNumber?.trim(),
+    contractorArea: input.contractorArea?.trim(),
+    ward: input.contractorWard?.trim(),
+    contractorSpecialization: input.contractorSpecialization?.trim(),
+    agencyName: input.agencyName?.trim(),
+    verificationStatus: input.role === "CONTRACTOR" ? "Verified" : undefined,
+    availabilityStatus: input.role === "CONTRACTOR" ? "Available" : undefined,
     passwordHash,
     passwordSalt: salt,
     walletAddress,
@@ -115,6 +135,7 @@ export async function signUpUser(input: {
   };
 
   saveUsers([...users, saved]);
+  syncContractorProfile(saved);
   setSession(saved.id);
   return stripPrivateFields(saved);
 }
@@ -147,7 +168,7 @@ export function logoutUser() {
 }
 
 export async function updateCurrentProfile(
-  changes: Partial<Pick<UserProfile, "name" | "contactNumber" | "address" | "city" | "ward" | "department" | "contractorLicense">>
+  changes: Partial<Pick<UserProfile, "name" | "contactNumber" | "address" | "city" | "ward" | "department" | "contractorLicense" | "contractorIdentityNumber" | "contractorArea" | "contractorSpecialization" | "agencyName" | "verificationStatus" | "availabilityStatus">>
 ) {
   const sessionId = getAuthSnapshot();
 
@@ -177,6 +198,7 @@ export async function updateCurrentProfile(
   };
 
   saveUsers(users.map((user) => (user.id === sessionId ? updated : user)));
+  syncContractorProfile(updated);
   setSession(updated.id);
   return stripPrivateFields(updated);
 }
@@ -247,6 +269,12 @@ async function createProfileProof(user: UserProfile) {
       user.ward,
       user.department,
       user.contractorLicense,
+      user.contractorIdentityNumber,
+      user.contractorArea,
+      user.contractorSpecialization,
+      user.agencyName,
+      user.verificationStatus,
+      user.availabilityStatus,
       user.updatedAt,
     ].join("|")
   );
@@ -255,6 +283,26 @@ async function createProfileProof(user: UserProfile) {
     profileHash,
     profileChainTxHash: `${profileHash.slice(0, 14)}...${profileHash.slice(-8)}`,
   };
+}
+
+function syncContractorProfile(user: UserProfile) {
+  if (user.role !== "CONTRACTOR") {
+    return;
+  }
+
+  upsertContractorProfile(
+    buildContractorFromSignup({
+      userId: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.contactNumber,
+      identityNumber: user.contractorIdentityNumber || user.contractorLicense,
+      area: user.contractorArea || user.address || user.city,
+      ward: user.ward,
+      specialization: user.contractorSpecialization,
+      agencyName: user.agencyName,
+    })
+  );
 }
 
 async function createProfileWallet(seed: string) {

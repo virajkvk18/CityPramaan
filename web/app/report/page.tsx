@@ -55,6 +55,7 @@ import {
   readFileAsDataUrl,
   saveLocalReport,
 } from "@/src/lib/report-storage";
+import { getCurrentUser } from "@/src/lib/auth-storage";
 import { createProofBundleHash, deriveTransactionHash, sha256Hex } from "@/src/lib/proof-hashing";
 import {
   buildExplorerTxUrl,
@@ -463,6 +464,7 @@ export default function ReportIssuePage() {
 
       const now = new Date().toISOString();
       const reportId = createLocalReportId();
+      const currentUser = getCurrentUser();
       const evidenceHash = await sha256Hex(imageDataUrl);
       const proofBundleHash = await createProofBundleHash([
         reportId,
@@ -489,6 +491,12 @@ export default function ReportIssuePage() {
         severity: result.severity,
         confidence: result.confidence,
         contractor: "Awaiting assignment",
+        citizenId: currentUser?.id,
+        citizenName: currentUser?.name ?? "Citizen reporter",
+        citizenContact: currentUser?.contactNumber,
+        adminApprovalStatus: "PENDING",
+        citizenFinalApproval: "PENDING",
+        warrantyStatus: "NOT_ACTIVE",
         txHash,
         warrantyDaysLeft: null,
         location: savedLocation,

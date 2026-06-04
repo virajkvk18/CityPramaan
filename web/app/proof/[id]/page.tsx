@@ -39,7 +39,14 @@ import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 const statusTone: Record<CivicReport["status"], string> = {
   OPEN: "border-[#ffb4ab]/30 bg-[#ffb4ab]/10 text-[#ffb4ab]",
   PENDING_PROOF: "border-[#00dbe9]/35 bg-[#00dbe9]/10 text-[#7df4ff]",
+  ASSIGNED_TO_CONTRACTOR: "border-[#00dbe9]/35 bg-[#00dbe9]/10 text-[#7df4ff]",
+  WORK_ACCEPTED: "border-[#00dbe9]/35 bg-[#00dbe9]/10 text-[#7df4ff]",
+  WORK_STARTED: "border-[#00dbe9]/35 bg-[#00dbe9]/10 text-[#7df4ff]",
+  WORK_COMPLETED: "border-[#ffc08d]/35 bg-[#ffc08d]/10 text-[#ffc08d]",
   REPAIR_SUBMITTED: "border-[#ff9933]/35 bg-[#ff9933]/10 text-[#ffc08d]",
+  ADMIN_APPROVED: "border-[#00eb88]/35 bg-[#00eb88]/10 text-[#5bffa1]",
+  REPAIR_REJECTED: "border-[#ffb4ab]/30 bg-[#ffb4ab]/10 text-[#ffb4ab]",
+  CITIZEN_DISPUTED: "border-[#d946ef]/40 bg-[#d946ef]/12 text-[#f0abfc]",
   UNDER_WARRANTY: "border-[#00eb88]/35 bg-[#00eb88]/10 text-[#5bffa1]",
   REPEAT_FAILURE: "border-[#d946ef]/40 bg-[#d946ef]/12 text-[#f0abfc]",
   CLOSED: "border-[#00eb88]/35 bg-[#00eb88]/10 text-[#5bffa1]",
@@ -81,7 +88,10 @@ export default function ProofTimelinePage() {
   }, [activeCity.key, cityReports, citySnapshot, localReports]);
   const events = report.history?.length ? report.history : fallbackEvents(report);
   const hasRepairProof = Boolean(report.repairImageDataUrl || report.repairImageName);
-  const isWarrantyActive = report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE" || report.status === "CLOSED";
+  const isWarrantyActive =
+    report.status === "UNDER_WARRANTY" ||
+    report.status === "REPEAT_FAILURE" ||
+    (report.status === "CLOSED" && report.warrantyStatus === "ACTIVE");
   const evidenceProofHash = report.evidenceHash ?? report.txHash;
   const primaryTransactionHash = report.repairTxHash ?? report.txHash;
   const [feedbackText, setFeedbackText] = useState("");
@@ -150,22 +160,24 @@ export default function ProofTimelinePage() {
     const updated = appendReportEvent(
       {
         ...latestReport,
-        status: "UNDER_WARRANTY",
-        warrantyDaysLeft: warrantyDays,
+        status: "ADMIN_APPROVED",
+        adminApprovalStatus: "APPROVED",
+        citizenFinalApproval: "PENDING",
+        warrantyStatus: "NOT_ACTIVE",
+        warrantyDaysLeft: null,
         warrantyPeriodDays: warrantyDays,
-        warrantyActivatedAt: now.toISOString(),
         warrantyExpiresAt: warrantyExpiresAt.toISOString(),
       },
       {
         label: "Repair approved by report issuer",
-        detail: `${warrantyDays}-day warranty activated after issuer reviewed contractor proof and AI audit.`,
+        detail: "Ward Admin approved contractor proof. Citizen confirmation is required before closure and warranty activation.",
         time: now.toLocaleString(),
         tx: `0xb928...${latestReport.id.replace("CP-", "")}ce`,
       }
     );
 
     upsertLocalReport(updated);
-    setActionMessage("Repair approved. Warranty is now active and synced to the Warranty Scanner.");
+    setActionMessage("Repair proof approved. Citizen must confirm work done before closure and warranty activation.");
   }
 
   function closeIssue() {
@@ -177,37 +189,48 @@ export default function ProofTimelinePage() {
     }
 
     const latestHasRepairProof = Boolean(latestReport.repairImageDataUrl || latestReport.repairImageName);
-    const latestWarrantyActive =
-      latestReport.status === "UNDER_WARRANTY" || latestReport.status === "REPEAT_FAILURE";
 
     if (!latestHasRepairProof) {
       setActionMessage("Repair proof is required before the issue owner can close this case.");
       return;
     }
 
-    if (!latestWarrantyActive) {
-      setActionMessage("Approve the contractor proof and activate warranty before closing the case.");
+    if (latestReport.status !== "ADMIN_APPROVED") {
+      setActionMessage("Ward Admin approval is required before citizen confirmation.");
       return;
     }
 
     const now = new Date();
-    const updated = appendReportEvent(
+    const warrantyDays = latestReport.warrantyPeriodDays ?? 90;
+    const warrantyExpiresAt = new Date(now.getTime() + warrantyDays * 24 * 60 * 60 * 1000);
+    const withClosure = appendReportEvent(
       {
         ...latestReport,
         cityKey: latestReport.cityKey ?? citySnapshot,
         status: "CLOSED",
         ownerVerified: true,
+        citizenFinalApproval: "CONFIRMED",
+        warrantyStatus: "ACTIVE",
+        warrantyDaysLeft: warrantyDays,
+        warrantyPeriodDays: warrantyDays,
+        warrantyActivatedAt: now.toISOString(),
+        warrantyExpiresAt: warrantyExpiresAt.toISOString(),
         closedAt: now.toISOString(),
-        closureNote: "Issue owner verified the repair and closed the case.",
+        closureNote: "Citizen confirmed the repair and closed the case. Warranty activated automatically.",
       },
       {
-        label: "Issue closed by report issuer",
-        detail:
-          "Repair accepted after public proof review. The case is removed from the active command center map but stays in public history.",
+        label: "Citizen confirmed work done",
+        detail: "Citizen verified the repair after Ward Admin approval.",
         time: now.toLocaleString(),
         tx: `0xcl0...${report.id.replace("CP-", "")}`,
       }
     );
+    const updated = appendReportEvent(withClosure, {
+      label: "Report closed and warranty activated",
+      detail: `${warrantyDays}-day warranty started after citizen confirmation.`,
+      time: now.toLocaleString(),
+      tx: `0xwarranty...${report.id.replace("CP-", "")}`,
+    });
 
     upsertLocalReport(updated);
     setActionMessage("Issue closed and synced. It will no longer appear on the command center map.");
@@ -577,7 +600,7 @@ export default function ProofTimelinePage() {
               </button>
               <button
                 onClick={closeIssue}
-                disabled={!isWarrantyActive || report.status === "CLOSED"}
+                disabled={report.status !== "ADMIN_APPROVED"}
                 className="rounded-lg border border-[#00eb88]/35 bg-[#00eb88]/12 px-4 py-3 text-sm font-semibold text-[#5bffa1] transition hover:bg-[#00eb88]/18 disabled:cursor-not-allowed disabled:opacity-45"
               >
                 {report.status === "CLOSED" ? "Issue closed" : "Issue owner: mark solved & close"}
@@ -656,7 +679,43 @@ function fallbackEvents(report: CivicReport) {
     });
   }
 
-  if (report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE" || report.status === "CLOSED") {
+  if (report.assignedContractorDetails || report.assignedAt) {
+    events.push({
+      label: "Contractor assigned",
+      detail: `${report.assignedContractorDetails?.name ?? report.contractor} assigned for ${report.ward}.`,
+      time: formatProofTime(report.assignedAt),
+      tx: report.txHash,
+    });
+  }
+
+  if (report.acceptedAt) {
+    events.push({
+      label: "Contractor accepted work",
+      detail: `${report.contractor} accepted the assigned repair.`,
+      time: formatProofTime(report.acceptedAt),
+      tx: report.repairTxHash ?? report.txHash,
+    });
+  }
+
+  if (report.workStartedAt) {
+    events.push({
+      label: "Contractor started work",
+      detail: `${report.contractor} started field work at the reported location.`,
+      time: formatProofTime(report.workStartedAt),
+      tx: report.repairTxHash ?? report.txHash,
+    });
+  }
+
+  if (report.status === "ADMIN_APPROVED" || report.status === "CLOSED") {
+    events.push({
+      label: "Ward Admin approved repair proof",
+      detail: "Admin reviewed before/after evidence and asked citizen for final confirmation.",
+      time: formatProofTime(report.updatedAt),
+      tx: report.repairTxHash ?? report.txHash,
+    });
+  }
+
+  if (report.warrantyStatus === "ACTIVE" || report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE") {
     events.push({
       label: "Warranty activated",
       detail: `Warranty monitoring started for ${report.warrantyPeriodDays ?? 30} days.`,
@@ -675,6 +734,12 @@ function fallbackEvents(report: CivicReport) {
   }
 
   if (report.status === "CLOSED") {
+    events.push({
+      label: "Citizen confirmed work done",
+      detail: "The issue owner confirmed that the repair was actually completed.",
+      time: formatProofTime(report.closedAt),
+      tx: report.repairTxHash ?? report.txHash,
+    });
     events.push({
       label: "Issue closed by report issuer",
       detail: report.closureNote ?? "Repair accepted and moved from active map into public history.",
@@ -744,7 +809,7 @@ function formatProofTime(value?: string) {
 
 function warrantyLabel(report: CivicReport, t: (key: "pending" | "notActive" | "warranty") => string) {
   if (report.status === "CLOSED") {
-    return "Closed";
+    return report.warrantyStatus === "ACTIVE" ? "Closed + Warranty Active" : "Closed";
   }
 
   if (report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE") {
@@ -753,6 +818,10 @@ function warrantyLabel(report: CivicReport, t: (key: "pending" | "notActive" | "
 
   if (report.status === "REPAIR_SUBMITTED") {
     return t("pending");
+  }
+
+  if (report.status === "ADMIN_APPROVED") {
+    return "Awaiting Citizen Confirmation";
   }
 
   return t("notActive");
@@ -765,7 +834,14 @@ function statusCopy(
   const labels = {
     OPEN: t("openIssues"),
     PENDING_PROOF: t("pendingProof"),
+    ASSIGNED_TO_CONTRACTOR: "Assigned",
+    WORK_ACCEPTED: "Work Accepted",
+    WORK_STARTED: "Work Started",
+    WORK_COMPLETED: "Work Completed",
     REPAIR_SUBMITTED: t("repairSubmitted"),
+    ADMIN_APPROVED: "Admin Approved",
+    REPAIR_REJECTED: "Repair Rejected",
+    CITIZEN_DISPUTED: "Citizen Disputed",
     UNDER_WARRANTY: t("active"),
     REPEAT_FAILURE: t("repeatFailure"),
     CLOSED: "Closed",

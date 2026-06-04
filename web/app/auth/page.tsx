@@ -12,7 +12,18 @@ import { type AuthRole, loginUser, roleLabels, signUpUser } from "@/src/lib/auth
 const roleOptions: Array<{ value: AuthRole; icon: typeof User; detail: string }> = [
   { value: "USER", icon: User, detail: "Report civic issues and track public proof." },
   { value: "WARD_ADMIN", icon: Building2, detail: "Review ward reports, approvals, and warranty cases." },
-  { value: "CONTRACTOR", icon: Wrench, detail: "Submit repair evidence and proof records." },
+  { value: "CONTRACTOR", icon: Wrench, detail: "Register identity, area, category, and submit repair proof." },
+];
+
+const contractorSpecializations = [
+  { value: "ROAD_DAMAGE", label: "Road repair" },
+  { value: "DRAINAGE", label: "Drainage" },
+  { value: "STREETLIGHT", label: "Streetlight" },
+  { value: "GARBAGE", label: "Garbage cleanup" },
+  { value: "WATER_LEAKAGE", label: "Water leakage" },
+  { value: "FOOTPATH", label: "Footpath repair" },
+  { value: "POWER_OUTAGE", label: "Power outage" },
+  { value: "GENERAL", label: "General civic repair" },
 ];
 
 function getRoleLandingPath(role: AuthRole) {
@@ -33,6 +44,11 @@ export default function AuthPage() {
   const [role, setRole] = useState<AuthRole>("USER");
   const [name, setName] = useState("");
   const [contactNumber, setContactNumber] = useState("");
+  const [contractorIdentityNumber, setContractorIdentityNumber] = useState("");
+  const [contractorArea, setContractorArea] = useState("");
+  const [contractorWard, setContractorWard] = useState("");
+  const [contractorSpecialization, setContractorSpecialization] = useState("ROAD_DAMAGE");
+  const [agencyName, setAgencyName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -46,7 +62,18 @@ export default function AuthPage() {
 
     try {
       if (mode === "signup") {
-        await signUpUser({ email, password, name, contactNumber, role });
+        await signUpUser({
+          email,
+          password,
+          name,
+          contactNumber,
+          role,
+          contractorIdentityNumber: role === "CONTRACTOR" ? contractorIdentityNumber : undefined,
+          contractorArea: role === "CONTRACTOR" ? contractorArea : undefined,
+          contractorWard: role === "CONTRACTOR" ? contractorWard : undefined,
+          contractorSpecialization: role === "CONTRACTOR" ? contractorSpecialization : undefined,
+          agencyName: role === "CONTRACTOR" ? agencyName : undefined,
+        });
         router.push("/profile");
       } else {
         const user = await loginUser(email, password);
@@ -175,6 +202,62 @@ export default function AuthPage() {
                 <Field icon={<User size={17} />} label="Full name" value={name} onChange={setName} required />
                 <Field icon={<Phone size={17} />} label="Contact number" value={contactNumber} onChange={setContactNumber} required />
               </div>
+              {role === "CONTRACTOR" && (
+                <div className="mt-4 rounded-md border border-[#00dbe9]/20 bg-[#00dbe9]/8 p-4">
+                  <p className="mb-4 font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#7df4ff]">
+                    Contractor identity and service area
+                  </p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field
+                      icon={<BadgeCheck size={17} />}
+                      label="Contractor ID / identity no."
+                      value={contractorIdentityNumber}
+                      onChange={setContractorIdentityNumber}
+                      required
+                    />
+                    <Field
+                      icon={<Building2 size={17} />}
+                      label="Company / agency"
+                      value={agencyName}
+                      onChange={setAgencyName}
+                      required
+                    />
+                    <Field
+                      icon={<MapPinIcon />}
+                      label="Assigned area / locality"
+                      value={contractorArea}
+                      onChange={setContractorArea}
+                      required
+                    />
+                    <Field
+                      icon={<ShieldCheck size={17} />}
+                      label="Assigned ward / zone"
+                      value={contractorWard}
+                      onChange={setContractorWard}
+                      required
+                    />
+                  </div>
+                  <label className="mt-4 block">
+                    <span className="mb-2 block font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#dbc2b0]">
+                      Work category / specialization
+                    </span>
+                    <span className="flex items-center gap-3 rounded-md border border-white/10 bg-black/35 px-3 transition focus-within:border-[#00dbe9]/55">
+                      <Wrench size={17} className="text-[#00dbe9]" />
+                      <select
+                        value={contractorSpecialization}
+                        onChange={(event) => setContractorSpecialization(event.target.value)}
+                        className="min-h-12 w-full bg-transparent text-sm text-white outline-none"
+                      >
+                        {contractorSpecializations.map((specialization) => (
+                          <option key={specialization.value} value={specialization.value} className="bg-[#050505] text-white">
+                            {specialization.label}
+                          </option>
+                        ))}
+                      </select>
+                    </span>
+                  </label>
+                </div>
+              )}
             </>
           )}
 
@@ -211,6 +294,15 @@ export default function AuthPage() {
         </form>
       </section>
     </main>
+  );
+}
+
+function MapPinIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[17px] w-[17px] text-[#00dbe9]" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
   );
 }
 

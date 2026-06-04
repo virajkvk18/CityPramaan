@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import Link from "next/link";
@@ -32,8 +33,15 @@ import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 const statusCopy: Record<CivicReport["status"], string> = {
   OPEN: "Submitted",
   PENDING_PROOF: "Under review / awaiting contractor",
+  ASSIGNED_TO_CONTRACTOR: "Assigned to contractor",
+  WORK_ACCEPTED: "Contractor accepted work",
+  WORK_STARTED: "Repair work started",
+  WORK_COMPLETED: "Work completed",
   REPAIR_SUBMITTED: "Repair proof uploaded",
-  UNDER_WARRANTY: "Verified / warranty active",
+  ADMIN_APPROVED: "Admin approved / confirm work",
+  REPAIR_REJECTED: "Repair proof rejected",
+  CITIZEN_DISPUTED: "Citizen disputed",
+  UNDER_WARRANTY: "Warranty active",
   REPEAT_FAILURE: "Reopened / warranty issue",
   CLOSED: "Closed",
 };
@@ -41,7 +49,14 @@ const statusCopy: Record<CivicReport["status"], string> = {
 const statusTone: Record<CivicReport["status"], string> = {
   OPEN: "border-[#ffb4ab]/35 bg-[#ffb4ab]/10 text-[#ffdad6]",
   PENDING_PROOF: "border-[#00dbe9]/35 bg-[#00dbe9]/10 text-[#7df4ff]",
+  ASSIGNED_TO_CONTRACTOR: "border-[#00dbe9]/35 bg-[#00dbe9]/10 text-[#7df4ff]",
+  WORK_ACCEPTED: "border-[#00dbe9]/35 bg-[#00dbe9]/10 text-[#7df4ff]",
+  WORK_STARTED: "border-[#00dbe9]/35 bg-[#00dbe9]/10 text-[#7df4ff]",
+  WORK_COMPLETED: "border-[#ffc08d]/35 bg-[#ffc08d]/10 text-[#ffdcc2]",
   REPAIR_SUBMITTED: "border-[#ffc08d]/35 bg-[#ffc08d]/10 text-[#ffdcc2]",
+  ADMIN_APPROVED: "border-[#00eb88]/35 bg-[#00eb88]/10 text-[#5bffa1]",
+  REPAIR_REJECTED: "border-[#ffb4ab]/35 bg-[#ffb4ab]/10 text-[#ffdad6]",
+  CITIZEN_DISPUTED: "border-[#d946ef]/40 bg-[#d946ef]/12 text-[#f0abfc]",
   UNDER_WARRANTY: "border-[#00eb88]/35 bg-[#00eb88]/10 text-[#5bffa1]",
   REPEAT_FAILURE: "border-[#d946ef]/40 bg-[#d946ef]/12 text-[#f0abfc]",
   CLOSED: "border-white/15 bg-white/[0.05] text-[#dbc2b0]",
@@ -75,6 +90,71 @@ export default function CitizenDashboardPage() {
   const proofPendingCount = citizenReports.filter((report) =>
     ["PENDING_PROOF", "REPAIR_SUBMITTED"].includes(report.status)
   ).length;
+
+  function confirmWorkDone(report: CivicReport) {
+    if (report.status !== "ADMIN_APPROVED") {
+      return;
+    }
+
+    const now = new Date();
+    const warrantyDays = report.warrantyPeriodDays ?? 90;
+    const warrantyExpiresAt = new Date(now.getTime() + warrantyDays * 24 * 60 * 60 * 1000);
+    const withClosure = appendReportEvent(
+      {
+        ...report,
+        status: "CLOSED",
+        ownerVerified: true,
+        citizenFinalApproval: "CONFIRMED",
+        warrantyStatus: "ACTIVE",
+        warrantyDaysLeft: warrantyDays,
+        warrantyPeriodDays: warrantyDays,
+        warrantyActivatedAt: now.toISOString(),
+        warrantyExpiresAt: warrantyExpiresAt.toISOString(),
+        closedAt: now.toISOString(),
+        closureNote: "Citizen confirmed the repair after Ward Admin approval. Warranty activated automatically.",
+      },
+      {
+        label: "Citizen confirmed work done",
+        detail: "The issue owner verified contractor proof and confirmed that the repair is actually completed.",
+        time: now.toLocaleString(),
+        tx: `0xcitizen...${report.id.replace("CP-", "")}`,
+      }
+    );
+    const updated = appendReportEvent(withClosure, {
+      label: "Report closed and warranty activated",
+      detail: `${warrantyDays}-day warranty started after citizen confirmation. Public proof remains visible as permanent history.`,
+      time: now.toLocaleString(),
+      tx: `0xwarranty...${report.id.replace("CP-", "")}`,
+    });
+
+    upsertLocalReport(updated);
+  }
+
+  function disputeRepair(report: CivicReport) {
+    if (report.status !== "ADMIN_APPROVED") {
+      return;
+    }
+
+    const now = new Date();
+    const updated = appendReportEvent(
+      {
+        ...report,
+        status: "CITIZEN_DISPUTED",
+        citizenFinalApproval: "DISPUTED",
+        warrantyStatus: "NOT_ACTIVE",
+        ownerVerified: false,
+        recommendedAction: "Citizen disputed the repair. Ward Admin must review the contractor proof again.",
+      },
+      {
+        label: "Citizen disputed repair proof",
+        detail: "The issue owner says the problem is not actually fixed. Ward Admin review is required again.",
+        time: now.toLocaleString(),
+        tx: `0xdispute...${report.id.replace("CP-", "")}`,
+      }
+    );
+
+    upsertLocalReport(updated);
+  }
 
   function reopenWarrantyIssue(report: CivicReport) {
     if (!["UNDER_WARRANTY", "CLOSED", "REPEAT_FAILURE"].includes(report.status)) {
@@ -243,6 +323,37 @@ export default function CitizenDashboardPage() {
                       Reopen warranty issue
                     </button>
                   </div>
+
+                  {selectedReport.status === "ADMIN_APPROVED" && (
+                    <div className="mt-5 rounded border border-[#00eb88]/25 bg-[#00eb88]/10 p-4">
+                      <p className="font-semibold text-[#d3fbff]">
+                        Ward Admin approved the repair proof. Please confirm only if the work is actually done.
+                      </p>
+                      {selectedReport.repairImageDataUrl && (
+                        <img
+                          src={selectedReport.repairImageDataUrl}
+                          alt="Contractor repair proof"
+                          className="mt-4 h-48 w-full rounded border border-white/10 object-cover"
+                        />
+                      )}
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <button
+                          type="button"
+                          onClick={() => confirmWorkDone(selectedReport)}
+                          className="rounded bg-[#00eb88] px-4 py-3 font-mono text-xs font-bold uppercase text-[#00210e]"
+                        >
+                          Confirm Work Done
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => disputeRepair(selectedReport)}
+                          className="rounded border border-[#ffb4ab]/40 bg-[#ffb4ab]/10 px-4 py-3 font-mono text-xs font-bold uppercase text-[#ffdad6]"
+                        >
+                          Raise Concern
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </article>
 
                 <article className="cp-cyber-card rounded-xl p-6">

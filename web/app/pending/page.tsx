@@ -9,8 +9,10 @@ import {
   BadgeCheck,
   CalendarClock,
   ExternalLink,
+  Fingerprint,
   LayoutDashboard,
   MapPin,
+  Phone,
   ScanSearch,
   Settings,
   ShieldCheck,
@@ -22,20 +24,34 @@ import { NotificationBell } from "@/src/components/layout/NotificationBell";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { DEFAULT_CITY_KEY, demoCities, getCityByKey, type CityKey } from "@/src/lib/city-context";
 import { getCitySnapshot, setSelectedCityKey, subscribeCity } from "@/src/lib/city-storage";
-import { getReportsForCity, type CivicReport } from "@/src/lib/mock-data";
+import { getReportsForCity, type CivicReport, type ContractorProfile } from "@/src/lib/mock-data";
 import {
   appendReportEvent,
   getLocalReportsSnapshot,
   subscribeLocalReports,
   upsertLocalReport,
 } from "@/src/lib/report-storage";
+import {
+  attachReportToContractor,
+  findSuggestedContractors,
+  getContractorsSnapshot,
+  specializationLabels,
+  subscribeContractors,
+} from "@/src/lib/contractor-storage";
 import { useLanguage } from "@/src/lib/use-language";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 
 const reviewStatuses: CivicReport["status"][] = [
   "OPEN",
   "PENDING_PROOF",
+  "ASSIGNED_TO_CONTRACTOR",
+  "WORK_ACCEPTED",
+  "WORK_STARTED",
+  "WORK_COMPLETED",
   "REPAIR_SUBMITTED",
+  "ADMIN_APPROVED",
+  "REPAIR_REJECTED",
+  "CITIZEN_DISPUTED",
   "UNDER_WARRANTY",
   "REPEAT_FAILURE",
   "CLOSED",
@@ -49,11 +65,20 @@ export default function PendingApprovalPage() {
     getLocalReportsSnapshot,
     () => "[]"
   );
+  const contractorsSnapshot = useSyncExternalStore(
+    subscribeContractors,
+    getContractorsSnapshot,
+    () => "[]"
+  );
   const selectedCity = getCityByKey(citySnapshot);
   const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const localReports = useMemo(
     () => JSON.parse(localReportsSnapshot) as CivicReport[],
     [localReportsSnapshot]
+  );
+  const contractors = useMemo(
+    () => JSON.parse(contractorsSnapshot) as ContractorProfile[],
+    [contractorsSnapshot]
   );
   const allReports = useMemo(() => {
     const localForCity = localReports.filter((report) => !report.cityKey || report.cityKey === selectedCity.key);
@@ -73,49 +98,48 @@ export default function PendingApprovalPage() {
     reviewReports.find((report) => report.status === "REPAIR_SUBMITTED") ??
     reviewReports[0];
   const hasRepairProof = Boolean(selectedReport?.repairImageDataUrl || selectedReport?.repairImageName);
-  const contractorChoices = useMemo(
-    () => [
-      selectedCity.contractor,
-      "Shree Infra Works",
-      "Apex Paving Ltd.",
-      "Electricity restoration crew",
-      "Ward Rapid Repair Crew",
-    ].filter((item, index, array) => array.indexOf(item) === index),
-    [selectedCity.contractor]
-  );
-  const [selectedContractor, setSelectedContractor] = useState(selectedCity.contractor);
+  const suggestedContractors = selectedReport ? findSuggestedContractors(selectedReport, contractors) : contractors;
+  const [selectedContractorId, setSelectedContractorId] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
-  const activeContractorChoice = contractorChoices.includes(selectedContractor)
-    ? selectedContractor
-    : selectedCity.contractor;
+  const activeContractor =
+    suggestedContractors.find((contractor) => contractor?.contractorId === selectedContractorId) ??
+    suggestedContractors[0];
 
-  function assignContractor(report: CivicReport) {
-    if (["UNDER_WARRANTY", "CLOSED"].includes(report.status)) {
+  function assignContractor(report: CivicReport, contractor = activeContractor) {
+    if (["ADMIN_APPROVED", "UNDER_WARRANTY", "CLOSED"].includes(report.status)) {
       setActionMessage("This report is already verified. Assignment is locked.");
       return;
     }
 
-    const contractorName = activeContractorChoice || selectedCity.contractor;
+    if (!contractor) {
+      setActionMessage("No contractor profile is available for this assignment.");
+      return;
+    }
+
     const now = new Date();
     const updated = appendReportEvent(
       {
         ...report,
         cityKey: report.cityKey ?? selectedCity.key,
-        contractor: contractorName,
-        status: "PENDING_PROOF",
+        contractor: contractor.name,
+        assignedContractorId: contractor.contractorId,
+        assignedContractorDetails: contractor,
+        assignedByAdmin: "Ward Admin",
+        status: "ASSIGNED_TO_CONTRACTOR",
         assignedAt: now.toISOString(),
         rejectionReason: undefined,
       },
       {
         label: "Ward Admin assigned contractor",
-        detail: `${contractorName} assigned to resolve ${report.title} at ${report.location}.`,
+        detail: `Ward Admin assigned this issue to ${contractor.name}, Contractor ID: ${contractor.contractorId}, ${contractor.ward} ${specializationLabels[contractor.specialization as keyof typeof specializationLabels] ?? contractor.specialization} team.`,
         time: now.toLocaleString(),
         tx: `0xassign...${report.id.replace("CP-", "")}`,
       }
     );
 
     upsertLocalReport(updated);
-    setActionMessage(`${report.id} assigned to ${contractorName}. It will now appear in Contractor dashboard.`);
+    attachReportToContractor(contractor.contractorId, report.id);
+    setActionMessage(`${report.id} assigned to ${contractor.name}. It will now appear in Contractor dashboard.`);
   }
 
   function approveRepairAndActivateWarranty(report: CivicReport) {
@@ -137,10 +161,11 @@ export default function PendingApprovalPage() {
       {
         ...report,
         cityKey: report.cityKey ?? selectedCity.key,
-        status: "UNDER_WARRANTY",
-        warrantyDaysLeft: warrantyDays,
+        status: "ADMIN_APPROVED",
+        adminApprovalStatus: "APPROVED",
+        citizenFinalApproval: "PENDING",
+        warrantyDaysLeft: null,
         warrantyPeriodDays: warrantyDays,
-        warrantyActivatedAt: now.toISOString(),
         warrantyExpiresAt: warrantyExpiresAt.toISOString(),
         rejectionReason: undefined,
         utilityRestoration: report.utilityRestoration
@@ -156,15 +181,15 @@ export default function PendingApprovalPage() {
       {
         label: isPowerOutage ? "Power restored and approved by issuer" : "Repair approved by report issuer",
         detail: isPowerOutage
-          ? `${warrantyDays}-day restoration monitoring activated after issuer reviewed utility proof and public status update.`
-          : `${warrantyDays}-day warranty activated after issuer reviewed contractor proof and AI audit.`,
+          ? "Ward Admin approved utility proof. Citizen confirmation is required before closure and warranty activation."
+          : "Ward Admin approved contractor repair proof. Citizen confirmation is required before closure and warranty activation.",
         time: now.toLocaleString(),
         tx: `0xb928...${report.id.replace("CP-", "")}ce`,
       }
     );
 
     upsertLocalReport(updated);
-    setActionMessage(`${report.id} approved. Warranty is now active and visible in Warranty Scanner.`);
+    setActionMessage(`${report.id} approved by Ward Admin. Citizen must confirm work done before closure and warranty activation.`);
   }
 
   function rejectRepairProof(report: CivicReport) {
@@ -178,7 +203,8 @@ export default function PendingApprovalPage() {
     const updated = appendReportEvent(
       {
         ...report,
-        status: "PENDING_PROOF",
+        status: "REPAIR_REJECTED",
+        adminApprovalStatus: "REJECTED",
         rejectionReason: reason,
         repairAudit: {
           ...report.repairAudit,
@@ -202,29 +228,11 @@ export default function PendingApprovalPage() {
   }
 
   function closeVerifiedIssue(report: CivicReport) {
-    if (!["UNDER_WARRANTY", "REPEAT_FAILURE"].includes(report.status)) {
-      setActionMessage("Approve the repair and activate warranty before closing the issue.");
+    if (report.status !== "CLOSED") {
+      setActionMessage("Citizen final confirmation is required before Ward Admin can consider this issue closed.");
       return;
     }
-
-    const now = new Date();
-    const updated = appendReportEvent(
-      {
-        ...report,
-        status: "CLOSED",
-        closedAt: now.toISOString(),
-        closureNote: "Ward Admin closed the verified issue after proof review.",
-      },
-      {
-        label: "Issue closed by Ward Admin",
-        detail: "Verified repair history is now preserved in the public proof timeline.",
-        time: now.toLocaleString(),
-        tx: `0xclose...${report.id.replace("CP-", "")}`,
-      }
-    );
-
-    upsertLocalReport(updated);
-    setActionMessage(`${report.id} closed. It remains available in Public Proof history.`);
+    setActionMessage(`${report.id} is already closed by citizen confirmation and visible in Public Proof.`);
   }
 
   return (
@@ -399,31 +407,71 @@ export default function PendingApprovalPage() {
                     )}
 
                     <div className="mt-5 rounded border border-[#ffc08d]/20 bg-black/25 p-4">
-                      <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-                        <label className="flex-1">
-                          <span className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#dbc2b0]/70">
-                            Assign contractor
-                          </span>
-                          <select
-                            value={activeContractorChoice}
-                            onChange={(event) => setSelectedContractor(event.target.value)}
-                            className="w-full rounded border border-white/10 bg-black/45 px-3 py-3 font-mono text-sm text-white outline-none focus:border-[#00dbe9]/60"
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#ffc08d]">
+                            Suggested contractors for this area/category
+                          </p>
+                          <p className="mt-1 text-xs text-[#dbc2b0]/65">
+                            Matched against {selectedReport.ward}, {selectedReport.issueCategory ?? "GENERAL"}, and issue location.
+                          </p>
+                        </div>
+                        <span className="rounded border border-[#00dbe9]/25 bg-[#00dbe9]/10 px-2 py-1 font-mono text-[10px] text-[#7df4ff]">
+                          {suggestedContractors.length} matches
+                        </span>
+                      </div>
+                      <div className="grid gap-3 lg:grid-cols-2">
+                        {suggestedContractors.map((contractor) => (
+                          <button
+                            key={contractor.contractorId}
+                            type="button"
+                            onClick={() => setSelectedContractorId(contractor.contractorId)}
+                            className={`rounded-lg border p-4 text-left transition ${
+                              activeContractor?.contractorId === contractor.contractorId
+                                ? "border-[#ffc08d]/60 bg-[#ffc08d]/10"
+                                : "border-white/10 bg-black/25 hover:border-[#00dbe9]/35"
+                            }`}
                           >
-                            {contractorChoices.map((contractor) => (
-                              <option key={contractor} value={contractor} className="bg-[#050505] text-white">
-                                {contractor}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => assignContractor(selectedReport)}
-                          disabled={["UNDER_WARRANTY", "CLOSED"].includes(selectedReport.status)}
-                          className="rounded border border-[#ffc08d]/45 bg-[#ffc08d]/10 px-4 py-3 font-mono text-xs font-bold uppercase text-[#ffdcc2] transition hover:bg-[#ffc08d]/15 disabled:cursor-not-allowed disabled:opacity-45"
-                        >
-                          Assign / Reassign
-                        </button>
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="font-semibold text-white">{contractor.name}</p>
+                                <p className="mt-1 flex items-center gap-1 font-mono text-[10px] text-[#7df4ff]">
+                                  <Fingerprint size={12} />
+                                  {contractor.contractorId} | {contractor.identityNumber}
+                                </p>
+                              </div>
+                              <span className={`rounded border px-2 py-1 font-mono text-[9px] uppercase ${
+                                contractor.availabilityStatus === "Available"
+                                  ? "border-[#00eb88]/30 bg-[#00eb88]/10 text-[#5bffa1]"
+                                  : "border-[#ffc08d]/30 bg-[#ffc08d]/10 text-[#ffdcc2]"
+                              }`}>
+                                {contractor.availabilityStatus}
+                              </span>
+                            </div>
+                            <div className="mt-3 grid gap-2 text-xs text-[#dbc2b0]/75">
+                              <span>{contractor.agencyName}</span>
+                              <span>{contractor.ward} | {contractor.area}</span>
+                              <span>{specializationLabels[contractor.specialization as keyof typeof specializationLabels] ?? contractor.specialization}</span>
+                              <span className="flex items-center gap-1"><Phone size={12} /> {contractor.phone}</span>
+                              <span>{contractor.email}</span>
+                              <span className="text-[#00eb88]">{contractor.verificationStatus}</span>
+                            </div>
+                            <span className="mt-3 inline-flex rounded border border-[#ffc08d]/35 bg-[#ffc08d]/10 px-3 py-2 font-mono text-[10px] font-bold uppercase text-[#ffdcc2]">
+                              Select contractor
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => assignContractor(selectedReport)}
+                        disabled={["ADMIN_APPROVED", "UNDER_WARRANTY", "CLOSED"].includes(selectedReport.status) || !activeContractor}
+                        className="mt-4 w-full rounded border border-[#ffc08d]/45 bg-[#ffc08d]/10 px-4 py-3 font-mono text-xs font-bold uppercase text-[#ffdcc2] transition hover:bg-[#ffc08d]/15 disabled:cursor-not-allowed disabled:opacity-45"
+                      >
+                        Assign Selected Contractor
+                      </button>
+                      <div className="mt-3 rounded border border-white/10 bg-black/30 p-3 text-xs leading-5 text-[#dbc2b0]/75">
+                        Citizen: {selectedReport.citizenName ?? "Citizen reporter"} {selectedReport.citizenContact ? `| ${selectedReport.citizenContact}` : ""}
                       </div>
                     </div>
 
@@ -434,7 +482,7 @@ export default function PendingApprovalPage() {
                         className="btn-primary-shimmer flex flex-1 items-center justify-center gap-2 rounded bg-[#ffc08d] px-4 py-3 font-mono text-xs font-semibold text-[#4c2700] transition disabled:cursor-not-allowed disabled:opacity-45"
                       >
                         <ShieldCheck size={16} />
-                        Approve Repair & Activate Warranty
+                        Admin Approve Repair Proof
                       </button>
                       <Link
                         href={`/proof/${selectedReport.id}`}
@@ -472,10 +520,10 @@ export default function PendingApprovalPage() {
                     <button
                       type="button"
                       onClick={() => closeVerifiedIssue(selectedReport)}
-                      disabled={!["UNDER_WARRANTY", "REPEAT_FAILURE"].includes(selectedReport.status)}
+                      disabled={selectedReport.status !== "CLOSED"}
                       className="mt-4 w-full rounded border border-[#00eb88]/35 bg-[#00eb88]/10 px-4 py-3 font-mono text-xs font-bold uppercase text-[#5bffa1] transition hover:bg-[#00eb88]/15 disabled:cursor-not-allowed disabled:opacity-45"
                     >
-                      Mark Issue Closed
+                      Closure controlled by citizen confirmation
                     </button>
 
                     {actionMessage && (
@@ -569,7 +617,14 @@ function StatusBadge({ report }: { report: CivicReport }) {
   const tones = {
     OPEN: "border-[#ffb4ab]/30 bg-[#ffb4ab]/10 text-[#ffb4ab]",
     PENDING_PROOF: "border-[#00dbe9]/30 bg-[#00dbe9]/10 text-[#7df4ff]",
+    ASSIGNED_TO_CONTRACTOR: "border-[#00dbe9]/30 bg-[#00dbe9]/10 text-[#7df4ff]",
+    WORK_ACCEPTED: "border-[#00dbe9]/30 bg-[#00dbe9]/10 text-[#7df4ff]",
+    WORK_STARTED: "border-[#00dbe9]/30 bg-[#00dbe9]/10 text-[#7df4ff]",
+    WORK_COMPLETED: "border-[#ffc08d]/30 bg-[#ffc08d]/10 text-[#ffc08d]",
     REPAIR_SUBMITTED: "border-[#ffc08d]/30 bg-[#ffc08d]/10 text-[#ffc08d]",
+    ADMIN_APPROVED: "border-[#00eb88]/30 bg-[#00eb88]/10 text-[#00eb88]",
+    REPAIR_REJECTED: "border-[#ffb4ab]/30 bg-[#ffb4ab]/10 text-[#ffb4ab]",
+    CITIZEN_DISPUTED: "border-[#d946ef]/30 bg-[#d946ef]/10 text-[#f0abfc]",
     UNDER_WARRANTY: "border-[#00eb88]/30 bg-[#00eb88]/10 text-[#00eb88]",
     REPEAT_FAILURE: "border-[#d946ef]/30 bg-[#d946ef]/10 text-[#f0abfc]",
     CLOSED: "border-[#00eb88]/30 bg-[#00eb88]/10 text-[#00eb88]",
@@ -586,7 +641,14 @@ function statusCopy(report: CivicReport) {
   const labels = {
     OPEN: "Open",
     PENDING_PROOF: "Awaiting contractor",
+    ASSIGNED_TO_CONTRACTOR: "Assigned",
+    WORK_ACCEPTED: "Work accepted",
+    WORK_STARTED: "Work started",
+    WORK_COMPLETED: "Work completed",
     REPAIR_SUBMITTED: "Pending approval",
+    ADMIN_APPROVED: "Admin approved",
+    REPAIR_REJECTED: "Proof rejected",
+    CITIZEN_DISPUTED: "Citizen disputed",
     UNDER_WARRANTY: "Warranty active",
     REPEAT_FAILURE: "Repeat failure",
     CLOSED: "Closed",
@@ -601,16 +663,20 @@ function sortReviewReports(a: CivicReport, b: CivicReport) {
       return 0;
     }
 
-    if (report.status === "REPAIR_SUBMITTED") {
+    if (report.status === "CITIZEN_DISPUTED") {
       return 1;
     }
 
-    if (report.status === "PENDING_PROOF" || report.status === "OPEN") {
+    if (report.status === "REPAIR_SUBMITTED") {
       return 2;
     }
 
-    if (report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE") {
+    if (["PENDING_PROOF", "OPEN", "ASSIGNED_TO_CONTRACTOR", "WORK_ACCEPTED", "WORK_STARTED", "WORK_COMPLETED", "REPAIR_REJECTED"].includes(report.status)) {
       return 3;
+    }
+
+    if (report.status === "UNDER_WARRANTY" || report.status === "REPEAT_FAILURE") {
+      return 4;
     }
 
     return 4;

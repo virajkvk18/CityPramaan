@@ -87,11 +87,7 @@ Citizen Report
    -> Closure or Under-Warranty Reopen
 ```
 
-<<<<<<< HEAD
-Citizens can report infrastructure issues such as road damage, drainage blockage, garbage blackspots, streetlight dark zones, water leakage, and footpath damage. Contractors upload after-repair proof. The report issuer approves the proof. Warranty gets activated. The public can view the complete repair history.
-=======
 Citizens can report infrastructure issues such as road damage, drainage blockage, garbage blackspots, streetlight dark zones, transformer outages, weather-linked power failures, water leakage, and footpath damage. Contractors or utility crews upload after-repair/restoration proof. The report issuer approves the proof. Warranty or restoration monitoring gets activated. The public can view the complete repair history.
->>>>>>> 3264127 (Add power outage restoration workflow)
 
 The platform is designed around one simple idea:
 
@@ -127,10 +123,7 @@ The current repository contains a **functional web MVP** built with Next.js. It 
 - Pending Approval page where the report issuer can review contractor repair proof
 - Warranty Scanner / Urban Ledger showing repair warranty state and issue history
 - Public Proof page for full report details, timeline, images, AI verdict, feedback, and closure
-<<<<<<< HEAD
-=======
 - Power outage / transformer failure flow with restoration ETA, fault stage, department, and citizen update
->>>>>>> 3264127 (Add power outage restoration workflow)
 - Notifications panel that links users to reported issue progress
 - Multilingual UI foundation for English and major Indian regional languages
 - Dark/bright theme toggle
@@ -243,10 +236,7 @@ In the MVP, AI is simulated to show the intended product workflow. In the full v
 - Generating a civic issue summary
 - Comparing before and after repair images
 - Detecting weak repair quality
-<<<<<<< HEAD
-=======
 - Tracking utility restoration progress for weather casualties and transformer failures
->>>>>>> 3264127 (Add power outage restoration workflow)
 - Flagging repeat failures under warranty
 
 ### Blockchain / Web3 Layer
@@ -343,10 +333,7 @@ Use this flow during a demo:
 ## Future Production Roadmap
 
 - Real AI image detection for potholes, drainage, garbage, streetlight dark zones, water leakage, and footpath damage
-<<<<<<< HEAD
-=======
 - Utility outage module for transformer failures, feeder faults, storm damage, restoration ETA, and power restored proof
->>>>>>> 3264127 (Add power outage restoration workflow)
 - Real GPS/map location picker with reverse geocoding
 - IPFS upload for issue and repair images
 - Smart contract deployment for proof hash, status transition, warranty, and repeat failure events
