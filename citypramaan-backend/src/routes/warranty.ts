@@ -1,23 +1,11 @@
-import { Router, Request, Response } from 'express';
+import { Router } from 'express';
+import { getAllWarranties, submitProof, approveWarranty } from '../controllers/warranty.controller';
+import { authMiddleware } from '../middleware/auth';
 
 const router = Router();
 
-// GET all warranties (public registry)
-router.get('/', (req: Request, res: Response) => {
-  const { city } = req.query;
-  res.json({ message: 'Get warranties', city, data: [] });
-});
-
-// POST activate warranty (issuer approves)
-router.post('/:issueId/approve', (req: Request, res: Response) => {
-  const { issueId } = req.params;
-  res.json({ message: `Warranty activated for ${issueId}` });
-});
-
-// POST contractor submits repair proof
-router.post('/:issueId/submit-proof', (req: Request, res: Response) => {
-  const { issueId } = req.params;
-  res.json({ message: `Proof submitted for ${issueId}` });
-});
+router.get('/', getAllWarranties);
+router.post('/:issueId/submit-proof', authMiddleware, submitProof);
+router.post('/:issueId/approve', authMiddleware, approveWarranty);
 
 export default router;
