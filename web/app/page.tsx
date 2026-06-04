@@ -231,7 +231,7 @@ export default function Home() {
 
   if (!currentUser) {
     return (
-      <main className="cp-page-shell cp-video-landing relative min-h-[100svh] overflow-hidden bg-black text-white">
+      <main className="cp-page-shell cp-video-landing cp-theme-locked-dark relative min-h-[100svh] overflow-hidden bg-black text-white">
         <video
           className="absolute inset-0 h-full w-full object-cover"
           autoPlay
