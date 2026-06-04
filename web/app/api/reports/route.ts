@@ -50,6 +50,37 @@ const reportColumns = [
   "history",
 ] as const;
 
+const coreReportColumns = [
+  "id",
+  "cityKey",
+  "title",
+  "ward",
+  "status",
+  "severity",
+  "confidence",
+  "contractor",
+  "txHash",
+  "warrantyDaysLeft",
+  "location",
+  "latitude",
+  "longitude",
+  "mapUrl",
+  "issueCategory",
+  "assetType",
+  "aiSummary",
+  "recommendedAction",
+  "slaHours",
+  "createdAt",
+  "updatedAt",
+  "evidenceHash",
+  "proofBundleHash",
+  "aiPriorityScore",
+  "imageEvidenceScore",
+  "aiModelVersion",
+  "estimatedImpact",
+  "history",
+] as const;
+
 function getMissingSupabaseResponse() {
   return NextResponse.json(
     {
@@ -71,6 +102,21 @@ function sanitizeReportPayload(body: ReportPayload) {
   }
 
   return sanitized;
+}
+
+function pickReportColumns(
+  report: Record<string, unknown>,
+  columns: readonly string[]
+) {
+  const picked: Record<string, unknown> = {};
+
+  for (const column of columns) {
+    if (report[column] !== undefined) {
+      picked[column] = report[column];
+    }
+  }
+
+  return picked;
 }
 
 export async function GET(request: Request) {
@@ -126,13 +172,36 @@ export async function POST(request: Request) {
     .select()
     .single();
 
-  if (error) {
-    console.error("Supabase reports POST error:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!error) {
+    return NextResponse.json({
+      message: "Report saved to Supabase",
+      report: data,
+    });
+  }
+
+  console.warn("Supabase reports POST full payload failed:", error.message);
+
+  const coreReport = pickReportColumns(sanitizedReport, coreReportColumns);
+  const { data: fallbackData, error: fallbackError } = await supabase
+    .from("reports")
+    .upsert(coreReport, { onConflict: "id" })
+    .select()
+    .single();
+
+  if (fallbackError) {
+    console.error("Supabase reports POST error:", fallbackError.message);
+    return NextResponse.json(
+      {
+        error: fallbackError.message,
+        originalError: error.message,
+      },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({
     message: "Report saved to Supabase",
-    report: data,
+    warning: "Saved with core report fields because optional Supabase columns are missing.",
+    report: fallbackData,
   });
 }
