@@ -3,7 +3,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   ArrowLeft,
   BadgeCheck,
@@ -29,8 +29,8 @@ import {
   appendReportEvent,
   getLocalReportsSnapshot,
   subscribeLocalReports,
-  upsertLocalReport,
 } from "@/src/lib/report-storage";
+import { fetchBackendReports, mergeReportsById, saveReportEverywhere } from "@/src/lib/report-sync";
 import {
   attachReportToContractor,
   findSuggestedContractors,
@@ -72,19 +72,35 @@ export default function PendingApprovalPage() {
   );
   const selectedCity = getCityByKey(citySnapshot);
   const cityDisplay = useDetectedLocationDisplay(selectedCity);
+  const [backendReports, setBackendReports] = useState<CivicReport[]>([]);
   const localReports = useMemo(
     () => JSON.parse(localReportsSnapshot) as CivicReport[],
     [localReportsSnapshot]
   );
+  useEffect(() => {
+    let active = true;
+
+    fetchBackendReports(selectedCity.key).then((reports) => {
+      if (active) {
+        setBackendReports(reports);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedCity.key]);
   const contractors = useMemo(
     () => JSON.parse(contractorsSnapshot) as ContractorProfile[],
     [contractorsSnapshot]
   );
   const allReports = useMemo(() => {
-    const localForCity = localReports.filter((report) => !report.cityKey || report.cityKey === selectedCity.key);
-    const localIds = new Set(localForCity.map((report) => report.id));
-    return [...localForCity, ...getReportsForCity(selectedCity.key).filter((report) => !localIds.has(report.id))];
-  }, [localReports, selectedCity.key]);
+    return mergeReportsById(
+      getReportsForCity(selectedCity.key),
+      backendReports,
+      localReports
+    ).filter((report) => !report.cityKey || report.cityKey === selectedCity.key);
+  }, [backendReports, localReports, selectedCity.key]);
   const reviewReports = allReports
     .filter((report) => reviewStatuses.includes(report.status))
     .sort(sortReviewReports);
@@ -137,7 +153,7 @@ export default function PendingApprovalPage() {
       }
     );
 
-    upsertLocalReport(updated);
+    void saveReportEverywhere(updated);
     attachReportToContractor(contractor.contractorId, report.id);
     setActionMessage(`${report.id} assigned to ${contractor.name}. It will now appear in Contractor dashboard.`);
   }
@@ -188,7 +204,7 @@ export default function PendingApprovalPage() {
       }
     );
 
-    upsertLocalReport(updated);
+    void saveReportEverywhere(updated);
     setActionMessage(`${report.id} approved by Ward Admin. Citizen must confirm work done before closure and warranty activation.`);
   }
 
@@ -222,7 +238,7 @@ export default function PendingApprovalPage() {
       }
     );
 
-    upsertLocalReport(updated);
+    void saveReportEverywhere(updated);
     setRejectionReason("");
     setActionMessage(`${report.id} sent back to contractor with rejection reason.`);
   }

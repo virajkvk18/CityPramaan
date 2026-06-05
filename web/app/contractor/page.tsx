@@ -3,7 +3,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   ArrowLeft,
   BadgeCheck,
@@ -35,8 +35,8 @@ import {
   getLocalReportsSnapshot,
   readFileAsDataUrl,
   subscribeLocalReports,
-  upsertLocalReport,
 } from "@/src/lib/report-storage";
+import { fetchBackendReports, mergeReportsById, saveReportEverywhere } from "@/src/lib/report-sync";
 import { createProofBundleHash, sha256Hex } from "@/src/lib/proof-hashing";
 import { useLanguage } from "@/src/lib/use-language";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
@@ -95,15 +95,31 @@ export default function ContractorPage() {
   );
   const selectedCity = getCityByKey(citySnapshot);
   const cityDisplay = useDetectedLocationDisplay(selectedCity);
+  const [backendReports, setBackendReports] = useState<CivicReport[]>([]);
   const localReports = useMemo(
     () => JSON.parse(localReportsSnapshot) as CivicReport[],
     [localReportsSnapshot]
   );
+  useEffect(() => {
+    let active = true;
+
+    fetchBackendReports(selectedCity.key).then((reports) => {
+      if (active) {
+        setBackendReports(reports);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedCity.key]);
   const allReports = useMemo(() => {
-    const localForCity = localReports.filter((report) => !report.cityKey || report.cityKey === selectedCity.key);
-    const localIds = new Set(localForCity.map((report) => report.id));
-    return [...localForCity, ...getReportsForCity(selectedCity.key).filter((report) => !localIds.has(report.id))];
-  }, [localReports, selectedCity.key]);
+    return mergeReportsById(
+      getReportsForCity(selectedCity.key),
+      backendReports,
+      localReports
+    ).filter((report) => !report.cityKey || report.cityKey === selectedCity.key);
+  }, [backendReports, localReports, selectedCity.key]);
   const repairQueue = allReports.filter(
     (report) =>
       contractorVisibleStatuses.includes(report.status) &&
@@ -165,7 +181,7 @@ export default function ContractorPage() {
       }
     );
 
-    upsertLocalReport(updated);
+    void saveReportEverywhere(updated);
     setActionMessage(`${stageConfig.label}. Citizen, Ward Admin, and Public Proof timeline are updated.`);
   }
 
@@ -341,7 +357,7 @@ export default function ContractorPage() {
       }
     );
 
-    upsertLocalReport(updated);
+    void saveReportEverywhere(updated);
     setSubmittedId(report.id);
     setSubmittedTxUrl(txUrl);
     setActionMessage(`${t("repairProof")} submitted on-chain. Status is now ${t("repairSubmitted")} / ${t("pending")}. Issuer must approve it from ${t("publicProof")}.`);

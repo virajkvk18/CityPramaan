@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   ArrowLeft,
   BadgeCheck,
@@ -26,8 +26,8 @@ import {
   appendReportEvent,
   getLocalReportsSnapshot,
   subscribeLocalReports,
-  upsertLocalReport,
 } from "@/src/lib/report-storage";
+import { fetchBackendReports, mergeReportsById, saveReportEverywhere } from "@/src/lib/report-sync";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 
 const statusCopy: Record<CivicReport["status"], string> = {
@@ -73,17 +73,35 @@ export default function CitizenDashboardPage() {
   const currentUser = useMemo(() => getCurrentUser(authSnapshot), [authSnapshot]);
   const selectedCity = getCityByKey(citySnapshot);
   const cityDisplay = useDetectedLocationDisplay(selectedCity);
+  const [backendReports, setBackendReports] = useState<CivicReport[]>([]);
   const localReports = useMemo(
     () => JSON.parse(localReportsSnapshot) as CivicReport[],
     [localReportsSnapshot]
   );
+  useEffect(() => {
+    let active = true;
+
+    fetchBackendReports(selectedCity.key).then((reports) => {
+      if (active) {
+        setBackendReports(reports);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedCity.key]);
   const citizenReports = useMemo(() => {
-    const reports = localReports.filter((report) => !report.cityKey || report.cityKey === selectedCity.key);
+    const reports = mergeReportsById(
+      getReportsForCity(selectedCity.key).slice(0, 2),
+      backendReports,
+      localReports
+    ).filter((report) => !report.cityKey || report.cityKey === selectedCity.key);
 
     return reports.length
       ? reports.sort(sortLatest)
       : getReportsForCity(selectedCity.key).slice(0, 2).sort(sortLatest);
-  }, [localReports, selectedCity.key]);
+  }, [backendReports, localReports, selectedCity.key]);
   const [selectedReportId, setSelectedReportId] = useState(citizenReports[0]?.id ?? "");
   const selectedReport = citizenReports.find((report) => report.id === selectedReportId) ?? citizenReports[0];
   const activeCount = citizenReports.filter((report) => report.status !== "CLOSED").length;
@@ -127,7 +145,7 @@ export default function CitizenDashboardPage() {
       tx: `0xwarranty...${report.id.replace("CP-", "")}`,
     });
 
-    upsertLocalReport(updated);
+    void saveReportEverywhere(updated);
   }
 
   function disputeRepair(report: CivicReport) {
@@ -153,7 +171,7 @@ export default function CitizenDashboardPage() {
       }
     );
 
-    upsertLocalReport(updated);
+    void saveReportEverywhere(updated);
   }
 
   function reopenWarrantyIssue(report: CivicReport) {
@@ -178,7 +196,7 @@ export default function CitizenDashboardPage() {
       }
     );
 
-    upsertLocalReport(updated);
+    void saveReportEverywhere(updated);
   }
 
   return (

@@ -24,11 +24,8 @@ import { DEFAULT_CITY_KEY, demoCities, getCityByKey, type CityKey } from "@/src/
 import { getCitySnapshot, subscribeCity } from "@/src/lib/city-storage";
 import { getReportsForCity, type CivicReport, type ReportStatus } from "@/src/lib/mock-data";
 import { getLocalReportsSnapshot, subscribeLocalReports } from "@/src/lib/report-storage";
+import { fetchBackendReports, mergeReportsById } from "@/src/lib/report-sync";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
-
-type ReportsResponse = {
-  reports?: CivicReport[];
-};
 
 const statusLabels: Record<ReportStatus, string> = {
   OPEN: "Open",
@@ -103,24 +100,11 @@ export default function ReportsPage() {
     let active = true;
 
     async function loadReports() {
-      try {
-        const response = await fetch("/api/reports", { cache: "no-store" });
+      const reports = await fetchBackendReports();
 
-        if (!response.ok) {
-          return;
-        }
-
-        const payload = (await response.json()) as ReportsResponse;
-
-        if (active) {
-          setBackendReports(Array.isArray(payload.reports) ? payload.reports : []);
-        }
-      } catch (error) {
-        console.warn("CityPramaan report board could not fetch backend reports:", error);
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
+      if (active) {
+        setBackendReports(reports);
+        setLoading(false);
       }
     }
 
@@ -132,21 +116,7 @@ export default function ReportsPage() {
   }, []);
 
   const allReports = useMemo(() => {
-    const reportsById = new Map<string, CivicReport>();
-
-    for (const report of getReportsForCity(selectedCity.key)) {
-      reportsById.set(report.id, report);
-    }
-
-    for (const report of localReports) {
-      reportsById.set(report.id, report);
-    }
-
-    for (const report of backendReports) {
-      reportsById.set(report.id, report);
-    }
-
-    return Array.from(reportsById.values()).sort(sortLatestFirst);
+    return mergeReportsById(getReportsForCity(selectedCity.key), backendReports, localReports).sort(sortLatestFirst);
   }, [backendReports, localReports, selectedCity.key]);
 
   const filteredReports = useMemo(() => {

@@ -53,8 +53,8 @@ import { buildGoogleMapsUrl, type CivicReport } from "@/src/lib/mock-data";
 import {
   createLocalReportId,
   readFileAsDataUrl,
-  saveLocalReport,
 } from "@/src/lib/report-storage";
+import { saveReportEverywhere } from "@/src/lib/report-sync";
 import { getCurrentUser } from "@/src/lib/auth-storage";
 import { createProofBundleHash, deriveTransactionHash, sha256Hex } from "@/src/lib/proof-hashing";
 import {
@@ -131,30 +131,6 @@ function getDistanceKm(fromLat: number, fromLng: number, toLat: number, toLng: n
 
 function toRadians(value: number) {
   return (value * Math.PI) / 180;
-}
-
-async function syncReportToBackend(report: CivicReport) {
-  const metadataReport: Partial<CivicReport> = { ...report };
-
-  delete metadataReport.issueImageDataUrl;
-  delete metadataReport.repairImageDataUrl;
-
-  try {
-    const response = await fetch("/api/reports", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(metadataReport),
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.json().catch(() => null);
-      console.warn("CityPramaan report backend sync failed:", errorBody ?? response.statusText);
-    }
-  } catch (error) {
-    console.warn("CityPramaan report backend sync unavailable:", error);
-  }
 }
 
 async function reverseGeocodeArea(latitude: number, longitude: number) {
@@ -557,8 +533,7 @@ export default function ReportIssuePage() {
         ],
       };
 
-      saveLocalReport(newReport);
-      await syncReportToBackend(newReport);
+      await saveReportEverywhere(newReport);
 
       setAiResult(result);
       setSelectedCityKey(reportCity.key);

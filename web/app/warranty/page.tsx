@@ -3,7 +3,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -30,6 +30,7 @@ import { DEFAULT_CITY_KEY, demoCities, getCityByKey, type CityKey } from "@/src/
 import { getCitySnapshot, setSelectedCityKey, subscribeCity } from "@/src/lib/city-storage";
 import { getReportsForCity, type CivicReport } from "@/src/lib/mock-data";
 import { getLocalReportsSnapshot, subscribeLocalReports } from "@/src/lib/report-storage";
+import { fetchBackendReports, mergeReportsById } from "@/src/lib/report-sync";
 import { translate } from "@/src/lib/language-context";
 import { getLanguageSnapshot, subscribeLanguage } from "@/src/lib/language-storage";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
@@ -54,15 +55,31 @@ export default function WarrantyScannerPage() {
   const selectedCity = getCityByKey(citySnapshot);
   const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const tr = (key: Parameters<typeof translate>[1]) => translate(languageSnapshot, key);
+  const [backendReports, setBackendReports] = useState<CivicReport[]>([]);
   const localReports = useMemo(
     () => JSON.parse(localReportsSnapshot) as CivicReport[],
     [localReportsSnapshot]
   );
+  useEffect(() => {
+    let active = true;
+
+    fetchBackendReports(selectedCity.key).then((reports) => {
+      if (active) {
+        setBackendReports(reports);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedCity.key]);
   const allReports = useMemo(() => {
-    const localForCity = localReports.filter((report) => !report.cityKey || report.cityKey === selectedCity.key);
-    const localIds = new Set(localForCity.map((report) => report.id));
-    return [...localForCity, ...getReportsForCity(selectedCity.key).filter((report) => !localIds.has(report.id))];
-  }, [localReports, selectedCity.key]);
+    return mergeReportsById(
+      getReportsForCity(selectedCity.key),
+      backendReports,
+      localReports
+    ).filter((report) => !report.cityKey || report.cityKey === selectedCity.key);
+  }, [backendReports, localReports, selectedCity.key]);
   const warrantyReports = allReports
     .filter((report) =>
       [

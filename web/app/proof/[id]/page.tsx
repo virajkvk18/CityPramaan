@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useParams } from "next/navigation";
 import {
   AlertTriangle,
@@ -31,8 +31,8 @@ import {
   appendReportEvent,
   getLocalReportsSnapshot,
   subscribeLocalReports,
-  upsertLocalReport,
 } from "@/src/lib/report-storage";
+import { fetchBackendReports, mergeReportsById, saveReportEverywhere } from "@/src/lib/report-sync";
 import { useLanguage } from "@/src/lib/use-language";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 
@@ -66,11 +66,24 @@ export default function ProofTimelinePage() {
     () => JSON.parse(localReportsSnapshot) as CivicReport[],
     [localReportsSnapshot]
   );
+  const [backendReports, setBackendReports] = useState<CivicReport[]>([]);
+  useEffect(() => {
+    let active = true;
+
+    fetchBackendReports().then((reports) => {
+      if (active) {
+        setBackendReports(reports);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
   const cityReports = useMemo(() => getReportsForCity(citySnapshot), [citySnapshot]);
   const allReports = useMemo(() => {
-    const localIds = new Set(localReports.map((report) => report.id));
-    return [...localReports, ...cityReports.filter((report) => !localIds.has(report.id))];
-  }, [cityReports, localReports]);
+    return mergeReportsById(cityReports, backendReports, localReports);
+  }, [backendReports, cityReports, localReports]);
   const report = allReports.find((item) => item.id === proofId) ?? cityReports[3];
   const activeCity = getCityByKey(report.cityKey ?? citySnapshot);
   const cityDisplay = useDetectedLocationDisplay(activeCity);
@@ -80,12 +93,14 @@ export default function ProofTimelinePage() {
     const localForCity = localReports.filter(
       (item) => !item.cityKey || item.cityKey === activeCity.key
     );
-    const localIds = new Set(localForCity.map((item) => item.id));
+    const backendForCity = backendReports.filter(
+      (item) => !item.cityKey || item.cityKey === activeCity.key
+    );
 
-    return [...localForCity, ...baseReports.filter((item) => !localIds.has(item.id))]
+    return mergeReportsById(baseReports, backendForCity, localForCity)
       .filter((item) => !item.cityKey || item.cityKey === activeCity.key)
       .sort(sortCityHistoryReports);
-  }, [activeCity.key, cityReports, citySnapshot, localReports]);
+  }, [activeCity.key, backendReports, cityReports, citySnapshot, localReports]);
   const events = report.history?.length ? report.history : fallbackEvents(report);
   const hasRepairProof = Boolean(report.repairImageDataUrl || report.repairImageName);
   const isWarrantyActive =
@@ -136,7 +151,7 @@ export default function ProofTimelinePage() {
       }
     );
 
-    upsertLocalReport(updated);
+    void saveReportEverywhere(updated);
     setFeedbackText("");
     setActionMessage("Feedback added. The issue owner can review it before closing the case.");
   }
@@ -176,7 +191,7 @@ export default function ProofTimelinePage() {
       }
     );
 
-    upsertLocalReport(updated);
+    void saveReportEverywhere(updated);
     setActionMessage("Repair proof approved. Citizen must confirm work done before closure and warranty activation.");
   }
 
@@ -232,7 +247,7 @@ export default function ProofTimelinePage() {
       tx: `0xwarranty...${report.id.replace("CP-", "")}`,
     });
 
-    upsertLocalReport(updated);
+    void saveReportEverywhere(updated);
     setActionMessage("Issue closed and synced. It will no longer appear on the command center map.");
   }
 
@@ -281,7 +296,7 @@ export default function ProofTimelinePage() {
       }
     );
 
-    upsertLocalReport(updated);
+    void saveReportEverywhere(updated);
     setFeedbackText("");
     setActionMessage("Under-warranty issue raised. It is back on the command center map as a repeat failure.");
   }
