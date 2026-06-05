@@ -201,6 +201,21 @@ const publicProofTimeline = [
   "Warranty active",
 ] as const;
 
+const civicSignalChips = [
+  { label: "AI Verification", tone: "cyan" },
+  { label: "Blockchain Proof", tone: "violet" },
+  { label: "Warranty Memory", tone: "emerald" },
+  { label: "Public Timeline", tone: "amber" },
+  { label: "Citizen Feedback", tone: "rose" },
+] as const;
+
+const landingImpactStats = [
+  { label: "Active demo reports", value: "dynamic", detail: "Live civic stream for the selected city", tone: "amber" },
+  { label: "Public proof records", value: "dynamic", detail: "Indexed repair events and hashes", tone: "cyan" },
+  { label: "Trust gap", value: "High", detail: "Resolved labels without evidence reduce public trust", tone: "rose" },
+  { label: "Warranty memory", value: "On", detail: "Repeat failures can be traced after repair", tone: "emerald" },
+] as const;
+
 type RoleNavItem = {
   label: string;
   icon: typeof Gauge;
@@ -1285,10 +1300,11 @@ function LandingEvidenceSections({
   return (
     <div className="relative z-10 bg-[#020304] text-white">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(255,153,51,0.16),transparent_28%),radial-gradient(circle_at_86%_20%,rgba(0,219,233,0.14),transparent_28%),linear-gradient(to_right,rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:auto,auto,34px_34px,34px_34px]" />
+      <div className="cp-landing-aurora pointer-events-none absolute inset-0" />
 
       <section className="cp-landing-section relative mx-auto grid max-w-7xl gap-8 px-4 py-16 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:px-10 lg:py-24">
         <div className="cp-scroll-reveal">
-          <p className="font-mono text-xs font-black uppercase tracking-[0.22em] text-[#00dbe9]">
+          <p className="cp-kicker-glow font-mono text-xs font-black uppercase tracking-[0.22em] text-[#00dbe9]">
             India Civic Problem
           </p>
           <h2 className="mt-3 max-w-3xl text-3xl font-black leading-tight text-white sm:text-5xl">
@@ -1298,6 +1314,12 @@ function LandingEvidenceSections({
             Cities already have complaint apps, IDs, and status labels. CityPramaan focuses on the missing part:
             verified repair evidence, contractor accountability, public history, and warranty memory.
           </p>
+
+          <div className="mt-6 flex flex-wrap gap-2">
+            {civicSignalChips.map((chip) => (
+              <LandingSignalChip key={chip.label} label={chip.label} tone={chip.tone} />
+            ))}
+          </div>
 
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
             {civicProblemCards.map((card) => {
@@ -1310,7 +1332,7 @@ function LandingEvidenceSections({
           </div>
         </div>
 
-        <div className="cp-scroll-reveal cp-float-card relative min-h-[420px] overflow-hidden rounded-2xl border border-white/12 bg-white/[0.045] p-3 shadow-[0_28px_80px_rgba(0,0,0,0.38)] backdrop-blur-xl">
+        <div className="cp-scroll-reveal cp-float-card cp-rainbow-frame relative min-h-[420px] overflow-hidden rounded-2xl border border-white/12 bg-white/[0.045] p-3 shadow-[0_28px_80px_rgba(0,0,0,0.38)] backdrop-blur-xl">
           <div className="relative h-full min-h-[390px] overflow-hidden rounded-xl border border-[#ffc08d]/25 bg-black/40">
             <Image
               src={`${CIVIC_EVIDENCE_PATH}/infrastructure-failure-collage.jpg`}
@@ -1321,6 +1343,7 @@ function LandingEvidenceSections({
               priority={false}
             />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.04),rgba(0,0,0,0.82))]" />
+            <div className="cp-map-scan absolute inset-0" />
             <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-7">
               <p className="font-mono text-[10px] font-black uppercase tracking-[0.2em] text-[#ffc08d]">
                 Real problem, real need
@@ -1340,7 +1363,7 @@ function LandingEvidenceSections({
         <div className="mx-auto max-w-7xl">
           <div className="cp-scroll-reveal flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="font-mono text-xs font-black uppercase tracking-[0.22em] text-[#ff9933]">
+              <p className="cp-kicker-glow font-mono text-xs font-black uppercase tracking-[0.22em] text-[#ff9933]">
                 Evidence Wall
               </p>
               <h2 className="mt-3 text-3xl font-black leading-tight text-white sm:text-5xl">
@@ -1361,18 +1384,23 @@ function LandingEvidenceSections({
       </section>
 
       <section className="cp-landing-section relative mx-auto grid max-w-7xl gap-6 px-4 py-16 sm:px-6 lg:grid-cols-[1fr_0.92fr] lg:px-10 lg:py-24">
-        <div className="cp-scroll-reveal rounded-2xl border border-[#00dbe9]/20 bg-[linear-gradient(145deg,rgba(0,219,233,0.12),rgba(255,153,51,0.08),rgba(255,255,255,0.03))] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.34)] sm:p-7">
-          <p className="font-mono text-xs font-black uppercase tracking-[0.22em] text-[#7df4ff]">
+        <div className="cp-scroll-reveal cp-color-panel rounded-2xl border border-[#00dbe9]/20 bg-[linear-gradient(145deg,rgba(0,219,233,0.12),rgba(255,153,51,0.08),rgba(255,255,255,0.03))] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.34)] sm:p-7">
+          <p className="cp-kicker-glow font-mono text-xs font-black uppercase tracking-[0.22em] text-[#7df4ff]">
             Impact Dashboard
           </p>
           <h2 className="mt-3 text-3xl font-black leading-tight sm:text-5xl">
             Civic issues are daily-life risk, not minor complaints.
           </h2>
           <div className="mt-7 grid gap-3 sm:grid-cols-2">
-            <LandingStatCard label="Active demo reports" value={`${activeReports}`} detail={`Live civic stream for ${cityName}`} />
-            <LandingStatCard label="Public proof records" value={`${proofRecords}`} detail="Indexed repair events and hashes" />
-            <LandingStatCard label="Trust gap" value="High" detail="Resolved labels without evidence reduce public trust" />
-            <LandingStatCard label="Warranty memory" value="On" detail="Repeat failures can be traced after repair" />
+            {landingImpactStats.map((stat) => (
+              <LandingStatCard
+                key={stat.label}
+                label={stat.label}
+                value={stat.value === "dynamic" && stat.label.includes("Active") ? `${activeReports}` : stat.value === "dynamic" ? `${proofRecords}` : stat.value}
+                detail={stat.label.includes("Active") ? `Live civic stream for ${cityName}` : stat.detail}
+                tone={stat.tone}
+              />
+            ))}
           </div>
 
           <div className="mt-8 space-y-4 rounded-xl border border-white/10 bg-black/28 p-4">
@@ -1393,7 +1421,7 @@ function LandingEvidenceSections({
           </div>
         </div>
 
-        <div className="cp-scroll-reveal relative overflow-hidden rounded-2xl border border-white/12 bg-white/[0.045] p-3 backdrop-blur-xl">
+        <div className="cp-scroll-reveal cp-rainbow-frame relative overflow-hidden rounded-2xl border border-white/12 bg-white/[0.045] p-3 backdrop-blur-xl">
           <div className="relative min-h-[460px] overflow-hidden rounded-xl bg-white">
             <Image
               src={`${CIVIC_EVIDENCE_PATH}/civic-impact-score.jpg`}
@@ -1408,7 +1436,7 @@ function LandingEvidenceSections({
 
       <section className="cp-landing-section relative mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-24">
         <div className="cp-scroll-reveal text-center">
-          <p className="font-mono text-xs font-black uppercase tracking-[0.22em] text-[#00eb88]">
+          <p className="cp-kicker-glow font-mono text-xs font-black uppercase tracking-[0.22em] text-[#00eb88]">
             Why Existing Apps Are Not Enough
           </p>
           <h2 className="mx-auto mt-3 max-w-4xl text-3xl font-black leading-tight text-white sm:text-5xl">
@@ -1439,10 +1467,10 @@ function LandingEvidenceSections({
       </section>
 
       <section className="cp-landing-section relative mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-24">
-        <div className="cp-scroll-reveal rounded-2xl border border-[#ffc08d]/22 bg-[radial-gradient(circle_at_15%_10%,rgba(255,153,51,0.15),transparent_32%),linear-gradient(145deg,rgba(255,255,255,0.055),rgba(0,219,233,0.045))] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.38)] backdrop-blur-xl sm:p-8">
+        <div className="cp-scroll-reveal cp-color-panel rounded-2xl border border-[#ffc08d]/22 bg-[radial-gradient(circle_at_15%_10%,rgba(255,153,51,0.15),transparent_32%),linear-gradient(145deg,rgba(255,255,255,0.055),rgba(0,219,233,0.045))] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.38)] backdrop-blur-xl sm:p-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="font-mono text-xs font-black uppercase tracking-[0.22em] text-[#ffc08d]">
+              <p className="cp-kicker-glow font-mono text-xs font-black uppercase tracking-[0.22em] text-[#ffc08d]">
                 CityPramaan Workflow
               </p>
               <h2 className="mt-3 max-w-4xl text-3xl font-black leading-tight text-white sm:text-5xl">
@@ -1464,7 +1492,7 @@ function LandingEvidenceSections({
 
       <section className="cp-landing-section relative mx-auto grid max-w-7xl gap-6 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-10 lg:py-24">
         <div className="cp-scroll-reveal">
-          <p className="font-mono text-xs font-black uppercase tracking-[0.22em] text-[#d946ef]">
+          <p className="cp-kicker-glow font-mono text-xs font-black uppercase tracking-[0.22em] text-[#d946ef]">
             Public Trust Layer
           </p>
           <h2 className="mt-3 text-3xl font-black leading-tight text-white sm:text-5xl">
@@ -1484,7 +1512,7 @@ function LandingEvidenceSections({
           </div>
         </div>
 
-        <div className="cp-scroll-reveal rounded-2xl border border-[#00dbe9]/22 bg-black/34 p-5 shadow-[0_28px_80px_rgba(0,0,0,0.34)] backdrop-blur-xl sm:p-7">
+        <div className="cp-scroll-reveal cp-color-panel rounded-2xl border border-[#00dbe9]/22 bg-black/34 p-5 shadow-[0_28px_80px_rgba(0,0,0,0.34)] backdrop-blur-xl sm:p-7">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <p className="font-mono text-[10px] font-black uppercase tracking-[0.2em] text-[#7df4ff]">
@@ -1521,7 +1549,7 @@ function LandingEvidenceSections({
       </section>
 
       <section className="cp-landing-section relative px-4 pb-20 pt-10 sm:px-6 lg:px-10 lg:pb-28">
-        <div className="cp-scroll-reveal mx-auto max-w-7xl overflow-hidden rounded-3xl border border-white/12 bg-[radial-gradient(circle_at_15%_20%,rgba(255,153,51,0.2),transparent_30%),radial-gradient(circle_at_82%_12%,rgba(0,219,233,0.18),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.075),rgba(255,255,255,0.025))] p-5 shadow-[0_34px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:p-8 lg:p-10">
+        <div className="cp-scroll-reveal cp-final-cta-glow mx-auto max-w-7xl overflow-hidden rounded-3xl border border-white/12 bg-[radial-gradient(circle_at_15%_20%,rgba(255,153,51,0.2),transparent_30%),radial-gradient(circle_at_82%_12%,rgba(0,219,233,0.18),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.075),rgba(255,255,255,0.025))] p-5 shadow-[0_34px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:p-8 lg:p-10">
           <div className="grid gap-6 lg:grid-cols-[1fr_0.8fr] lg:items-center">
             <div>
               <p className="font-mono text-xs font-black uppercase tracking-[0.22em] text-[#00eb88]">
@@ -1578,6 +1606,28 @@ function ProblemEvidenceCard({
   );
 }
 
+function LandingSignalChip({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: (typeof civicSignalChips)[number]["tone"];
+}) {
+  const tones = {
+    cyan: "border-[#00dbe9]/35 bg-[#00dbe9]/12 text-[#7df4ff] shadow-[0_0_22px_rgba(0,219,233,0.08)]",
+    violet: "border-[#d946ef]/35 bg-[#d946ef]/12 text-[#f0abfc] shadow-[0_0_22px_rgba(217,70,239,0.1)]",
+    emerald: "border-[#00eb88]/35 bg-[#00eb88]/12 text-[#8fffc1] shadow-[0_0_22px_rgba(0,235,136,0.08)]",
+    amber: "border-[#ffc08d]/35 bg-[#ff9933]/12 text-[#ffdcc2] shadow-[0_0_22px_rgba(255,153,51,0.1)]",
+    rose: "border-[#ff4d6d]/35 bg-[#ff4d6d]/12 text-[#ffb4c2] shadow-[0_0_22px_rgba(255,77,109,0.1)]",
+  };
+
+  return (
+    <span className={`cp-signal-chip inline-flex min-h-9 items-center rounded-full border px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.16em] ${tones[tone]}`}>
+      {label}
+    </span>
+  );
+}
+
 function ArticleEvidenceCard({
   article,
   index,
@@ -1591,6 +1641,7 @@ function ArticleEvidenceCard({
       style={{ animationDelay: `${index * 70}ms` }}
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-[#f3eee5]">
+        <div className="cp-article-color-wash absolute inset-0 z-10 opacity-0 transition duration-500 group-hover:opacity-100" />
         <Image
           src={article.src}
           alt={article.title}
@@ -1599,7 +1650,7 @@ function ArticleEvidenceCard({
           className="object-cover transition duration-700 group-hover:scale-[1.04]"
         />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.02),rgba(0,0,0,0.58))]" />
-        <span className="absolute left-4 top-4 rounded-full border border-white/20 bg-black/45 px-3 py-1 font-mono text-[10px] font-black uppercase tracking-[0.15em] text-[#ffc08d] backdrop-blur">
+        <span className="cp-evidence-badge absolute left-4 top-4 z-20 rounded-full border border-white/20 bg-black/45 px-3 py-1 font-mono text-[10px] font-black uppercase tracking-[0.15em] text-[#ffc08d] backdrop-blur">
           {article.tag}
         </span>
       </div>
@@ -1611,10 +1662,27 @@ function ArticleEvidenceCard({
   );
 }
 
-function LandingStatCard({ label, value, detail }: { label: string; value: string; detail: string }) {
+function LandingStatCard({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone: (typeof landingImpactStats)[number]["tone"];
+}) {
+  const tones = {
+    amber: "border-[#ffc08d]/24 bg-[radial-gradient(circle_at_85%_15%,rgba(255,153,51,0.22),transparent_36%),rgba(255,153,51,0.08)] text-[#ffc08d]",
+    cyan: "border-[#00dbe9]/24 bg-[radial-gradient(circle_at_85%_15%,rgba(0,219,233,0.22),transparent_36%),rgba(0,219,233,0.08)] text-[#7df4ff]",
+    rose: "border-[#ff4d6d]/24 bg-[radial-gradient(circle_at_85%_15%,rgba(255,77,109,0.22),transparent_36%),rgba(255,77,109,0.08)] text-[#ffb4c2]",
+    emerald: "border-[#00eb88]/24 bg-[radial-gradient(circle_at_85%_15%,rgba(0,235,136,0.2),transparent_36%),rgba(0,235,136,0.08)] text-[#8fffc1]",
+  };
+
   return (
-    <div className="cp-article-card rounded-xl border border-white/10 bg-black/28 p-4">
-      <p className="font-mono text-[10px] font-black uppercase tracking-[0.16em] text-[#a38d7c]">{label}</p>
+    <div className={`cp-article-card cp-stat-color-card rounded-xl border p-4 ${tones[tone]}`}>
+      <p className="font-mono text-[10px] font-black uppercase tracking-[0.16em] opacity-85">{label}</p>
       <p className="mt-2 text-3xl font-black text-white">{value}</p>
       <p className="mt-2 text-sm leading-6 text-[#dbc2b0]">{detail}</p>
     </div>
@@ -1669,13 +1737,22 @@ function ComparisonPanel({
 }
 
 function WorkflowStepCard({ step, index }: { step: string; index: number }) {
+  const tones = [
+    "border-[#00dbe9]/22 bg-[linear-gradient(145deg,rgba(0,219,233,0.12),rgba(0,0,0,0.22))] text-[#7df4ff]",
+    "border-[#ff9933]/22 bg-[linear-gradient(145deg,rgba(255,153,51,0.12),rgba(0,0,0,0.22))] text-[#ffc08d]",
+    "border-[#00eb88]/22 bg-[linear-gradient(145deg,rgba(0,235,136,0.11),rgba(0,0,0,0.22))] text-[#8fffc1]",
+    "border-[#d946ef]/22 bg-[linear-gradient(145deg,rgba(217,70,239,0.12),rgba(0,0,0,0.22))] text-[#f0abfc]",
+  ];
+  const tone = tones[index % tones.length];
+
   return (
-    <div className="cp-article-card relative rounded-xl border border-white/10 bg-black/28 p-4">
+    <div className={`cp-article-card cp-workflow-card relative overflow-hidden rounded-xl border p-4 ${tone}`}>
+      <span className="cp-workflow-spark absolute right-4 top-4 h-2 w-2 rounded-full bg-current shadow-[0_0_16px_currentColor]" />
       <div className="flex items-center justify-between gap-3">
-        <span className="grid h-10 w-10 place-items-center rounded-xl border border-[#00dbe9]/25 bg-[#00dbe9]/10 font-mono text-xs font-black text-[#7df4ff]">
+        <span className="grid h-10 w-10 place-items-center rounded-xl border border-current/25 bg-black/20 font-mono text-xs font-black">
           {String(index + 1).padStart(2, "0")}
         </span>
-        <ArrowRight size={16} className="hidden text-[#ffc08d]/70 sm:block" />
+        <ArrowRight size={16} className="hidden opacity-80 sm:block" />
       </div>
       <h3 className="mt-4 text-base font-black text-white">{step}</h3>
       <p className="mt-2 text-sm leading-6 text-[#dbc2b0]">
@@ -1699,15 +1776,15 @@ function LandingCta({
   tone: "gold" | "cyan" | "glass";
 }) {
   const tones = {
-    gold: "border-[#ffc08d]/45 bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] text-[#4c2700]",
-    cyan: "border-[#00dbe9]/35 bg-[#00dbe9]/12 text-[#7df4ff]",
-    glass: "border-white/12 bg-black/24 text-white",
+    gold: "border-[#ffc08d]/45 bg-[linear-gradient(135deg,#ffdcc2,#ff9933,#ff7a1a)] text-[#4c2700] shadow-[0_0_28px_rgba(255,153,51,0.22)]",
+    cyan: "border-[#00dbe9]/35 bg-[linear-gradient(135deg,rgba(0,219,233,0.22),rgba(0,235,136,0.12))] text-[#7df4ff] shadow-[0_0_28px_rgba(0,219,233,0.16)]",
+    glass: "border-white/12 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(217,70,239,0.09),rgba(0,0,0,0.24))] text-white",
   };
 
   return (
     <Link
       href={href}
-      className={`cp-command-link inline-flex min-h-12 items-center justify-center rounded-xl border px-4 py-3 text-center font-mono text-[11px] font-black uppercase tracking-[0.16em] transition hover:brightness-110 ${tones[tone]}`}
+      className={`cp-command-link cp-landing-cta-link inline-flex min-h-12 items-center justify-center rounded-xl border px-4 py-3 text-center font-mono text-[11px] font-black uppercase tracking-[0.16em] transition hover:brightness-110 ${tones[tone]}`}
     >
       {label}
     </Link>
