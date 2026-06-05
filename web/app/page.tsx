@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
@@ -74,6 +75,131 @@ const timelineDefaultKeys: TranslationKey[] = [
 const SAFETY_INTRO_STORAGE_KEY = "citypramaan-safety-intro-seen";
 const CITY_HERO_VIDEO_URL = "/videos/indian-cities-loop.mp4";
 const CITY_HERO_MOBILE_VIDEO_URL = "/videos/indian-cities-loop-mobile.mp4";
+
+const CIVIC_EVIDENCE_PATH = "/images/civic-evidence";
+
+const civicProblemCards = [
+  {
+    icon: AlertTriangle,
+    title: "Road repairs without proof",
+    detail: "Potholes, road caves, and open cuts are often marked resolved before citizens see real repair evidence.",
+    value: "9,438",
+    label: "lives lost in pothole-linked incidents over five years",
+    tone: "rose",
+  },
+  {
+    icon: ShieldAlert,
+    title: "Sewage and drainage risk",
+    detail: "Waterlogging, untreated sewage, and weak sewer networks damage health, roads, and public trust.",
+    value: "50%",
+    label: "sewage still flowing untreated in reported coverage",
+    tone: "cyan",
+  },
+  {
+    icon: Clock3,
+    title: "No clear restoration timeline",
+    detail: "Streetlights, transformer failures, and dark roads leave people calling helplines without visible progress.",
+    value: "24x7",
+    label: "need for public status and SLA tracking",
+    tone: "amber",
+  },
+  {
+    icon: RotateCcw,
+    title: "Repeat failures stay invisible",
+    detail: "A repaired issue can fail again, but most systems do not lock warranty memory or contractor history.",
+    value: "0",
+    label: "public warranty trail in normal complaint apps",
+    tone: "emerald",
+  },
+] as const;
+
+const civicEvidenceArticles = [
+  {
+    title: "Potholes claimed 9,438 lives",
+    tag: "Road safety",
+    src: `${CIVIC_EVIDENCE_PATH}/potholes-lives-lost.jpg`,
+    caption: "Road quality is not a small inconvenience; it directly affects public safety.",
+  },
+  {
+    title: "Contractors fined for pothole damage",
+    tag: "Accountability",
+    src: `${CIVIC_EVIDENCE_PATH}/contractors-fined-potholes.jpg`,
+    caption: "Poor repair quality needs contractor-level visibility, not only complaint IDs.",
+  },
+  {
+    title: "Sewage still flows untreated",
+    tag: "Public health",
+    src: `${CIVIC_EVIDENCE_PATH}/sewage-water-bodies.jpg`,
+    caption: "Infrastructure issues become health issues when evidence and action are not tracked.",
+  },
+  {
+    title: "Poor sewer network hurts growth",
+    tag: "Basic infrastructure",
+    src: `${CIVIC_EVIDENCE_PATH}/poor-sewer-network.jpg`,
+    caption: "Growing cities need proof-led civic maintenance, not opaque escalation chains.",
+  },
+  {
+    title: "Defunct lights keep roads dark",
+    tag: "Night safety",
+    src: `${CIVIC_EVIDENCE_PATH}/streetlights-dark.jpg`,
+    caption: "Dark zones need public progress tracking and repair confirmation.",
+  },
+  {
+    title: "Dying lakes and wetland notices",
+    tag: "Environment",
+    src: `${CIVIC_EVIDENCE_PATH}/dying-lakes.jpg`,
+    caption: "Civic proof can extend beyond roads to water bodies and public assets.",
+  },
+  {
+    title: "Two road deaths per hour",
+    tag: "Impact",
+    src: `${CIVIC_EVIDENCE_PATH}/road-deaths-per-hour.jpg`,
+    caption: "The problem is large enough to need technology, transparency, and accountability.",
+  },
+  {
+    title: "Bus tragedy after gorge collapse",
+    tag: "Disaster risk",
+    src: `${CIVIC_EVIDENCE_PATH}/bus-gorge-accident.jpg`,
+    caption: "Critical public infrastructure failures need early reporting and visible resolution.",
+  },
+  {
+    title: "Another pothole death",
+    tag: "Citizen risk",
+    src: `${CIVIC_EVIDENCE_PATH}/pothole-another-life.jpg`,
+    caption: "Every unresolved hazard has a human cost.",
+  },
+] as const;
+
+const impactBars = [
+  { label: "Road potholes", value: 32, color: "bg-[#ff4d6d]" },
+  { label: "Water leakage", value: 22, color: "bg-[#00dbe9]" },
+  { label: "Drainage / sewage", value: 17, color: "bg-[#00eb88]" },
+  { label: "Streetlights", value: 13, color: "bg-[#a855f7]" },
+  { label: "Garbage and waste", value: 9, color: "bg-[#ff9933]" },
+] as const;
+
+const workflowSteps = [
+  "Citizen report",
+  "AI analysis",
+  "Ward admin review",
+  "Contractor assigned",
+  "Repair proof uploaded",
+  "Admin approval",
+  "Citizen confirmation",
+  "Public proof timeline",
+  "Warranty activated",
+] as const;
+
+const publicProofTimeline = [
+  "Issue created with GPS and photo proof",
+  "AI analysis generated",
+  "Contractor assigned",
+  "Repair proof uploaded",
+  "Admin approved",
+  "Citizen confirmed",
+  "Report closed",
+  "Warranty active",
+] as const;
 
 type RoleNavItem = {
   label: string;
@@ -416,127 +542,135 @@ export default function Home() {
 
   if (!currentUser) {
     return (
-      <main className="cp-page-shell cp-video-landing cp-theme-locked-dark relative min-h-[100svh] overflow-hidden bg-black text-white">
-        <video
-          className="absolute inset-0 h-full w-full object-cover"
-          autoPlay
-          loop
-          muted
-          preload="auto"
-          playsInline
-          aria-hidden="true"
-        >
-          <source src={CITY_HERO_MOBILE_VIDEO_URL} type="video/mp4" media="(max-width: 639px)" />
-          <source src={CITY_HERO_VIDEO_URL} type="video/mp4" media="(min-width: 640px)" />
-        </video>
-        <div className="cp-landing-video-scrim pointer-events-none absolute inset-0" />
+      <main className="cp-page-shell cp-theme-locked-dark relative min-h-screen overflow-x-hidden bg-black text-white">
+        <section className="cp-video-landing relative min-h-[100svh] overflow-hidden">
+          <video
+            className="absolute inset-0 h-full w-full object-cover"
+            autoPlay
+            loop
+            muted
+            preload="auto"
+            playsInline
+            aria-hidden="true"
+          >
+            <source src={CITY_HERO_MOBILE_VIDEO_URL} type="video/mp4" media="(max-width: 639px)" />
+            <source src={CITY_HERO_VIDEO_URL} type="video/mp4" media="(min-width: 640px)" />
+          </video>
+          <div className="cp-landing-video-scrim pointer-events-none absolute inset-0" />
 
-        <div className="relative z-10 flex min-h-[100svh] flex-col px-3 pb-5 pt-3 sm:px-6 sm:pb-7 sm:pt-4 md:px-10 lg:px-14">
-          <header className="liquid-glass flex flex-col gap-2 rounded-xl px-3 py-3 sm:px-4">
-            <div className="flex w-full items-center justify-between gap-2">
-              <Link href="/" className="flex min-w-0 flex-1 items-center gap-3">
-                <BrandLogo className="min-w-0" size="sm" />
-              </Link>
+          <div className="relative z-10 flex min-h-[100svh] flex-col px-3 pb-5 pt-3 sm:px-6 sm:pb-7 sm:pt-4 md:px-10 lg:px-14">
+            <header className="liquid-glass flex flex-col gap-2 rounded-xl px-3 py-3 sm:px-4">
+              <div className="flex w-full items-center justify-between gap-2">
+                <Link href="/" className="flex min-w-0 flex-1 items-center gap-3">
+                  <BrandLogo className="min-w-0" size="sm" />
+                </Link>
 
-              <nav className="hidden items-center gap-5 font-mono text-[11px] font-black uppercase tracking-[0.2em] text-white/88 lg:flex xl:gap-8">
-                <Link href="/story" className="transition hover:text-white">
+                <nav className="hidden items-center gap-5 font-mono text-[11px] font-black uppercase tracking-[0.2em] text-white/88 lg:flex xl:gap-8">
+                  <Link href="/story" className="transition hover:text-white">
+                    Story
+                  </Link>
+                  <Link href="/auth" className="transition hover:text-white">
+                    Warranty
+                  </Link>
+                  <Link href="/reports" className="transition hover:text-white">
+                    Public Proof
+                  </Link>
+                  <Link href="/auth" className="transition hover:text-white">
+                    Report
+                  </Link>
+                </nav>
+
+                <div className="flex shrink-0 items-center gap-2">
+                  <Link
+                    href="/about"
+                    className="hidden min-h-9 items-center justify-center rounded-lg border border-white/25 px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-white transition hover:bg-white hover:text-black sm:inline-flex lg:min-h-10 lg:px-4 lg:text-[11px]"
+                  >
+                    About
+                  </Link>
+                  <Link
+                    href="/auth"
+                    className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg bg-white px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-black transition hover:bg-gray-100 sm:px-4 lg:min-h-10 lg:gap-2 lg:text-[11px]"
+                  >
+                    <LogIn size={14} />
+                    Start
+                  </Link>
+                </div>
+              </div>
+
+              <nav className="cp-mobile-landing-nav flex w-full gap-2 overflow-x-auto pt-1 lg:hidden">
+                <Link href="/story" className="landing-nav-chip">
                   Story
                 </Link>
-                <Link href="/auth" className="transition hover:text-white">
+                <Link href="/about" className="landing-nav-chip">
+                  About
+                </Link>
+                <Link href="/auth" className="landing-nav-chip">
                   Warranty
                 </Link>
-                <Link href="/reports" className="transition hover:text-white">
+                <Link href="/reports" className="landing-nav-chip">
                   Public Proof
                 </Link>
-                <Link href="/auth" className="transition hover:text-white">
+                <Link href="/auth" className="landing-nav-chip">
                   Report
                 </Link>
               </nav>
+            </header>
 
-              <div className="flex shrink-0 items-center gap-2">
-                <Link
-                  href="/about"
-                  className="hidden min-h-9 items-center justify-center rounded-lg border border-white/25 px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-white transition hover:bg-white hover:text-black sm:inline-flex lg:min-h-10 lg:px-4 lg:text-[11px]"
-                >
-                  About
-                </Link>
-                <Link
-                  href="/auth"
-                  className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg bg-white px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-black transition hover:bg-gray-100 sm:px-4 lg:min-h-10 lg:gap-2 lg:text-[11px]"
-                >
-                  <LogIn size={14} />
-                  Start
-                </Link>
-              </div>
-            </div>
-
-            <nav className="cp-mobile-landing-nav flex w-full gap-2 overflow-x-auto pt-1 lg:hidden">
-              <Link href="/story" className="landing-nav-chip">
-                Story
-              </Link>
-              <Link href="/about" className="landing-nav-chip">
-                About
-              </Link>
-              <Link href="/auth" className="landing-nav-chip">
-                Warranty
-              </Link>
-              <Link href="/reports" className="landing-nav-chip">
-                Public Proof
-              </Link>
-              <Link href="/auth" className="landing-nav-chip">
-                Report
-              </Link>
-            </nav>
-          </header>
-
-          <section className="flex flex-1 flex-col justify-end py-7 sm:py-12 lg:py-14">
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)] lg:items-end">
-              <div className="max-w-4xl">
-                <AnimatedHeading
-                  text={`Proof of repair\nfor accountable cities.`}
-                  className="cp-landing-title mb-4 text-[1.85rem] font-black leading-[1.08] text-white min-[390px]:text-[2.05rem] sm:text-[2.9rem] md:text-[3.55rem] lg:text-[4.1rem] xl:text-[4.85rem]"
-                />
-                <FadeIn delay={800} duration={1000}>
-                  <p className="cp-landing-subtitle mb-5 max-w-2xl rounded-xl border border-white/10 bg-black/24 px-3 py-2 text-[13px] font-semibold leading-6 text-white/95 shadow-[0_12px_38px_rgba(0,0,0,0.24)] backdrop-blur-[2px] sm:bg-black/20 sm:px-4 sm:py-3 sm:text-base md:text-lg md:leading-7">
-                    CityPramaan turns civic complaints into verifiable repair histories with public
-                    proof, contractor accountability, and warranty memory for every city issue.
-                  </p>
-                </FadeIn>
-                <FadeIn delay={1200} duration={1000}>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                    <Link
-                      href="/auth"
-                      className="cp-landing-primary-cta inline-flex min-h-11 items-center justify-center rounded-lg bg-white px-5 py-3 text-center font-mono text-[10px] font-black uppercase tracking-[0.18em] text-black transition hover:bg-gray-100 sm:px-8 sm:text-[11px] sm:tracking-[0.2em]"
-                    >
-                      Start a Report
-                    </Link>
-                    <Link
-                      href="/auth"
-                      className="cp-landing-secondary-cta liquid-glass inline-flex min-h-11 items-center justify-center rounded-lg border border-white/25 px-5 py-3 text-center font-mono text-[10px] font-black uppercase tracking-[0.18em] text-white transition hover:bg-white hover:text-black sm:px-8 sm:text-[11px] sm:tracking-[0.2em]"
-                    >
-                      Explore Proof
-                    </Link>
-                  </div>
-                </FadeIn>
-              </div>
-
-              <div className="flex items-end justify-start lg:justify-end">
-                <FadeIn delay={1400} duration={1000}>
-                  <div className="liquid-glass w-full max-w-md rounded-xl border border-white/20 px-4 py-4 sm:px-6">
-                    <p className="text-base font-semibold text-white sm:text-lg md:text-xl">
-                      Report. Repair. Verify.
+            <section className="flex flex-1 flex-col justify-end py-7 sm:py-12 lg:py-14">
+              <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)] lg:items-end">
+                <div className="max-w-4xl">
+                  <AnimatedHeading
+                    text={`Proof of repair\nfor accountable cities.`}
+                    className="cp-landing-title mb-4 text-[1.85rem] font-black leading-[1.08] text-white min-[390px]:text-[2.05rem] sm:text-[2.9rem] md:text-[3.55rem] lg:text-[4.1rem] xl:text-[4.85rem]"
+                  />
+                  <FadeIn delay={800} duration={1000}>
+                    <p className="cp-landing-subtitle mb-5 max-w-2xl rounded-xl border border-white/10 bg-black/24 px-3 py-2 text-[13px] font-semibold leading-6 text-white/95 shadow-[0_12px_38px_rgba(0,0,0,0.24)] backdrop-blur-[2px] sm:bg-black/20 sm:px-4 sm:py-3 sm:text-base md:text-lg md:leading-7">
+                      CityPramaan turns civic complaints into verifiable repair histories with public
+                      proof, contractor accountability, and warranty memory for every city issue.
                     </p>
-                    <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-3">
-                      <PublicMetric label="Active" value={`${activeDashboardReports.length}`} />
-                      <PublicMetric label="Proofs" value={`${214 + localCityReports.length}`} />
-                      <PublicMetric label="Node" value={dashboardCityName} wide />
+                  </FadeIn>
+                  <FadeIn delay={1200} duration={1000}>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                      <Link
+                        href="/auth"
+                        className="cp-landing-primary-cta inline-flex min-h-11 items-center justify-center rounded-lg bg-white px-5 py-3 text-center font-mono text-[10px] font-black uppercase tracking-[0.18em] text-black transition hover:bg-gray-100 sm:px-8 sm:text-[11px] sm:tracking-[0.2em]"
+                      >
+                        Start a Report
+                      </Link>
+                      <Link
+                        href="/auth"
+                        className="cp-landing-secondary-cta liquid-glass inline-flex min-h-11 items-center justify-center rounded-lg border border-white/25 px-5 py-3 text-center font-mono text-[10px] font-black uppercase tracking-[0.18em] text-white transition hover:bg-white hover:text-black sm:px-8 sm:text-[11px] sm:tracking-[0.2em]"
+                      >
+                        Explore Proof
+                      </Link>
                     </div>
-                  </div>
-                </FadeIn>
+                  </FadeIn>
+                </div>
+
+                <div className="flex items-end justify-start lg:justify-end">
+                  <FadeIn delay={1400} duration={1000}>
+                    <div className="liquid-glass w-full max-w-md rounded-xl border border-white/20 px-4 py-4 sm:px-6">
+                      <p className="text-base font-semibold text-white sm:text-lg md:text-xl">
+                        Report. Repair. Verify.
+                      </p>
+                      <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-3">
+                        <PublicMetric label="Active" value={`${activeDashboardReports.length}`} />
+                        <PublicMetric label="Proofs" value={`${214 + localCityReports.length}`} />
+                        <PublicMetric label="Node" value={dashboardCityName} wide />
+                      </div>
+                    </div>
+                  </FadeIn>
+                </div>
               </div>
-            </div>
-          </section>
-        </div>
+            </section>
+          </div>
+        </section>
+
+        <LandingEvidenceSections
+          activeReports={activeDashboardReports.length}
+          proofRecords={214 + localCityReports.length}
+          cityName={dashboardCityName}
+        />
       </main>
     );
   }
@@ -1136,6 +1270,447 @@ function AnimatedHeading({ text, className = "" }: { text: string; className?: s
         );
       })}
     </h1>
+  );
+}
+
+function LandingEvidenceSections({
+  activeReports,
+  proofRecords,
+  cityName,
+}: {
+  activeReports: number;
+  proofRecords: number;
+  cityName: string;
+}) {
+  return (
+    <div className="relative z-10 bg-[#020304] text-white">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(255,153,51,0.16),transparent_28%),radial-gradient(circle_at_86%_20%,rgba(0,219,233,0.14),transparent_28%),linear-gradient(to_right,rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:auto,auto,34px_34px,34px_34px]" />
+
+      <section className="cp-landing-section relative mx-auto grid max-w-7xl gap-8 px-4 py-16 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:px-10 lg:py-24">
+        <div className="cp-scroll-reveal">
+          <p className="font-mono text-xs font-black uppercase tracking-[0.22em] text-[#00dbe9]">
+            India Civic Problem
+          </p>
+          <h2 className="mt-3 max-w-3xl text-3xl font-black leading-tight text-white sm:text-5xl">
+            The issue is not reporting. The issue is proving what happened after reporting.
+          </h2>
+          <p className="mt-5 max-w-2xl text-base leading-7 text-[#dbc2b0] sm:text-lg">
+            Cities already have complaint apps, IDs, and status labels. CityPramaan focuses on the missing part:
+            verified repair evidence, contractor accountability, public history, and warranty memory.
+          </p>
+
+          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+            {civicProblemCards.map((card) => {
+              const Icon = card.icon;
+
+              return (
+                <ProblemEvidenceCard key={card.title} card={card} icon={<Icon size={20} />} />
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="cp-scroll-reveal cp-float-card relative min-h-[420px] overflow-hidden rounded-2xl border border-white/12 bg-white/[0.045] p-3 shadow-[0_28px_80px_rgba(0,0,0,0.38)] backdrop-blur-xl">
+          <div className="relative h-full min-h-[390px] overflow-hidden rounded-xl border border-[#ffc08d]/25 bg-black/40">
+            <Image
+              src={`${CIVIC_EVIDENCE_PATH}/infrastructure-failure-collage.jpg`}
+              alt="Civic infrastructure failure newspaper collage"
+              fill
+              sizes="(min-width: 1024px) 46vw, 92vw"
+              className="object-cover opacity-90"
+              priority={false}
+            />
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.04),rgba(0,0,0,0.82))]" />
+            <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-7">
+              <p className="font-mono text-[10px] font-black uppercase tracking-[0.2em] text-[#ffc08d]">
+                Real problem, real need
+              </p>
+              <h3 className="mt-2 text-2xl font-black leading-tight text-white sm:text-3xl">
+                Strong infrastructure needs proof, not promises.
+              </h3>
+              <p className="mt-3 max-w-lg text-sm leading-6 text-white/80">
+                Every unresolved pothole, dark street, sewage leak, and failed repair should leave a traceable public record.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="cp-landing-section relative px-4 py-10 sm:px-6 lg:px-10">
+        <div className="mx-auto max-w-7xl">
+          <div className="cp-scroll-reveal flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="font-mono text-xs font-black uppercase tracking-[0.22em] text-[#ff9933]">
+                Evidence Wall
+              </p>
+              <h2 className="mt-3 text-3xl font-black leading-tight text-white sm:text-5xl">
+                The newspapers already tell the story.
+              </h2>
+            </div>
+            <p className="max-w-xl text-sm leading-6 text-[#dbc2b0] sm:text-base">
+              These visuals are not decoration. They show why civic systems need a proof layer that citizens can verify.
+            </p>
+          </div>
+
+          <div className="cp-evidence-marquee mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {civicEvidenceArticles.map((article, index) => (
+              <ArticleEvidenceCard key={article.title} article={article} index={index} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="cp-landing-section relative mx-auto grid max-w-7xl gap-6 px-4 py-16 sm:px-6 lg:grid-cols-[1fr_0.92fr] lg:px-10 lg:py-24">
+        <div className="cp-scroll-reveal rounded-2xl border border-[#00dbe9]/20 bg-[linear-gradient(145deg,rgba(0,219,233,0.12),rgba(255,153,51,0.08),rgba(255,255,255,0.03))] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.34)] sm:p-7">
+          <p className="font-mono text-xs font-black uppercase tracking-[0.22em] text-[#7df4ff]">
+            Impact Dashboard
+          </p>
+          <h2 className="mt-3 text-3xl font-black leading-tight sm:text-5xl">
+            Civic issues are daily-life risk, not minor complaints.
+          </h2>
+          <div className="mt-7 grid gap-3 sm:grid-cols-2">
+            <LandingStatCard label="Active demo reports" value={`${activeReports}`} detail={`Live civic stream for ${cityName}`} />
+            <LandingStatCard label="Public proof records" value={`${proofRecords}`} detail="Indexed repair events and hashes" />
+            <LandingStatCard label="Trust gap" value="High" detail="Resolved labels without evidence reduce public trust" />
+            <LandingStatCard label="Warranty memory" value="On" detail="Repeat failures can be traced after repair" />
+          </div>
+
+          <div className="mt-8 space-y-4 rounded-xl border border-white/10 bg-black/28 p-4">
+            {impactBars.map((item) => (
+              <div key={item.label}>
+                <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+                  <span className="text-[#e5e2e3]">{item.label}</span>
+                  <span className="font-mono text-xs font-bold text-[#dbc2b0]">{item.value}%</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className={`cp-impact-bar h-full rounded-full ${item.color}`}
+                    style={{ width: `${item.value}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="cp-scroll-reveal relative overflow-hidden rounded-2xl border border-white/12 bg-white/[0.045] p-3 backdrop-blur-xl">
+          <div className="relative min-h-[460px] overflow-hidden rounded-xl bg-white">
+            <Image
+              src={`${CIVIC_EVIDENCE_PATH}/civic-impact-score.jpg`}
+              alt="Civic infrastructure crisis impact score infographic"
+              fill
+              sizes="(min-width: 1024px) 42vw, 92vw"
+              className="object-contain p-2"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="cp-landing-section relative mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-24">
+        <div className="cp-scroll-reveal text-center">
+          <p className="font-mono text-xs font-black uppercase tracking-[0.22em] text-[#00eb88]">
+            Why Existing Apps Are Not Enough
+          </p>
+          <h2 className="mx-auto mt-3 max-w-4xl text-3xl font-black leading-tight text-white sm:text-5xl">
+            A complaint ID is not accountability.
+          </h2>
+        </div>
+
+        <div className="mt-9 grid gap-5 lg:grid-cols-2">
+          <ComparisonPanel
+            title="Current complaint apps"
+            tone="muted"
+            items={["Photo upload", "Complaint ID", "Status updates", "Resolved label", "Limited public verification"]}
+          />
+          <ComparisonPanel
+            title="CityPramaan proof layer"
+            tone="active"
+            items={[
+              "AI issue analysis",
+              "Contractor assignment proof",
+              "Repair photo proof",
+              "Citizen final confirmation",
+              "Public proof timeline",
+              "Warranty activation",
+              "Tamper-proof audit trail",
+            ]}
+          />
+        </div>
+      </section>
+
+      <section className="cp-landing-section relative mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-24">
+        <div className="cp-scroll-reveal rounded-2xl border border-[#ffc08d]/22 bg-[radial-gradient(circle_at_15%_10%,rgba(255,153,51,0.15),transparent_32%),linear-gradient(145deg,rgba(255,255,255,0.055),rgba(0,219,233,0.045))] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.38)] backdrop-blur-xl sm:p-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="font-mono text-xs font-black uppercase tracking-[0.22em] text-[#ffc08d]">
+                CityPramaan Workflow
+              </p>
+              <h2 className="mt-3 max-w-4xl text-3xl font-black leading-tight text-white sm:text-5xl">
+                One connected civic repair lifecycle.
+              </h2>
+            </div>
+            <p className="max-w-xl text-sm leading-6 text-[#dbc2b0] sm:text-base">
+              Every action updates the same public history: report, repair, approval, closure, warranty, and re-reporting.
+            </p>
+          </div>
+
+          <div className="mt-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {workflowSteps.map((step, index) => (
+              <WorkflowStepCard key={step} step={step} index={index} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="cp-landing-section relative mx-auto grid max-w-7xl gap-6 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-10 lg:py-24">
+        <div className="cp-scroll-reveal">
+          <p className="font-mono text-xs font-black uppercase tracking-[0.22em] text-[#d946ef]">
+            Public Trust Layer
+          </p>
+          <h2 className="mt-3 text-3xl font-black leading-tight text-white sm:text-5xl">
+            Every repair has proof. Every proof has history.
+          </h2>
+          <p className="mt-5 text-base leading-7 text-[#dbc2b0]">
+            The public proof page becomes the hero demo: before image, after image, AI result, location,
+            proof hash, transaction hash, timeline, warranty status, and citizen feedback.
+          </p>
+
+          <div className="mt-7 grid gap-3 sm:grid-cols-2">
+            {["Before image", "After image", "AI result", "Location", "Blockchain hash", "Warranty status"].map((item) => (
+              <div key={item} className="rounded-lg border border-white/10 bg-white/[0.045] px-4 py-3 text-sm font-semibold text-[#e5e2e3]">
+                {item}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="cp-scroll-reveal rounded-2xl border border-[#00dbe9]/22 bg-black/34 p-5 shadow-[0_28px_80px_rgba(0,0,0,0.34)] backdrop-blur-xl sm:p-7">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div>
+              <p className="font-mono text-[10px] font-black uppercase tracking-[0.2em] text-[#7df4ff]">
+                Sample Public Proof Timeline
+              </p>
+              <h3 className="mt-2 text-2xl font-black text-white">CP-009 Road Damage / Pothole</h3>
+            </div>
+            <span className="rounded-full border border-[#00eb88]/30 bg-[#00eb88]/10 px-3 py-1 font-mono text-[10px] font-black uppercase tracking-[0.14em] text-[#5bffa1]">
+              Verifiable
+            </span>
+          </div>
+
+          <div className="space-y-0 border-l border-white/12 pl-5">
+            {publicProofTimeline.map((event, index) => (
+              <div key={event} className="cp-proof-node relative pb-6 last:pb-0">
+                <span className="absolute -left-[25px] top-1 h-3 w-3 rounded-full border border-[#00dbe9] bg-[#020304] shadow-[0_0_16px_rgba(0,219,233,0.7)]" />
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#a38d7c]">
+                  Step {String(index + 1).padStart(2, "0")}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-[#e5e2e3]">{event}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-7 rounded-xl border border-[#ffc08d]/22 bg-[#ffc08d]/10 p-4">
+            <p className="font-mono text-[10px] font-black uppercase tracking-[0.2em] text-[#ffc08d]">
+              Proof tag
+            </p>
+            <p className="mt-2 break-all font-mono text-xs text-white/80">
+              0xdemo5e0f60e963a17775744bc8be859c1dc21e500e30e43f93495ab01671fffe
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="cp-landing-section relative px-4 pb-20 pt-10 sm:px-6 lg:px-10 lg:pb-28">
+        <div className="cp-scroll-reveal mx-auto max-w-7xl overflow-hidden rounded-3xl border border-white/12 bg-[radial-gradient(circle_at_15%_20%,rgba(255,153,51,0.2),transparent_30%),radial-gradient(circle_at_82%_12%,rgba(0,219,233,0.18),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.075),rgba(255,255,255,0.025))] p-5 shadow-[0_34px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:p-8 lg:p-10">
+          <div className="grid gap-6 lg:grid-cols-[1fr_0.8fr] lg:items-center">
+            <div>
+              <p className="font-mono text-xs font-black uppercase tracking-[0.22em] text-[#00eb88]">
+                Start the proof network
+              </p>
+              <h2 className="mt-3 max-w-4xl text-3xl font-black leading-tight text-white sm:text-5xl">
+                From complaint tracking to accountable city repair.
+              </h2>
+              <p className="mt-4 max-w-2xl text-base leading-7 text-[#dbc2b0]">
+                Report issues, verify repairs, activate warranties, and let the public see exactly what happened.
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <LandingCta href="/auth" label="Start Reporting" tone="gold" />
+              <LandingCta href="/reports" label="View Public Proof" tone="cyan" />
+              <LandingCta href="/auth" label="Enter Citizen Panel" tone="glass" />
+              <LandingCta href="/auth" label="Enter Ward Admin Panel" tone="glass" />
+              <LandingCta href="/auth" label="Enter Contractor Panel" tone="glass" />
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ProblemEvidenceCard({
+  card,
+  icon,
+}: {
+  card: (typeof civicProblemCards)[number];
+  icon: React.ReactNode;
+}) {
+  const tones = {
+    rose: "border-[#ffb4ab]/25 bg-[#ffb4ab]/10 text-[#ffb4ab]",
+    cyan: "border-[#00dbe9]/25 bg-[#00dbe9]/10 text-[#7df4ff]",
+    amber: "border-[#ffc08d]/25 bg-[#ffc08d]/10 text-[#ffc08d]",
+    emerald: "border-[#00eb88]/25 bg-[#00eb88]/10 text-[#5bffa1]",
+  };
+
+  return (
+    <article className={`cp-article-card rounded-2xl border p-4 backdrop-blur-xl ${tones[card.tone]}`}>
+      <div className="flex items-start justify-between gap-4">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-current/25 bg-black/24">
+          {icon}
+        </span>
+        <span className="text-right text-3xl font-black leading-none text-white">{card.value}</span>
+      </div>
+      <h3 className="mt-4 text-lg font-black text-white">{card.title}</h3>
+      <p className="mt-2 text-sm leading-6 text-[#dbc2b0]">{card.detail}</p>
+      <p className="mt-3 font-mono text-[10px] font-bold uppercase tracking-[0.16em] opacity-85">{card.label}</p>
+    </article>
+  );
+}
+
+function ArticleEvidenceCard({
+  article,
+  index,
+}: {
+  article: (typeof civicEvidenceArticles)[number];
+  index: number;
+}) {
+  return (
+    <article
+      className="cp-article-card cp-scroll-reveal group overflow-hidden rounded-2xl border border-white/12 bg-white/[0.045] shadow-[0_20px_64px_rgba(0,0,0,0.28)] backdrop-blur-xl"
+      style={{ animationDelay: `${index * 70}ms` }}
+    >
+      <div className="relative aspect-[4/3] overflow-hidden bg-[#f3eee5]">
+        <Image
+          src={article.src}
+          alt={article.title}
+          fill
+          sizes="(min-width: 1280px) 30vw, (min-width: 768px) 45vw, 92vw"
+          className="object-cover transition duration-700 group-hover:scale-[1.04]"
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.02),rgba(0,0,0,0.58))]" />
+        <span className="absolute left-4 top-4 rounded-full border border-white/20 bg-black/45 px-3 py-1 font-mono text-[10px] font-black uppercase tracking-[0.15em] text-[#ffc08d] backdrop-blur">
+          {article.tag}
+        </span>
+      </div>
+      <div className="p-4">
+        <h3 className="text-lg font-black text-white">{article.title}</h3>
+        <p className="mt-2 text-sm leading-6 text-[#dbc2b0]">{article.caption}</p>
+      </div>
+    </article>
+  );
+}
+
+function LandingStatCard({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <div className="cp-article-card rounded-xl border border-white/10 bg-black/28 p-4">
+      <p className="font-mono text-[10px] font-black uppercase tracking-[0.16em] text-[#a38d7c]">{label}</p>
+      <p className="mt-2 text-3xl font-black text-white">{value}</p>
+      <p className="mt-2 text-sm leading-6 text-[#dbc2b0]">{detail}</p>
+    </div>
+  );
+}
+
+function ComparisonPanel({
+  title,
+  items,
+  tone,
+}: {
+  title: string;
+  items: string[];
+  tone: "muted" | "active";
+}) {
+  const isActive = tone === "active";
+
+  return (
+    <div
+      className={`cp-scroll-reveal rounded-2xl border p-5 shadow-[0_24px_72px_rgba(0,0,0,0.32)] backdrop-blur-xl sm:p-7 ${
+        isActive
+          ? "border-[#00eb88]/28 bg-[linear-gradient(145deg,rgba(0,235,136,0.13),rgba(0,219,233,0.05))]"
+          : "border-white/12 bg-white/[0.04]"
+      }`}
+    >
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <h3 className="text-2xl font-black text-white">{title}</h3>
+        <span
+          className={`rounded-full border px-3 py-1 font-mono text-[10px] font-black uppercase tracking-[0.14em] ${
+            isActive
+              ? "border-[#00eb88]/30 bg-[#00eb88]/10 text-[#5bffa1]"
+              : "border-[#ffb4ab]/25 bg-[#ffb4ab]/10 text-[#ffb4ab]"
+          }`}
+        >
+          {isActive ? "Proof based" : "Status based"}
+        </span>
+      </div>
+      <div className="space-y-3">
+        {items.map((item) => (
+          <div key={item} className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/24 px-4 py-3">
+            {isActive ? (
+              <CheckCircle2 size={18} className="shrink-0 text-[#00eb88]" />
+            ) : (
+              <AlertTriangle size={18} className="shrink-0 text-[#ffc08d]" />
+            )}
+            <span className="text-sm font-semibold text-[#e5e2e3]">{item}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function WorkflowStepCard({ step, index }: { step: string; index: number }) {
+  return (
+    <div className="cp-article-card relative rounded-xl border border-white/10 bg-black/28 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <span className="grid h-10 w-10 place-items-center rounded-xl border border-[#00dbe9]/25 bg-[#00dbe9]/10 font-mono text-xs font-black text-[#7df4ff]">
+          {String(index + 1).padStart(2, "0")}
+        </span>
+        <ArrowRight size={16} className="hidden text-[#ffc08d]/70 sm:block" />
+      </div>
+      <h3 className="mt-4 text-base font-black text-white">{step}</h3>
+      <p className="mt-2 text-sm leading-6 text-[#dbc2b0]">
+        {index === 0
+          ? "Citizen starts the record with image and location."
+          : index === workflowSteps.length - 1
+            ? "Warranty memory protects the repair after closure."
+            : "Status, evidence, and proof metadata move forward together."}
+      </p>
+    </div>
+  );
+}
+
+function LandingCta({
+  href,
+  label,
+  tone,
+}: {
+  href: string;
+  label: string;
+  tone: "gold" | "cyan" | "glass";
+}) {
+  const tones = {
+    gold: "border-[#ffc08d]/45 bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] text-[#4c2700]",
+    cyan: "border-[#00dbe9]/35 bg-[#00dbe9]/12 text-[#7df4ff]",
+    glass: "border-white/12 bg-black/24 text-white",
+  };
+
+  return (
+    <Link
+      href={href}
+      className={`cp-command-link inline-flex min-h-12 items-center justify-center rounded-xl border px-4 py-3 text-center font-mono text-[11px] font-black uppercase tracking-[0.16em] transition hover:brightness-110 ${tones[tone]}`}
+    >
+      {label}
+    </Link>
   );
 }
 

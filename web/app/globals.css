@@ -2346,6 +2346,114 @@ html[data-theme="bright"] .cp-theme-locked-dark .cp-landing-secondary-cta {
   color: #fff !important;
 }
 
+.cp-landing-section {
+  isolation: isolate;
+}
+
+.cp-scroll-reveal {
+  animation: cp-scroll-fade-up 780ms cubic-bezier(0.2, 0.72, 0.18, 1) both;
+}
+
+@supports (animation-timeline: view()) {
+  .cp-scroll-reveal {
+    animation-timeline: view();
+    animation-range: entry 0% cover 30%;
+  }
+}
+
+.cp-float-card {
+  animation: cp-soft-float 7.5s ease-in-out infinite;
+}
+
+.cp-article-card {
+  transform: translateZ(0);
+  transition:
+    transform 260ms ease,
+    border-color 260ms ease,
+    box-shadow 260ms ease,
+    background-color 260ms ease;
+  will-change: transform;
+}
+
+.cp-article-card:hover {
+  border-color: rgba(0, 219, 233, 0.34);
+  box-shadow:
+    0 24px 72px rgba(0, 0, 0, 0.34),
+    0 0 28px rgba(0, 219, 233, 0.08);
+  transform: translateY(-6px);
+}
+
+.cp-impact-bar {
+  animation: cp-impact-grow 1.1s cubic-bezier(0.2, 0.72, 0.18, 1) both;
+  transform-origin: left center;
+}
+
+.cp-proof-node::before {
+  animation: cp-proof-ring 2.4s ease-out infinite;
+  border: 1px solid rgba(0, 219, 233, 0.35);
+  border-radius: 999px;
+  content: "";
+  height: 22px;
+  left: -31px;
+  position: absolute;
+  top: -2px;
+  width: 22px;
+}
+
+.cp-evidence-marquee {
+  perspective: 1200px;
+}
+
+@keyframes cp-scroll-fade-up {
+  from {
+    opacity: 0.01;
+    transform: translateY(22px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cp-soft-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes cp-impact-grow {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes cp-proof-ring {
+  0% {
+    opacity: 0.68;
+    transform: scale(0.7);
+  }
+
+  70% {
+    opacity: 0;
+    transform: scale(1.55);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.55);
+  }
+}
+
 @media (max-width: 767px) {
   body {
     background:
