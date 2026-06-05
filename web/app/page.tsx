@@ -1332,8 +1332,8 @@ function LandingEvidenceSections({
           </div>
         </div>
 
-        <div className="cp-scroll-reveal cp-float-card cp-rainbow-frame relative min-h-[420px] overflow-hidden rounded-2xl border border-white/12 bg-white/[0.045] p-3 shadow-[0_28px_80px_rgba(0,0,0,0.38)] backdrop-blur-xl">
-          <div className="relative h-full min-h-[390px] overflow-hidden rounded-xl border border-[#ffc08d]/25 bg-black/40">
+        <div className="cp-scroll-reveal cp-float-card cp-rainbow-frame cp-collage-shell relative min-h-[420px] overflow-hidden rounded-2xl border border-white/12 bg-white/[0.045] p-3 shadow-[0_28px_80px_rgba(0,0,0,0.38)] backdrop-blur-xl">
+          <div className="cp-collage-visual relative h-full min-h-[390px] overflow-hidden rounded-xl border border-[#ffc08d]/25 bg-black/40">
             <Image
               src={`${CIVIC_EVIDENCE_PATH}/infrastructure-failure-collage.jpg`}
               alt="Civic infrastructure failure newspaper collage"
@@ -1422,7 +1422,7 @@ function LandingEvidenceSections({
         </div>
 
         <div className="cp-scroll-reveal cp-rainbow-frame relative overflow-hidden rounded-2xl border border-white/12 bg-white/[0.045] p-3 backdrop-blur-xl">
-          <div className="relative min-h-[460px] overflow-hidden rounded-xl bg-white">
+          <div className="cp-impact-visual relative min-h-[460px] overflow-hidden rounded-xl bg-white">
             <Image
               src={`${CIVIC_EVIDENCE_PATH}/civic-impact-score.jpg`}
               alt="Civic infrastructure crisis impact score infographic"

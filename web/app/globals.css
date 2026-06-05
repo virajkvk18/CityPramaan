@@ -2802,4 +2802,173 @@ html[data-theme="bright"] .cp-theme-locked-dark .cp-landing-secondary-cta {
   iframe {
     min-height: 220px;
   }
+
+  .cp-theme-locked-dark .cp-landing-section {
+    gap: 1.25rem !important;
+    padding: 3.25rem 1rem !important;
+  }
+
+  .cp-theme-locked-dark .cp-landing-section h2 {
+    font-size: 2rem !important;
+    line-height: 1.08 !important;
+  }
+
+  .cp-theme-locked-dark .cp-landing-section h3 {
+    line-height: 1.16 !important;
+  }
+
+  .cp-theme-locked-dark .cp-landing-section p {
+    max-width: 100%;
+  }
+
+  .cp-landing-aurora {
+    opacity: 0.52;
+  }
+
+  .cp-kicker-glow {
+    filter: drop-shadow(0 0 8px currentColor);
+  }
+
+  .cp-signal-chip {
+    flex: 1 1 100%;
+    justify-content: center;
+    min-height: 38px;
+    padding: 0.62rem 0.75rem;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .cp-collage-shell {
+    min-height: 340px !important;
+    padding: 0.55rem !important;
+  }
+
+  .cp-collage-visual {
+    min-height: 320px !important;
+  }
+
+  .cp-impact-visual {
+    min-height: 300px !important;
+  }
+
+  .cp-rainbow-frame::before {
+    inset: -80%;
+    opacity: 0.13;
+  }
+
+  .cp-float-card {
+    animation-duration: 9s;
+  }
+
+  .cp-color-panel {
+    border-radius: 1rem !important;
+    padding: 1rem !important;
+  }
+
+  .cp-color-panel::before {
+    opacity: 0.45;
+    width: 44%;
+  }
+
+  .cp-evidence-marquee {
+    gap: 0.9rem !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .cp-evidence-marquee .cp-article-card {
+    border-radius: 1rem;
+  }
+
+  .cp-evidence-marquee .cp-article-card > div:first-child {
+    aspect-ratio: 1.18 / 1;
+  }
+
+  .cp-article-card {
+    box-shadow:
+      0 16px 44px rgba(0, 0, 0, 0.26),
+      0 0 18px rgba(0, 219, 233, 0.04);
+  }
+
+  .cp-article-card:hover {
+    transform: none;
+  }
+
+  .cp-evidence-badge {
+    left: 0.75rem;
+    top: 0.75rem;
+    max-width: calc(100% - 1.5rem);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cp-stat-color-card {
+    min-height: 132px;
+    padding: 1rem !important;
+  }
+
+  .cp-stat-color-card::after {
+    height: 54px;
+    width: 54px;
+  }
+
+  .cp-workflow-card {
+    min-height: 0;
+    padding: 1rem !important;
+  }
+
+  .cp-workflow-card::before {
+    height: 28px;
+    right: 1rem;
+  }
+
+  .cp-proof-node::before {
+    height: 18px;
+    left: -29px;
+    top: 0;
+    width: 18px;
+  }
+
+  .cp-final-cta-glow {
+    border-radius: 1.25rem !important;
+    padding: 1rem !important;
+  }
+
+  .cp-final-cta-glow::before {
+    opacity: 0.54;
+  }
+
+  .cp-landing-cta-link {
+    min-height: 46px;
+    width: 100%;
+  }
+}
+
+@media (min-width: 430px) and (max-width: 767px) {
+  .cp-signal-chip {
+    flex-basis: calc(50% - 0.25rem);
+  }
+}
+
+@media (max-width: 390px) {
+  .cp-theme-locked-dark .cp-landing-section {
+    padding-left: 0.85rem !important;
+    padding-right: 0.85rem !important;
+  }
+
+  .cp-theme-locked-dark .cp-landing-section h2 {
+    font-size: 1.78rem !important;
+  }
+
+  .cp-collage-shell {
+    min-height: 310px !important;
+  }
+
+  .cp-collage-visual {
+    min-height: 292px !important;
+  }
+
+  .cp-impact-visual {
+    min-height: 260px !important;
+  }
 }
