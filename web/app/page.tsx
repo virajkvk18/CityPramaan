@@ -608,7 +608,7 @@ export default function Home() {
                     className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg bg-white px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-black transition hover:bg-gray-100 sm:px-4 lg:min-h-10 lg:gap-2 lg:text-[11px]"
                   >
                     <LogIn size={14} />
-                    Start
+                    Sign In
                   </Link>
                 </div>
               </div>
@@ -641,23 +641,35 @@ export default function Home() {
                   />
                   <FadeIn delay={800} duration={1000}>
                     <p className="cp-landing-subtitle mb-5 max-w-2xl rounded-xl border border-white/10 bg-black/24 px-3 py-2 text-[13px] font-semibold leading-6 text-white/95 shadow-[0_12px_38px_rgba(0,0,0,0.24)] backdrop-blur-[2px] sm:bg-black/20 sm:px-4 sm:py-3 sm:text-base md:text-lg md:leading-7">
-                      CityPramaan turns civic complaints into verifiable repair histories with public
-                      proof, contractor accountability, and warranty memory for every city issue.
+                      A simple civic service portal to report public infrastructure issues, track
+                      complaint progress, verify contractor repairs, and keep public proof open for every city.
                     </p>
                   </FadeIn>
                   <FadeIn delay={1200} duration={1000}>
                     <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                       <Link
-                        href="/public-proof"
+                        href="/auth"
                         className="cp-landing-primary-cta inline-flex min-h-11 items-center justify-center rounded-lg bg-white px-5 py-3 text-center font-mono text-[10px] font-black uppercase tracking-[0.18em] text-black transition hover:bg-gray-100 sm:px-8 sm:text-[11px] sm:tracking-[0.2em]"
                       >
-                        Start a Report
+                        Report an Issue
+                      </Link>
+                      <Link
+                        href="/public-proof"
+                        className="cp-landing-secondary-cta liquid-glass inline-flex min-h-11 items-center justify-center rounded-lg border border-white/25 px-5 py-3 text-center font-mono text-[10px] font-black uppercase tracking-[0.18em] text-white transition hover:bg-white hover:text-black sm:px-8 sm:text-[11px] sm:tracking-[0.2em]"
+                      >
+                        Track Complaint
                       </Link>
                       <Link
                         href="/auth"
-                        className="cp-landing-secondary-cta liquid-glass inline-flex min-h-11 items-center justify-center rounded-lg border border-white/25 px-5 py-3 text-center font-mono text-[10px] font-black uppercase tracking-[0.18em] text-white transition hover:bg-white hover:text-black sm:px-8 sm:text-[11px] sm:tracking-[0.2em]"
+                        className="cp-landing-tertiary-cta liquid-glass inline-flex min-h-11 items-center justify-center rounded-lg border border-white/25 px-5 py-3 text-center font-mono text-[10px] font-black uppercase tracking-[0.18em] text-white transition hover:bg-white hover:text-black sm:px-8 sm:text-[11px] sm:tracking-[0.2em]"
                       >
-                        Explore Proof
+                        Admin Login
+                      </Link>
+                      <Link
+                        href="/auth"
+                        className="cp-landing-tertiary-cta liquid-glass inline-flex min-h-11 items-center justify-center rounded-lg border border-white/25 px-5 py-3 text-center font-mono text-[10px] font-black uppercase tracking-[0.18em] text-white transition hover:bg-white hover:text-black sm:px-8 sm:text-[11px] sm:tracking-[0.2em]"
+                      >
+                        Contractor Panel
                       </Link>
                     </div>
                   </FadeIn>
