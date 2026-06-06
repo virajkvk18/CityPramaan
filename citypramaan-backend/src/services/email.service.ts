@@ -1,3 +1,4 @@
+import { resolve4 } from 'dns/promises';
 import nodemailer from 'nodemailer';
 import { env, hasSmtpConfig } from '../config/env';
 import { HttpError } from '../utils/http-error';
@@ -32,13 +33,15 @@ export async function sendVerificationEmail(input: VerificationEmailInput): Prom
     };
   }
 
+  const smtpConnectionHost = await getSmtpConnectionHost();
   const transporter = nodemailer.createTransport({
-    host: env.smtpHost,
+    host: smtpConnectionHost,
     port: env.smtpPort,
     secure: env.smtpSecure,
     connectionTimeout: env.smtpTimeoutMs,
     greetingTimeout: env.smtpTimeoutMs,
     socketTimeout: env.smtpTimeoutMs,
+    tls: smtpConnectionHost !== env.smtpHost ? { servername: env.smtpHost } : undefined,
     auth: {
       user: env.smtpUser,
       pass: env.smtpPass,
@@ -85,6 +88,20 @@ export async function sendVerificationEmail(input: VerificationEmailInput): Prom
     devCodeExposed: false,
     messageId: info.messageId,
   };
+}
+
+async function getSmtpConnectionHost(): Promise<string> {
+  if (!env.smtpForceIpv4) {
+    return env.smtpHost;
+  }
+
+  try {
+    const addresses = await resolve4(env.smtpHost);
+    return addresses[0] || env.smtpHost;
+  } catch (error) {
+    console.warn('Could not resolve SMTP IPv4 address, using configured SMTP host:', error);
+    return env.smtpHost;
+  }
 }
 
 function escapeHtml(value: string): string {

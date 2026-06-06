@@ -71,6 +71,7 @@ export const env = {
   smtpPass: process.env.SMTP_PASS || '',
   smtpFrom: process.env.SMTP_FROM || 'CityPramaan <no-reply@citypramaan.local>',
   smtpTimeoutMs: getNumber('SMTP_TIMEOUT_MS', 10000),
+  smtpForceIpv4: getBoolean('SMTP_FORCE_IPV4', true),
 };
 
 export function hasPinataConfig(): boolean {
