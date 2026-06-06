@@ -30,7 +30,7 @@ import { DEFAULT_CITY_KEY, demoCities, getCityByKey, type CityKey } from "@/src/
 import { getCitySnapshot, setSelectedCityKey, subscribeCity } from "@/src/lib/city-storage";
 import { getReportsForCity, type CivicReport } from "@/src/lib/mock-data";
 import { getLocalReportsSnapshot, subscribeLocalReports } from "@/src/lib/report-storage";
-import { fetchBackendReports, mergeReportsById } from "@/src/lib/report-sync";
+import { mergeReportsById, watchBackendReports } from "@/src/lib/report-sync";
 import { translate } from "@/src/lib/language-context";
 import { getLanguageSnapshot, subscribeLanguage } from "@/src/lib/language-storage";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
@@ -62,17 +62,7 @@ export default function WarrantyScannerPage() {
     [localReportsSnapshot]
   );
   useEffect(() => {
-    let active = true;
-
-    fetchBackendReports(selectedCity.key).then((reports) => {
-      if (active) {
-        setBackendReports(reports);
-      }
-    });
-
-    return () => {
-      active = false;
-    };
+    return watchBackendReports(selectedCity.key, setBackendReports);
   }, [selectedCity.key]);
   const allReports = useMemo(() => {
     return mergeReportsById(

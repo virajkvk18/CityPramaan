@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSupabaseClient } from "@/src/lib/supabase";
+import { getSupabaseAdminClient } from "@/src/server/db/supabase-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -110,7 +110,7 @@ function getMissingSupabaseResponse() {
   return NextResponse.json(
     {
       error:
-        "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
+        "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY.",
       reports: [],
     },
     { status: 503 }
@@ -145,7 +145,7 @@ function pickReportColumns(
 }
 
 export async function GET(request: Request) {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseAdminClient();
 
   if (!supabase) {
     return getMissingSupabaseResponse();
@@ -175,7 +175,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseAdminClient();
 
   if (!supabase) {
     return getMissingSupabaseResponse();
@@ -232,7 +232,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseAdminClient();
 
   if (!supabase) {
     return getMissingSupabaseResponse();

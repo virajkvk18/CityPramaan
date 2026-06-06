@@ -35,7 +35,7 @@ import {
   getLocalReportsSnapshot,
   subscribeLocalReports,
 } from "@/src/lib/report-storage";
-import { fetchBackendReports, mergeReportsById, saveReportEverywhere } from "@/src/lib/report-sync";
+import { mergeReportsById, saveReportEverywhere, watchBackendReports } from "@/src/lib/report-sync";
 import { useLanguage } from "@/src/lib/use-language";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 import {
@@ -84,17 +84,7 @@ export default function ProofTimelinePage() {
   );
   const [backendReports, setBackendReports] = useState<CivicReport[]>([]);
   useEffect(() => {
-    let active = true;
-
-    fetchBackendReports().then((reports) => {
-      if (active) {
-        setBackendReports(reports);
-      }
-    });
-
-    return () => {
-      active = false;
-    };
+    return watchBackendReports(undefined, setBackendReports);
   }, []);
   const cityReports = useMemo(() => getReportsForCity(citySnapshot), [citySnapshot]);
   const allReports = useMemo(() => {

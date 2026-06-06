@@ -27,7 +27,7 @@ import { DEFAULT_CITY_KEY, demoCities, getCityByKey, type CityKey } from "@/src/
 import { getCitySnapshot, subscribeCity } from "@/src/lib/city-storage";
 import { getReportsForCity, type CivicReport, type ReportStatus } from "@/src/lib/mock-data";
 import { getLocalReportsSnapshot, subscribeLocalReports } from "@/src/lib/report-storage";
-import { fetchBackendReports, mergeReportsById } from "@/src/lib/report-sync";
+import { mergeReportsById, watchBackendReports } from "@/src/lib/report-sync";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 
 const statusLabels: Record<ReportStatus, string> = {
@@ -96,22 +96,10 @@ export default function PublicProofPage() {
   );
 
   useEffect(() => {
-    let active = true;
-
-    async function loadReports() {
-      const reports = await fetchBackendReports();
-
-      if (active) {
-        setBackendReports(reports);
-        setLoading(false);
-      }
-    }
-
-    void loadReports();
-
-    return () => {
-      active = false;
-    };
+    return watchBackendReports(undefined, (reports) => {
+      setBackendReports(reports);
+      setLoading(false);
+    });
   }, []);
 
   const allReports = useMemo(() => {

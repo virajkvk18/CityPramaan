@@ -29,7 +29,7 @@ import {
   getLocalReportsSnapshot,
   subscribeLocalReports,
 } from "@/src/lib/report-storage";
-import { fetchBackendReports, mergeReportsById, saveReportEverywhere } from "@/src/lib/report-sync";
+import { mergeReportsById, saveReportEverywhere, watchBackendReports } from "@/src/lib/report-sync";
 import {
   attachReportToContractor,
   findSuggestedContractors,
@@ -78,17 +78,7 @@ export default function PendingApprovalPage() {
     [localReportsSnapshot]
   );
   useEffect(() => {
-    let active = true;
-
-    fetchBackendReports(selectedCity.key).then((reports) => {
-      if (active) {
-        setBackendReports(reports);
-      }
-    });
-
-    return () => {
-      active = false;
-    };
+    return watchBackendReports(selectedCity.key, setBackendReports);
   }, [selectedCity.key]);
   const contractors = useMemo(
     () => JSON.parse(contractorsSnapshot) as ContractorProfile[],

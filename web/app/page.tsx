@@ -43,6 +43,7 @@ import {
   getLocalReportsSnapshot,
   subscribeLocalReports,
 } from "@/src/lib/report-storage";
+import { mergeReportsById, watchBackendReports } from "@/src/lib/report-sync";
 import { useLanguage } from "@/src/lib/use-language";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 import type { TranslationKey } from "@/src/lib/language-context";
@@ -418,53 +419,12 @@ export default function Home() {
     [localReportsSnapshot]
   );
   useEffect(() => {
-    let active = true;
-
-    async function loadBackendReports() {
-      try {
-        const response = await fetch(`/api/reports?cityKey=${encodeURIComponent(selectedCity.key)}`, {
-          cache: "no-store",
-        });
-
-        if (!response.ok) {
-          setBackendReports([]);
-          return;
-        }
-
-        const result = (await response.json()) as { reports?: CivicReport[] };
-
-        if (active) {
-          setBackendReports(Array.isArray(result.reports) ? result.reports : []);
-        }
-      } catch (error) {
-        console.warn("CityPramaan backend reports unavailable:", error);
-
-        if (active) {
-          setBackendReports([]);
-        }
-      }
-    }
-
-    void loadBackendReports();
-
-    return () => {
-      active = false;
-    };
+    return watchBackendReports(selectedCity.key, setBackendReports);
   }, [selectedCity.key]);
 
   const cityReports = useMemo(() => getReportsForCity(citySnapshot), [citySnapshot]);
   const savedReports = useMemo(() => {
-    const reportsById = new Map<string, CivicReport>();
-
-    for (const report of backendReports) {
-      reportsById.set(report.id, report);
-    }
-
-    for (const report of localReports) {
-      reportsById.set(report.id, report);
-    }
-
-    return Array.from(reportsById.values());
+    return mergeReportsById(backendReports, localReports);
   }, [backendReports, localReports]);
   const localCityReports = useMemo(
     () => savedReports.filter((report) => !report.cityKey || report.cityKey === selectedCity.key),

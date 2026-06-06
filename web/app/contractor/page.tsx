@@ -36,7 +36,7 @@ import {
   readFileAsDataUrl,
   subscribeLocalReports,
 } from "@/src/lib/report-storage";
-import { fetchBackendReports, mergeReportsById, saveReportEverywhere } from "@/src/lib/report-sync";
+import { mergeReportsById, saveReportEverywhere, watchBackendReports } from "@/src/lib/report-sync";
 import { createProofBundleHash, sha256Hex } from "@/src/lib/proof-hashing";
 import { useLanguage } from "@/src/lib/use-language";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
@@ -92,17 +92,7 @@ export default function ContractorPage() {
     [localReportsSnapshot]
   );
   useEffect(() => {
-    let active = true;
-
-    fetchBackendReports(selectedCity.key).then((reports) => {
-      if (active) {
-        setBackendReports(reports);
-      }
-    });
-
-    return () => {
-      active = false;
-    };
+    return watchBackendReports(selectedCity.key, setBackendReports);
   }, [selectedCity.key]);
   const allReports = useMemo(() => {
     return mergeReportsById(
@@ -114,8 +104,7 @@ export default function ContractorPage() {
   const repairQueue = allReports.filter(
     (report) =>
       contractorVisibleStatuses.includes(report.status) &&
-      isAssignedToContractor(report) &&
-      (!currentContractor || report.assignedContractorId === currentContractor.contractorId)
+      isVisibleToContractor(report, currentContractor)
   );
   const [selectedReportId, setSelectedReportId] = useState(repairQueue[0]?.id ?? "");
   const selectedReport = repairQueue.find((report) => report.id === selectedReportId) ?? repairQueue[0];
@@ -858,8 +847,29 @@ function WorkStageButton({
   );
 }
 
+function isVisibleToContractor(report: CivicReport, contractor?: ContractorProfile) {
+  if (!isAssignedToContractor(report)) {
+    return true;
+  }
+
+  if (!contractor) {
+    return true;
+  }
+
+  return (
+    report.assignedContractorId === contractor.contractorId ||
+    report.assignedContractorDetails?.contractorId === contractor.contractorId ||
+    normalizeText(report.contractor) === normalizeText(contractor.name) ||
+    normalizeText(report.assignedContractorDetails?.email) === normalizeText(contractor.email)
+  );
+}
+
 function isAssignedToContractor(report: CivicReport) {
   return !unassignedContractorNames.has((report.contractor ?? "").trim().toLowerCase());
+}
+
+function normalizeText(value?: string) {
+  return (value ?? "").trim().toLowerCase();
 }
 
 function EvidenceBox({
