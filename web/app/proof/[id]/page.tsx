@@ -14,6 +14,7 @@ import {
   FileImage,
   Fingerprint,
   MapPin,
+  ScanSearch,
   ShieldAlert,
   ShieldCheck,
   Sparkles,
@@ -27,6 +28,7 @@ import { ChainProofCard } from "@/src/components/proof/ChainProofCard";
 import { FabricProofCard } from "@/src/components/proof/FabricProofCard";
 import { DEFAULT_CITY_KEY, getCityByKey } from "@/src/lib/city-context";
 import { getCitySnapshot, subscribeCity } from "@/src/lib/city-storage";
+import { getLanguageSnapshot, subscribeLanguage } from "@/src/lib/language-storage";
 import { getReportsForCity, type CivicReport } from "@/src/lib/mock-data";
 import {
   appendReportEvent,
@@ -37,12 +39,17 @@ import { fetchBackendReports, mergeReportsById, saveReportEverywhere } from "@/s
 import { useLanguage } from "@/src/lib/use-language";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 import {
+  requestDuplicateCheck,
+  requestEscalationRisk,
   requestPublicSummary,
   requestWarrantyRisk,
   type AiAgentAudit,
+  type AiDuplicateCheckResult,
+  type AiEscalationRiskResult,
   type AiPublicSummaryResult,
   type AiWarrantyRiskResult,
 } from "@/src/lib/ai-agents-client";
+import { appendAiDecisionLog } from "@/src/lib/ai-decision-log";
 
 const statusTone: Record<CivicReport["status"], string> = {
   OPEN: "border-[#ffb4ab]/30 bg-[#ffb4ab]/10 text-[#ffb4ab]",
@@ -65,6 +72,7 @@ export default function ProofTimelinePage() {
   const params = useParams<{ id: string }>();
   const proofId = params.id;
   const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => DEFAULT_CITY_KEY);
+  const languageSnapshot = useSyncExternalStore(subscribeLanguage, getLanguageSnapshot, () => "en");
   const localReportsSnapshot = useSyncExternalStore(
     subscribeLocalReports,
     getLocalReportsSnapshot,
@@ -121,23 +129,33 @@ export default function ProofTimelinePage() {
   const [actionMessage, setActionMessage] = useState("");
   const [publicSummary, setPublicSummary] = useState<AiPublicSummaryResult | null>(null);
   const [warrantyRisk, setWarrantyRisk] = useState<AiWarrantyRiskResult | null>(null);
-  const [agentStatus, setAgentStatus] = useState("Running public summary and warranty risk agents...");
+  const [duplicateCheck, setDuplicateCheck] = useState<AiDuplicateCheckResult | null>(null);
+  const [escalationRisk, setEscalationRisk] = useState<AiEscalationRiskResult | null>(null);
+  const [agentStatus, setAgentStatus] = useState("Running public summary, duplicate, escalation, and warranty agents...");
 
   useEffect(() => {
     let active = true;
 
     Promise.all([
-      requestPublicSummary({ report }),
+      requestPublicSummary({ report, language: languageSnapshot }),
       requestWarrantyRisk({ report, cityReports: cityHistoryReports }),
+      requestDuplicateCheck({ report, cityReports: cityHistoryReports }),
+      requestEscalationRisk({ report }),
     ])
-      .then(([summary, risk]) => {
+      .then(([summary, risk, duplicate, escalation]) => {
         if (!active) {
           return;
         }
 
         setPublicSummary(summary);
         setWarrantyRisk(risk);
-        setAgentStatus("AI/RAG agents completed using civic rules.");
+        setDuplicateCheck(duplicate);
+        setEscalationRisk(escalation);
+        logAgentDecision(report.id, summary.aiAudit, summary.headline, report.confidence);
+        logAgentDecision(report.id, risk.aiAudit, `${risk.riskLevel} warranty risk`, risk.repeatProbability);
+        logAgentDecision(report.id, duplicate.aiAudit, `${duplicate.similarityScore}/100 duplicate score`, duplicate.similarityScore);
+        logAgentDecision(report.id, escalation.aiAudit, `${escalation.escalationLevel} escalation`, report.confidence);
+        setAgentStatus("AI/RAG agents completed using versioned civic rules and policy documents.");
       })
       .catch((error) => {
         if (!active) {
@@ -151,7 +169,7 @@ export default function ProofTimelinePage() {
     return () => {
       active = false;
     };
-  }, [cityHistoryReports, report]);
+  }, [cityHistoryReports, languageSnapshot, report]);
 
   function getLatestReport() {
     try {
@@ -552,6 +570,66 @@ export default function ProofTimelinePage() {
               {warrantyRisk?.recommendedAction ?? "Continue normal warranty monitoring."}
             </p>
             {warrantyRisk?.aiAudit && <AgentAuditPanel audit={warrantyRisk.aiAudit} />}
+          </div>
+
+          <div className={`rounded-2xl border p-5 ${duplicateTone(duplicateCheck)}`}>
+            <div className="flex items-center gap-2">
+              <ScanSearch size={18} />
+              <p className="font-medium">Duplicate Complaint Agent</p>
+            </div>
+            <div className="mt-4 space-y-3">
+              <Score
+                label="Duplicate likely"
+                value={duplicateCheck?.duplicateLikely ? "Yes" : "No"}
+              />
+              <Score
+                label="Similarity score"
+                value={
+                  typeof duplicateCheck?.similarityScore === "number"
+                    ? `${duplicateCheck.similarityScore}/100`
+                    : "Scanning"
+                }
+              />
+              <Score
+                label="Matched records"
+                value={duplicateCheck?.matchedReportIds.length ? duplicateCheck.matchedReportIds.join(", ") : "None"}
+              />
+              <Score label="Human review" value={duplicateCheck?.humanReviewRequired ? "Required" : "Not required"} />
+            </div>
+            <p className="mt-4 text-sm leading-6">
+              {duplicateCheck?.reason ?? "Checking same-category, same-ward, same-location complaint history."}
+            </p>
+            <p className="mt-3 rounded-lg border border-white/10 bg-zinc-950/55 p-3 text-sm leading-6">
+              {duplicateCheck?.recommendedAction ?? "Use duplicate results before creating a fresh work order."}
+            </p>
+            {duplicateCheck?.aiAudit && <AgentAuditPanel audit={duplicateCheck.aiAudit} />}
+          </div>
+
+          <div className={`rounded-2xl border p-5 ${escalationTone(escalationRisk?.escalationLevel)}`}>
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={18} />
+              <p className="font-medium">Critical Escalation Agent</p>
+            </div>
+            <div className="mt-4 space-y-3">
+              <Score label="Escalation" value={escalationRisk?.escalationLevel ?? "Scanning"} />
+              <Score label="Public safety risk" value={escalationRisk?.publicSafetyRisk ? "Yes" : "No"} />
+              <Score
+                label="Notify roles"
+                value={escalationRisk?.notifyRoles.length ? escalationRisk.notifyRoles.join(", ") : "None"}
+              />
+              <Score label="Human review" value={escalationRisk?.humanReviewRequired ? "Required" : "Not required"} />
+            </div>
+            <div className="mt-4 space-y-2">
+              {(escalationRisk?.escalationReasons.length ? escalationRisk.escalationReasons : ["Awaiting escalation scan."]).map((reason) => (
+                <p key={reason} className="rounded border border-white/10 bg-zinc-950/45 px-3 py-2 text-xs leading-5">
+                  {reason}
+                </p>
+              ))}
+            </div>
+            <p className="mt-3 rounded-lg border border-white/10 bg-zinc-950/55 p-3 text-sm leading-6">
+              {escalationRisk?.recommendedAction ?? "Critical reports move to admin review before closure."}
+            </p>
+            {escalationRisk?.aiAudit && <AgentAuditPanel audit={escalationRisk.aiAudit} />}
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
@@ -1050,6 +1128,55 @@ function warrantyRiskTone(level?: AiWarrantyRiskResult["riskLevel"]) {
   }
 }
 
+function duplicateTone(result?: AiDuplicateCheckResult | null) {
+  if (result?.duplicateLikely || (result?.similarityScore ?? 0) >= 70) {
+    return "border-[#ffc08d]/30 bg-[#ffc08d]/10 text-[#ffdcc2]";
+  }
+
+  if (result?.humanReviewRequired) {
+    return "border-[#00dbe9]/25 bg-[#00dbe9]/10 text-[#d3fbff]";
+  }
+
+  return "border-[#00eb88]/25 bg-[#00eb88]/10 text-[#d3ffe7]";
+}
+
+function escalationTone(level?: AiEscalationRiskResult["escalationLevel"]) {
+  switch (level) {
+    case "EMERGENCY":
+      return "border-[#ffb4ab]/35 bg-[#ffb4ab]/10 text-[#ffdad6]";
+    case "URGENT":
+      return "border-[#ffc08d]/35 bg-[#ffc08d]/10 text-[#ffdcc2]";
+    case "WARD_REVIEW":
+      return "border-[#00dbe9]/25 bg-[#00dbe9]/10 text-[#d3fbff]";
+    case "NONE":
+      return "border-[#00eb88]/25 bg-[#00eb88]/10 text-[#d3ffe7]";
+    default:
+      return "border-white/10 bg-white/[0.03] text-zinc-300";
+  }
+}
+
+function logAgentDecision(
+  reportId: string,
+  audit: AiAgentAudit | undefined,
+  decision: string,
+  confidence?: number
+) {
+  if (!audit) {
+    return;
+  }
+
+  appendAiDecisionLog({
+    reportId,
+    agentName: audit.agentName,
+    decision,
+    confidence,
+    mode: audit.mode,
+    provider: audit.providerLabel,
+    fallbackReason: audit.fallbackReason,
+    retrievedRuleIds: audit.retrievedRules.map((rule) => rule.id),
+  });
+}
+
 function AgentAuditPanel({ audit }: { audit: AiAgentAudit }) {
   return (
     <div className="mt-4 rounded-lg border border-white/10 bg-zinc-950/55 p-3">
@@ -1073,7 +1200,7 @@ function AgentAuditPanel({ audit }: { audit: AiAgentAudit }) {
             </div>
             <p className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-400">{rule.ruleText}</p>
             <p className="mt-1 font-mono text-[10px] uppercase text-zinc-500">
-              {rule.category} | SLA {rule.slaHours ?? "contextual"}h | Warranty {rule.warrantyDays ?? "contextual"}d
+              {rule.category} | {rule.version ?? "unversioned"} | SLA {rule.slaHours ?? "contextual"}h | Warranty {rule.warrantyDays ?? "contextual"}d
             </p>
           </div>
         ))}

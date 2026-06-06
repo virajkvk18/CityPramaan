@@ -25,6 +25,8 @@ export type InfrastructureAnalysis = {
   imageEvidenceScore: number;
   estimatedImpact: string;
   modelVersion: string;
+  humanReviewRequired: boolean;
+  confidenceBand: "LOW" | "MEDIUM" | "HIGH";
 };
 
 type AnalyzeInput = {
@@ -199,6 +201,7 @@ export function analyzeInfrastructureIssue({
     99,
     severityScore[severity] + (hasRepeatSignal ? 5 : 0) + (imageName ? 2 : -6)
   );
+  const confidenceBand = confidence >= 85 ? "HIGH" : confidence >= 65 ? "MEDIUM" : "LOW";
 
   return {
     category,
@@ -221,5 +224,7 @@ export function analyzeInfrastructureIssue({
     imageEvidenceScore,
     estimatedImpact: profile.impact,
     modelVersion: "CityPramaan Ruleset v0.4",
+    humanReviewRequired: confidence < 70 || imageEvidenceScore < 55 || severity === "Critical",
+    confidenceBand,
   };
 }

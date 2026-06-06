@@ -3,6 +3,7 @@ import {
   retrieveCivicRules,
   type RetrievedRule,
 } from "./civic-rag-rules";
+import { formatKnowledgeDocumentsForPrompt } from "./civic-rag-documents";
 import type { ContractorProfile, CivicReport } from "./mock-data";
 
 export type AiProviderConfig = {
@@ -151,6 +152,11 @@ Task: ${task}
 
 Retrieved CityPramaan civic rules:
 ${formatRetrievedRulesForPrompt(retrievedRules)}
+
+Retrieved CityPramaan policy documents:
+${formatKnowledgeDocumentsForPrompt(
+  `${task} ${JSON.stringify(input).slice(0, 1200)} ${retrievedRules.map((rule) => rule.title).join(" ")}`
+)}
 
 Input data:
 ${JSON.stringify(input, null, 2)}

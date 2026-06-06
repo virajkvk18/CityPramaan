@@ -109,6 +109,19 @@ export default function PendingApprovalPage() {
     [allReports]
   );
   const pendingCount = reviewReports.filter((report) => report.status === "REPAIR_SUBMITTED").length;
+  const aiCriticalCount = reviewReports.filter(
+    (report) =>
+      report.severity === "Critical" ||
+      (report.aiPriorityScore ?? 0) >= 90 ||
+      report.status === "REPEAT_FAILURE"
+  ).length;
+  const lowConfidenceCount = reviewReports.filter((report) => report.confidence < 70).length;
+  const warrantyWatchCount = reviewReports.filter(
+    (report) =>
+      report.warrantyStatus === "ACTIVE" ||
+      report.status === "UNDER_WARRANTY" ||
+      report.status === "REPEAT_FAILURE"
+  ).length;
   const [selectedReportId, setSelectedReportId] = useState(
     reviewReports.find((report) => report.status === "REPAIR_SUBMITTED")?.id ?? reviewReports[0]?.id ?? ""
   );
@@ -123,6 +136,7 @@ export default function PendingApprovalPage() {
     [contractors, selectedReport]
   );
   const [selectedContractorId, setSelectedContractorId] = useState("");
+  const [adminOverrideReason, setAdminOverrideReason] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
   const [aiContractorMatch, setAiContractorMatch] = useState<AiContractorMatchResult | null>(null);
   const activeContractor =
@@ -168,6 +182,15 @@ export default function PendingApprovalPage() {
       return;
     }
 
+    const aiRecommendedId = aiContractorMatch?.recommendedContractorId;
+    const overrideRequired = Boolean(aiRecommendedId && contractor.contractorId !== aiRecommendedId);
+    const overrideReason = adminOverrideReason.trim();
+
+    if (overrideRequired && !overrideReason) {
+      setActionMessage("Add an admin override reason before assigning a contractor different from the AI recommendation.");
+      return;
+    }
+
     const now = new Date();
     const updated = appendReportEvent(
       {
@@ -183,7 +206,9 @@ export default function PendingApprovalPage() {
       },
       {
         label: "Ward Admin assigned contractor",
-        detail: `Ward Admin assigned this issue to ${contractor.name}, Contractor ID: ${contractor.contractorId}, ${contractor.ward} ${specializationLabels[contractor.specialization as keyof typeof specializationLabels] ?? contractor.specialization} team.`,
+        detail: `Ward Admin assigned this issue to ${contractor.name}, Contractor ID: ${contractor.contractorId}, ${contractor.ward} ${specializationLabels[contractor.specialization as keyof typeof specializationLabels] ?? contractor.specialization} team.${
+          overrideReason ? ` Override reason: ${overrideReason}` : ""
+        }`,
         time: now.toLocaleString(),
         tx: `0xassign...${report.id.replace("CP-", "")}`,
       }
@@ -191,6 +216,7 @@ export default function PendingApprovalPage() {
 
     void saveReportEverywhere(updated);
     attachReportToContractor(contractor.contractorId, report.id);
+    setAdminOverrideReason("");
     setActionMessage(`${report.id} assigned to ${contractor.name}. It will now appear in Contractor dashboard.`);
   }
 
@@ -370,6 +396,27 @@ export default function PendingApprovalPage() {
             </div>
           </div>
 
+          <section className="mb-6 grid gap-3 md:grid-cols-3">
+            <AiMetric
+              label="Critical escalation queue"
+              value={String(aiCriticalCount).padStart(2, "0")}
+              detail="Critical severity, repeat failures, or 90+ AI priority"
+              tone="rose"
+            />
+            <AiMetric
+              label="Low confidence review"
+              value={String(lowConfidenceCount).padStart(2, "0")}
+              detail="Reports below the 70% human-review threshold"
+              tone="cyan"
+            />
+            <AiMetric
+              label="Warranty watchlist"
+              value={String(warrantyWatchCount).padStart(2, "0")}
+              detail="Active warranty or repeat-location monitoring"
+              tone="emerald"
+            />
+          </section>
+
           <section className="mb-6 rounded-lg border border-[#00dbe9]/20 bg-[#00dbe9]/10 p-4">
             <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#7df4ff]">
               AI/RAG review layer
@@ -538,6 +585,21 @@ export default function PendingApprovalPage() {
                           <p className="mt-1 text-[#ffc08d]">{aiContractorMatch.riskNote}</p>
                         </div>
                       )}
+                      {aiContractorMatch?.recommendedContractorId &&
+                        activeContractor?.contractorId !== aiContractorMatch.recommendedContractorId && (
+                          <label className="mt-4 block rounded border border-[#ffc08d]/25 bg-[#ffc08d]/10 p-3">
+                            <span className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#ffdcc2]">
+                              Admin override reason
+                            </span>
+                            <textarea
+                              value={adminOverrideReason}
+                              onChange={(event) => setAdminOverrideReason(event.target.value)}
+                              rows={3}
+                              className="w-full resize-none rounded border border-white/10 bg-black/45 px-3 py-3 text-sm text-white outline-none focus:border-[#ffc08d]/60"
+                              placeholder="Explain why this contractor is being selected instead of the AI recommendation."
+                            />
+                          </label>
+                        )}
                       <button
                         type="button"
                         onClick={() => assignContractor(selectedReport)}
@@ -676,6 +738,32 @@ function Stat({ label, value, tone }: { label: string; value: string; tone: "amb
     <div className="rounded border border-white/10 bg-black/35 px-4 py-2">
       <p className="font-mono text-[10px] uppercase text-[#dbc2b0]/60">{label}</p>
       <p className={`mt-1 font-mono text-xl font-semibold ${color}`}>{value}</p>
+    </div>
+  );
+}
+
+function AiMetric({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone: "rose" | "cyan" | "emerald";
+}) {
+  const colors = {
+    rose: "border-[#ffb4ab]/25 bg-[#ffb4ab]/10 text-[#ffdad6]",
+    cyan: "border-[#00dbe9]/25 bg-[#00dbe9]/10 text-[#d3fbff]",
+    emerald: "border-[#00eb88]/25 bg-[#00eb88]/10 text-[#d3ffe7]",
+  };
+
+  return (
+    <div className={`rounded-lg border p-4 ${colors[tone]}`}>
+      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em]">{label}</p>
+      <p className="mt-3 font-mono text-3xl font-semibold text-white">{value}</p>
+      <p className="mt-2 text-xs leading-5 opacity-80">{detail}</p>
     </div>
   );
 }

@@ -514,12 +514,14 @@ export default function ReportIssuePage() {
             time: new Date(now).toLocaleString(),
             tx: txHash,
           },
-          {
-            label: "AI verified civic issue",
-            detail: `${result.category} classified with ${result.confidence}% confidence, ${result.severity} severity, and ${result.aiPriorityScore}/100 priority score.`,
-            time: new Date(now).toLocaleString(),
-            tx: aiTxHash,
-          },
+        {
+          label: "AI verified civic issue",
+          detail: `${result.category} classified with ${result.confidence}% confidence (${result.confidenceBand}), ${result.severity} severity, and ${result.aiPriorityScore}/100 priority score. ${
+            result.humanReviewRequired ? "Human review required before final closure." : "Normal workflow allowed."
+          }`,
+          time: new Date(now).toLocaleString(),
+          tx: aiTxHash,
+        },
           ...(result.category === "POWER_OUTAGE"
             ? [
                 {
@@ -1039,6 +1041,11 @@ export default function ReportIssuePage() {
                       <AnalysisRow label={tr("duplicateRisk")} value={aiResult.duplicateRisk} />
                       <AnalysisRow label="AI Priority Score" value={`${aiResult.aiPriorityScore}/100`} />
                       <AnalysisRow label="Image Evidence Score" value={`${aiResult.imageEvidenceScore}/100`} />
+                      <AnalysisRow label="Confidence Band" value={aiResult.confidenceBand} />
+                      <AnalysisRow
+                        label="Human Review"
+                        value={aiResult.humanReviewRequired ? "Required" : "Not required"}
+                      />
                       <AnalysisRow label="Model" value={aiResult.modelVersion} />
                     </div>
                     <div className="mt-4 rounded border border-white/10 bg-black/25 p-3">

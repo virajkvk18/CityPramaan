@@ -224,12 +224,14 @@ ${allowedCategories.join(", ")}
 Return JSON with exactly these keys:
 category, issueType, assetType, severity, confidence, slaHours, warrantyRequired, duplicateRisk,
 publicSummary, recommendedAction, proofTag, evidenceSignals, aiPriorityScore, imageEvidenceScore,
-estimatedImpact.
+estimatedImpact, humanReviewRequired, confidenceBand.
 
 Rules:
 - category must be one of the allowed categories.
 - severity must be Low, Medium, High, or Critical.
 - confidence, aiPriorityScore, imageEvidenceScore must be 0-100 numbers.
+- confidenceBand must be LOW, MEDIUM, or HIGH.
+- humanReviewRequired must be true when confidence is below 70, image evidence is weak, or public safety is critical.
 - evidenceSignals must be 3-6 short strings.
 - publicSummary must mention the issue, location, and public proof tracking.
 - slaHours and warrantyRequired must follow retrieved civic rules when relevant.
@@ -267,6 +269,7 @@ function sanitizeAnalysis(
   const aiPriorityScore = clampNumber(raw.aiPriorityScore, fallback.aiPriorityScore);
   const imageEvidenceScore = clampNumber(raw.imageEvidenceScore, fallback.imageEvidenceScore);
   const evidenceSignals = asStringArray(raw.evidenceSignals, fallback.evidenceSignals);
+  const confidenceBand = asConfidenceBand(raw.confidenceBand) ?? bandForConfidence(confidence);
 
   return {
     category,
@@ -286,6 +289,11 @@ function sanitizeAnalysis(
     imageEvidenceScore,
     estimatedImpact: asString(raw.estimatedImpact, fallback.estimatedImpact),
     modelVersion: `${provider.label} | ${provider.model}`,
+    humanReviewRequired:
+      typeof raw.humanReviewRequired === "boolean"
+        ? raw.humanReviewRequired
+        : confidence < 70 || imageEvidenceScore < 55 || severity === "Critical",
+    confidenceBand,
   };
 }
 
@@ -299,6 +307,22 @@ function asSeverity(value: unknown): InfrastructureAnalysis["severity"] | null {
   return typeof value === "string" && allowedSeverities.includes(value as InfrastructureAnalysis["severity"])
     ? (value as InfrastructureAnalysis["severity"])
     : null;
+}
+
+function asConfidenceBand(value: unknown): InfrastructureAnalysis["confidenceBand"] | null {
+  return value === "LOW" || value === "MEDIUM" || value === "HIGH" ? value : null;
+}
+
+function bandForConfidence(confidence: number): InfrastructureAnalysis["confidenceBand"] {
+  if (confidence >= 85) {
+    return "HIGH";
+  }
+
+  if (confidence >= 65) {
+    return "MEDIUM";
+  }
+
+  return "LOW";
 }
 
 function asString(value: unknown, fallback: string) {

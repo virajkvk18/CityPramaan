@@ -9,7 +9,7 @@ export type AiAgentAudit = {
   fallbackReason?: string;
   agentName: string;
   providerLabel: string;
-  retrievedRules: Array<Pick<RetrievedRule, "id" | "title" | "category" | "ruleText" | "slaHours" | "warrantyDays" | "matchScore">>;
+  retrievedRules: Array<Pick<RetrievedRule, "id" | "title" | "category" | "ruleText" | "slaHours" | "warrantyDays" | "matchScore" | "source" | "version" | "effectiveFrom">>;
 };
 
 export type AiRepairAuditResult = {
@@ -51,6 +51,26 @@ export type AiWarrantyRiskResult = {
   matchedReportIds: string[];
   reason: string;
   recommendedAction: string;
+  aiAudit?: AiAgentAudit;
+};
+
+export type AiDuplicateCheckResult = {
+  duplicateLikely: boolean;
+  similarityScore: number;
+  matchedReportIds: string[];
+  reason: string;
+  recommendedAction: string;
+  humanReviewRequired: boolean;
+  aiAudit?: AiAgentAudit;
+};
+
+export type AiEscalationRiskResult = {
+  escalationLevel: "NONE" | "WARD_REVIEW" | "URGENT" | "EMERGENCY";
+  publicSafetyRisk: boolean;
+  escalationReasons: string[];
+  notifyRoles: string[];
+  recommendedAction: string;
+  humanReviewRequired: boolean;
   aiAudit?: AiAgentAudit;
 };
 
@@ -126,7 +146,7 @@ export async function requestContractorMatch(input: {
   }
 }
 
-export async function requestPublicSummary(input: { report: CivicReport }) {
+export async function requestPublicSummary(input: { report: CivicReport; language?: string }) {
   const fallback: AiPublicSummaryResult = {
     headline: input.report.title,
     citizenSummary:
@@ -181,6 +201,53 @@ export async function requestWarrantyRisk(input: {
   }
 }
 
+export async function requestDuplicateCheck(input: {
+  report: CivicReport;
+  cityReports: CivicReport[];
+}) {
+  const fallback = buildDuplicateCheckFallback(input.report, input.cityReports);
+
+  try {
+    const response = await fetch("/api/ai/duplicate-check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+
+    if (!response.ok) {
+      return fallback;
+    }
+
+    const payload = (await response.json()) as AgentResponse<AiDuplicateCheckResult>;
+    return withAudit<AiDuplicateCheckResult>(payload.result ?? fallback, payload, fallback);
+  } catch (error) {
+    console.warn("CityPramaan duplicate check AI unavailable:", error);
+    return fallback;
+  }
+}
+
+export async function requestEscalationRisk(input: { report: CivicReport }) {
+  const fallback = buildEscalationRiskFallback(input.report);
+
+  try {
+    const response = await fetch("/api/ai/escalation-risk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+
+    if (!response.ok) {
+      return fallback;
+    }
+
+    const payload = (await response.json()) as AgentResponse<AiEscalationRiskResult>;
+    return withAudit<AiEscalationRiskResult>(payload.result ?? fallback, payload, fallback);
+  } catch (error) {
+    console.warn("CityPramaan escalation risk AI unavailable:", error);
+    return fallback;
+  }
+}
+
 function buildRepairAuditFallback(report: CivicReport, hasImage: boolean): AiRepairAuditResult {
   const isPower = report.issueCategory === "POWER_OUTAGE";
 
@@ -224,6 +291,74 @@ function buildWarrantyRiskFallback(report: CivicReport, reports: CivicReport[]):
       repeatProbability > 65
         ? "Flag for warranty review and require stronger contractor proof."
         : "Continue normal monitoring after repair approval.",
+  };
+}
+
+function buildDuplicateCheckFallback(report: CivicReport, reports: CivicReport[]): AiDuplicateCheckResult {
+  const category = normalize(report.issueCategory);
+  const location = normalize(report.location).slice(0, 28);
+  const matches = reports.filter(
+    (item) =>
+      item.id !== report.id &&
+      normalize(item.issueCategory) === category &&
+      (normalize(item.location).slice(0, 28) === location || normalize(item.ward) === normalize(report.ward))
+  );
+  const similarityScore = Math.min(96, matches.length * 26);
+
+  return {
+    duplicateLikely: similarityScore >= 55,
+    similarityScore,
+    matchedReportIds: matches.map((item) => item.id).slice(0, 6),
+    reason: matches.length
+      ? "Similar category and nearby ward/location reports exist in local city history."
+      : "No strong duplicate pattern found in available city history.",
+    recommendedAction:
+      similarityScore >= 55
+        ? "Review matched proof records before creating a separate work order."
+        : "Treat as separate report and keep monitoring for repeats.",
+    humanReviewRequired: similarityScore >= 55,
+  };
+}
+
+function buildEscalationRiskFallback(report: CivicReport): AiEscalationRiskResult {
+  const text = normalize(`${report.title} ${report.location} ${report.aiSummary} ${report.recommendedAction}`);
+  const hasEmergencySignal = ["collapse", "sinkhole", "open manhole", "exposed wire", "bridge"].some((term) =>
+    text.includes(term)
+  );
+  const hasUrgentSignal = ["sewage", "transformer", "blackout", "school", "market", "waterlogging"].some((term) =>
+    text.includes(term)
+  );
+  const isCritical = normalize(report.severity) === "critical";
+  const escalationLevel = hasEmergencySignal
+    ? "EMERGENCY"
+    : hasUrgentSignal || isCritical
+      ? "URGENT"
+      : report.confidence < 65
+        ? "WARD_REVIEW"
+        : "NONE";
+
+  return {
+    escalationLevel,
+    publicSafetyRisk: escalationLevel === "URGENT" || escalationLevel === "EMERGENCY",
+    escalationReasons: [
+      isCritical ? "Critical severity report." : "",
+      hasEmergencySignal ? "Emergency safety signal detected." : "",
+      hasUrgentSignal ? "Public health, utility, or crowd-area urgency signal detected." : "",
+      report.confidence < 65 ? "AI confidence below human-review threshold." : "",
+    ].filter(Boolean),
+    notifyRoles:
+      escalationLevel === "EMERGENCY"
+        ? ["Ward Admin", "Emergency Field Supervisor", "Contractor Lead"]
+        : escalationLevel === "URGENT"
+          ? ["Ward Admin", "Contractor Lead"]
+          : escalationLevel === "WARD_REVIEW"
+            ? ["Ward Admin"]
+            : [],
+    recommendedAction:
+      escalationLevel === "NONE"
+        ? "Continue normal civic workflow."
+        : "Move to escalation queue and require admin review before closure.",
+    humanReviewRequired: escalationLevel !== "NONE",
   };
 }
 

@@ -11,8 +11,9 @@ type PublicSummaryResult = {
 };
 
 export async function POST(request: Request) {
-  const body = (await request.json().catch(() => ({}))) as { report?: CivicReport };
+  const body = (await request.json().catch(() => ({}))) as { report?: CivicReport; language?: string };
   const report = body.report;
+  const language = body.language?.trim() || "en";
   const fallback: PublicSummaryResult = {
     headline: report?.title ?? "Civic issue proof record",
     citizenSummary:
@@ -25,8 +26,9 @@ export async function POST(request: Request) {
 
   const agent = await runJsonAgent<PublicSummaryResult>({
     agentName: "Civic Public Summary Agent",
-    task: "Create a citizen-friendly public proof summary without exposing private identity details.",
-    input: { report },
+    task:
+      "Create a citizen-friendly public proof summary without exposing private identity details. If language is not English, write the citizen-facing fields in that language while preserving status IDs.",
+    input: { report, language },
     fallback,
     schema:
       '{ "headline": string, "citizenSummary": string, "currentStatus": string, "nextAction": string, "transparencyNote": string }',
