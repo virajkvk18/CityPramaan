@@ -19,6 +19,11 @@ export type AiAgentResult<T> = {
   fallbackReason?: string;
   retrievedRules: RetrievedRule[];
   result: T;
+  agentTrace: {
+    agentName: string;
+    retrievedRuleIds: string[];
+    providerLabel: string;
+  };
 };
 
 export function getAiProviderConfig(): AiProviderConfig | null {
@@ -83,6 +88,7 @@ export async function runJsonAgent<T>({
       fallbackReason: "No CITYPRAMAAN_GROQ_API_KEY or CITYPRAMAAN_XAI_API_KEY configured.",
       retrievedRules,
       result: fallback,
+      agentTrace: buildAgentTrace(agentName, retrievedRules, "Local ruleset"),
     };
   }
 
@@ -102,6 +108,7 @@ export async function runJsonAgent<T>({
       provider: provider.provider,
       retrievedRules,
       result: parseJsonObject(raw) as T,
+      agentTrace: buildAgentTrace(agentName, retrievedRules, provider.label),
     };
   } catch (error) {
     return {
@@ -110,6 +117,7 @@ export async function runJsonAgent<T>({
       fallbackReason: error instanceof Error ? error.message : "AI provider request failed.",
       retrievedRules,
       result: fallback,
+      agentTrace: buildAgentTrace(agentName, retrievedRules, provider.label),
     };
   }
 }
@@ -184,14 +192,29 @@ ${schema}
     payload.max_tokens = 1000;
   }
 
-  const response = await fetch(provider.endpoint, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${provider.apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 18_000);
+  let response: Response;
+
+  try {
+    response = await fetch(provider.endpoint, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${provider.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error(`${provider.label} timed out after 18 seconds.`);
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
@@ -211,10 +234,15 @@ ${schema}
 }
 
 export function parseJsonObject(content: string) {
+  const withoutCodeFence = content
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```$/i, "")
+    .trim();
+
   try {
-    return JSON.parse(content) as Record<string, unknown>;
+    return JSON.parse(withoutCodeFence) as Record<string, unknown>;
   } catch {
-    const match = content.match(/\{[\s\S]*\}/);
+    const match = withoutCodeFence.match(/\{[\s\S]*\}/);
 
     if (!match) {
       throw new Error("AI response was not JSON.");
@@ -222,6 +250,14 @@ export function parseJsonObject(content: string) {
 
     return JSON.parse(match[0]) as Record<string, unknown>;
   }
+}
+
+function buildAgentTrace(agentName: string, retrievedRules: RetrievedRule[], providerLabel: string) {
+  return {
+    agentName,
+    retrievedRuleIds: retrievedRules.map((rule) => rule.id),
+    providerLabel,
+  };
 }
 
 export function clampNumber(value: unknown, fallback: number, max = 100) {

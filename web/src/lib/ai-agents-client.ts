@@ -23,6 +23,23 @@ export type AiContractorMatchResult = {
   riskNote: string;
 };
 
+export type AiPublicSummaryResult = {
+  headline: string;
+  citizenSummary: string;
+  currentStatus: string;
+  nextAction: string;
+  transparencyNote: string;
+};
+
+export type AiWarrantyRiskResult = {
+  riskLevel: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  repeatProbability: number;
+  warrantyBreachLikely: boolean;
+  matchedReportIds: string[];
+  reason: string;
+  recommendedAction: string;
+};
+
 type AgentResponse<T> = {
   mode?: "real-ai" | "ruleset-fallback";
   provider?: string;
@@ -89,6 +106,61 @@ export async function requestContractorMatch(input: {
   }
 }
 
+export async function requestPublicSummary(input: { report: CivicReport }) {
+  const fallback: AiPublicSummaryResult = {
+    headline: input.report.title,
+    citizenSummary:
+      input.report.aiSummary ??
+      "This public proof record shows the issue, repair progress, contractor proof, and warranty state.",
+    currentStatus: input.report.status,
+    nextAction: input.report.recommendedAction ?? "Await the next verified civic workflow update.",
+    transparencyNote: "Reporter private identity stays protected while public proof remains visible.",
+  };
+
+  try {
+    const response = await fetch("/api/ai/public-summary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+
+    if (!response.ok) {
+      return fallback;
+    }
+
+    const payload = (await response.json()) as AgentResponse<AiPublicSummaryResult>;
+    return payload.result ?? fallback;
+  } catch (error) {
+    console.warn("CityPramaan public summary AI unavailable:", error);
+    return fallback;
+  }
+}
+
+export async function requestWarrantyRisk(input: {
+  report: CivicReport;
+  cityReports: CivicReport[];
+}) {
+  const fallback = buildWarrantyRiskFallback(input.report, input.cityReports);
+
+  try {
+    const response = await fetch("/api/ai/warranty-risk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+
+    if (!response.ok) {
+      return fallback;
+    }
+
+    const payload = (await response.json()) as AgentResponse<AiWarrantyRiskResult>;
+    return payload.result ?? fallback;
+  } catch (error) {
+    console.warn("CityPramaan warranty risk AI unavailable:", error);
+    return fallback;
+  }
+}
+
 function buildRepairAuditFallback(report: CivicReport, hasImage: boolean): AiRepairAuditResult {
   const isPower = report.issueCategory === "POWER_OUTAGE";
 
@@ -104,4 +176,37 @@ function buildRepairAuditFallback(report: CivicReport, hasImage: boolean): AiRep
     status: hasImage ? "NEEDS_REVIEW" : "FAIL",
     recommendation: "AI provider is unavailable, so ward admin should manually verify repair evidence.",
   };
+}
+
+function buildWarrantyRiskFallback(report: CivicReport, reports: CivicReport[]): AiWarrantyRiskResult {
+  const category = normalize(report.issueCategory);
+  const location = normalize(report.location).slice(0, 24);
+  const matches = reports.filter(
+    (item) =>
+      item.id !== report.id &&
+      normalize(item.issueCategory) === category &&
+      normalize(item.location).slice(0, 24) === location
+  );
+  const repeatProbability = Math.min(
+    95,
+    matches.length * 28 + (report.warrantyStatus === "ACTIVE" ? 22 : 0)
+  );
+
+  return {
+    riskLevel: repeatProbability > 85 ? "CRITICAL" : repeatProbability > 70 ? "HIGH" : repeatProbability > 35 ? "MEDIUM" : "LOW",
+    repeatProbability,
+    warrantyBreachLikely: repeatProbability > 65,
+    matchedReportIds: matches.map((item) => item.id).slice(0, 5),
+    reason: matches.length
+      ? "Similar issue records were found near the same location/category."
+      : "No strong repeat pattern found in available city reports.",
+    recommendedAction:
+      repeatProbability > 65
+        ? "Flag for warranty review and require stronger contractor proof."
+        : "Continue normal monitoring after repair approval.",
+  };
+}
+
+function normalize(value?: string) {
+  return (value ?? "").toLowerCase().replace(/\s+/g, " ").trim();
 }

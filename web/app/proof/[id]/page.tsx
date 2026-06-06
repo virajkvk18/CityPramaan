@@ -35,6 +35,12 @@ import {
 import { fetchBackendReports, mergeReportsById, saveReportEverywhere } from "@/src/lib/report-sync";
 import { useLanguage } from "@/src/lib/use-language";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
+import {
+  requestPublicSummary,
+  requestWarrantyRisk,
+  type AiPublicSummaryResult,
+  type AiWarrantyRiskResult,
+} from "@/src/lib/ai-agents-client";
 
 const statusTone: Record<CivicReport["status"], string> = {
   OPEN: "border-[#ffb4ab]/30 bg-[#ffb4ab]/10 text-[#ffb4ab]",
@@ -111,6 +117,39 @@ export default function ProofTimelinePage() {
   const primaryTransactionHash = report.repairTxHash ?? report.txHash;
   const [feedbackText, setFeedbackText] = useState("");
   const [actionMessage, setActionMessage] = useState("");
+  const [publicSummary, setPublicSummary] = useState<AiPublicSummaryResult | null>(null);
+  const [warrantyRisk, setWarrantyRisk] = useState<AiWarrantyRiskResult | null>(null);
+  const [agentStatus, setAgentStatus] = useState("Running public summary and warranty risk agents...");
+
+  useEffect(() => {
+    let active = true;
+
+    Promise.all([
+      requestPublicSummary({ report }),
+      requestWarrantyRisk({ report, cityReports: cityHistoryReports }),
+    ])
+      .then(([summary, risk]) => {
+        if (!active) {
+          return;
+        }
+
+        setPublicSummary(summary);
+        setWarrantyRisk(risk);
+        setAgentStatus("AI/RAG agents completed using civic rules.");
+      })
+      .catch((error) => {
+        if (!active) {
+          return;
+        }
+
+        console.warn("CityPramaan proof agents unavailable:", error);
+        setAgentStatus("AI/RAG agents fell back to local civic rules.");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [cityHistoryReports, report]);
 
   function getLatestReport() {
     try {
@@ -451,6 +490,59 @@ export default function ProofTimelinePage() {
           />
 
           <FabricReadyCard report={report} evidenceProofHash={evidenceProofHash} />
+
+          <div className="rounded-2xl border border-[#00dbe9]/20 bg-[#00dbe9]/5 p-5">
+            <div className="flex items-center gap-2 text-[#7df4ff]">
+              <Sparkles size={18} />
+              <p className="font-medium">Civic RAG public summary</p>
+            </div>
+            <p className="mt-2 text-xs text-zinc-500">{agentStatus}</p>
+            <h3 className="mt-4 text-lg font-semibold text-white">
+              {publicSummary?.headline ?? report.title}
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-zinc-300">
+              {publicSummary?.citizenSummary ?? report.aiSummary ?? "Preparing citizen-safe public summary..."}
+            </p>
+            <div className="mt-4 space-y-3">
+              <Score label="Current status" value={publicSummary?.currentStatus ?? report.status} />
+              <Score label="Next action" value={publicSummary?.nextAction ?? report.recommendedAction ?? "Pending"} />
+            </div>
+            <p className="mt-4 rounded-lg border border-white/10 bg-zinc-950/55 p-3 text-xs leading-5 text-zinc-400">
+              {publicSummary?.transparencyNote ?? "Reporter private identity stays protected while public proof remains visible."}
+            </p>
+          </div>
+
+          <div className={`rounded-2xl border p-5 ${warrantyRiskTone(warrantyRisk?.riskLevel)}`}>
+            <div className="flex items-center gap-2">
+              <ShieldAlert size={18} />
+              <p className="font-medium">Warranty Risk Agent</p>
+            </div>
+            <div className="mt-4 space-y-3">
+              <Score label="Risk level" value={warrantyRisk?.riskLevel ?? "Scanning"} />
+              <Score
+                label="Repeat probability"
+                value={
+                  typeof warrantyRisk?.repeatProbability === "number"
+                    ? `${warrantyRisk.repeatProbability}/100`
+                    : "Pending"
+                }
+              />
+              <Score
+                label="Warranty breach likely"
+                value={warrantyRisk?.warrantyBreachLikely ? "Yes" : "No"}
+              />
+              <Score
+                label="Matched reports"
+                value={warrantyRisk?.matchedReportIds.length ? warrantyRisk.matchedReportIds.join(", ") : "None"}
+              />
+            </div>
+            <p className="mt-4 text-sm leading-6">
+              {warrantyRisk?.reason ?? "Checking same-location repeat issue patterns with civic warranty rules."}
+            </p>
+            <p className="mt-3 rounded-lg border border-white/10 bg-zinc-950/55 p-3 text-sm leading-6">
+              {warrantyRisk?.recommendedAction ?? "Continue normal warranty monitoring."}
+            </p>
+          </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
             <div className="flex items-center gap-2">
@@ -932,6 +1024,20 @@ function Score({ label, value }: { label: string; value: string }) {
       <span className="text-right text-sm font-semibold">{value}</span>
     </div>
   );
+}
+
+function warrantyRiskTone(level?: AiWarrantyRiskResult["riskLevel"]) {
+  switch (level) {
+    case "CRITICAL":
+    case "HIGH":
+      return "border-[#ffb4ab]/30 bg-[#ffb4ab]/10 text-[#ffdad6]";
+    case "MEDIUM":
+      return "border-[#ffc08d]/30 bg-[#ffc08d]/10 text-[#ffdcc2]";
+    case "LOW":
+      return "border-[#00eb88]/25 bg-[#00eb88]/10 text-[#d3ffe7]";
+    default:
+      return "border-[#00dbe9]/20 bg-[#00dbe9]/5 text-zinc-300";
+  }
 }
 
 function MiniState({
