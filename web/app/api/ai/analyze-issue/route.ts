@@ -4,6 +4,7 @@ import {
   type InfrastructureAnalysis,
   type InfrastructureCategory,
 } from "@/src/lib/infrastructure-analyzer";
+import { formatRetrievedRulesForPrompt, retrieveCivicRules } from "@/src/lib/civic-rag-rules";
 
 type AnalyzeIssueBody = {
   description?: string;
@@ -38,6 +39,12 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as AnalyzeIssueBody;
   const input = normalizeInput(body);
   const fallback = analyzeInfrastructureIssue(input);
+  const retrievedRules = retrieveCivicRules({
+    text: `${input.description} ${input.imageName} ${input.location}`,
+    category: fallback.category,
+    city: input.cityName,
+    limit: 5,
+  });
   const provider = getProviderConfig();
 
   if (!provider) {
@@ -45,15 +52,16 @@ export async function POST(request: Request) {
       mode: "ruleset-fallback",
       provider: "local",
       fallbackReason: "No GROQ_API_KEY or XAI_API_KEY configured.",
+      retrievedRules,
       analysis: {
         ...fallback,
-        modelVersion: `${fallback.modelVersion} (no API key fallback)`,
+        modelVersion: `${fallback.modelVersion} + RAG (no API key fallback)`,
       },
     });
   }
 
   try {
-    const completion = await callVisionProvider(provider, input, fallback);
+    const completion = await callVisionProvider(provider, input, fallback, retrievedRules);
     const content = completion?.choices?.[0]?.message?.content;
 
     if (!content) {
@@ -66,6 +74,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       mode: "real-ai",
       provider: provider.provider,
+      retrievedRules,
       analysis,
     });
   } catch (error) {
@@ -75,9 +84,10 @@ export async function POST(request: Request) {
       mode: "ruleset-fallback",
       provider: provider.provider,
       fallbackReason: message,
+      retrievedRules,
       analysis: {
         ...fallback,
-        modelVersion: `${fallback.modelVersion} (AI fallback: ${provider.label})`,
+        modelVersion: `${fallback.modelVersion} + RAG (AI fallback: ${provider.label})`,
       },
     });
   }
@@ -124,7 +134,8 @@ function getProviderConfig(): ProviderConfig | null {
 async function callVisionProvider(
   provider: ProviderConfig,
   input: ReturnType<typeof normalizeInput>,
-  fallback: InfrastructureAnalysis
+  fallback: InfrastructureAnalysis,
+  retrievedRules: ReturnType<typeof retrieveCivicRules>
 ) {
   const content: Array<
     | { type: "text"; text: string }
@@ -132,7 +143,7 @@ async function callVisionProvider(
   > = [
     {
       type: "text",
-      text: buildPrompt(input, fallback),
+      text: buildPrompt(input, fallback, retrievedRules),
     },
   ];
 
@@ -191,14 +202,21 @@ async function callVisionProvider(
   }>;
 }
 
-function buildPrompt(input: ReturnType<typeof normalizeInput>, fallback: InfrastructureAnalysis) {
+function buildPrompt(
+  input: ReturnType<typeof normalizeInput>,
+  fallback: InfrastructureAnalysis,
+  retrievedRules: ReturnType<typeof retrieveCivicRules>
+) {
   return `
-Analyze this CityPramaan civic issue using the image when present.
+Analyze this CityPramaan civic issue using the image when present and the retrieved civic rules as ground truth.
 
 Citizen description: ${input.description}
 Image filename: ${input.imageName || "not provided"}
 Location: ${input.location}
 City: ${input.cityName}
+
+Retrieved civic rules / RAG context:
+${formatRetrievedRulesForPrompt(retrievedRules)}
 
 Allowed categories:
 ${allowedCategories.join(", ")}
@@ -214,6 +232,7 @@ Rules:
 - confidence, aiPriorityScore, imageEvidenceScore must be 0-100 numbers.
 - evidenceSignals must be 3-6 short strings.
 - publicSummary must mention the issue, location, and public proof tracking.
+- slaHours and warrantyRequired must follow retrieved civic rules when relevant.
 - If image evidence is unclear, say so in evidenceSignals and reduce imageEvidenceScore.
 - Prefer practical Indian municipal actions.
 

@@ -38,6 +38,7 @@ import {
   specializationLabels,
   subscribeContractors,
 } from "@/src/lib/contractor-storage";
+import { requestContractorMatch, type AiContractorMatchResult } from "@/src/lib/ai-agents-client";
 import {
   connectWallet,
   formatWalletError,
@@ -135,16 +136,48 @@ export default function PendingApprovalPage() {
     reviewReports.find((report) => report.status === "REPAIR_SUBMITTED") ??
     reviewReports[0];
   const hasRepairProof = Boolean(selectedReport?.repairImageDataUrl || selectedReport?.repairImageName);
-  const suggestedContractors = selectedReport ? findSuggestedContractors(selectedReport, contractors) : contractors;
+  const suggestedContractors = useMemo(
+    () => (selectedReport ? findSuggestedContractors(selectedReport, contractors) : contractors),
+    [contractors, selectedReport]
+  );
   const [selectedContractorId, setSelectedContractorId] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
   const [roleWalletAddress, setRoleWalletAddress] = useState("");
   const [roleMessage, setRoleMessage] = useState("Connect owner wallet to manage contract roles.");
   const [ownerMode, setOwnerMode] = useState(false);
   const [chainRecords, setChainRecords] = useState<Record<string, OnChainProofRecord>>({});
+  const [aiContractorMatch, setAiContractorMatch] = useState<AiContractorMatchResult | null>(null);
   const activeContractor =
     suggestedContractors.find((contractor) => contractor?.contractorId === selectedContractorId) ??
     suggestedContractors[0];
+
+  useEffect(() => {
+    if (!selectedReport || !suggestedContractors.length) {
+      return;
+    }
+
+    let active = true;
+
+    requestContractorMatch({
+      report: selectedReport,
+      contractors: suggestedContractors,
+    })
+      .then((match) => {
+        if (!active) {
+          return;
+        }
+
+        setAiContractorMatch(match);
+
+        if (match.recommendedContractorId) {
+          setSelectedContractorId(match.recommendedContractorId);
+        }
+      })
+
+    return () => {
+      active = false;
+    };
+  }, [selectedReport, suggestedContractors]);
 
   useEffect(() => {
     if (!wallet.connected) {
@@ -600,7 +633,9 @@ export default function PendingApprovalPage() {
                             Suggested contractors for this area/category
                           </p>
                           <p className="mt-1 text-xs text-[#dbc2b0]/65">
-                            Matched against {selectedReport.ward}, {selectedReport.issueCategory ?? "GENERAL"}, and issue location.
+                            {aiContractorMatch
+                                ? `AI recommends ${aiContractorMatch.contractorName} with ${aiContractorMatch.matchScore}/100 match score.`
+                                : `Matched against ${selectedReport.ward}, ${selectedReport.issueCategory ?? "GENERAL"}, and issue location.`}
                           </p>
                         </div>
                         <span className="rounded border border-[#00dbe9]/25 bg-[#00dbe9]/10 px-2 py-1 font-mono text-[10px] text-[#7df4ff]">
@@ -649,6 +684,13 @@ export default function PendingApprovalPage() {
                           </button>
                         ))}
                       </div>
+                      {aiContractorMatch && (
+                        <div className="mt-4 rounded border border-[#00dbe9]/25 bg-[#00dbe9]/10 p-3 text-xs leading-5 text-[#d3fbff]">
+                          <p className="font-semibold text-[#7df4ff]">AI Contractor Matching Agent</p>
+                          <p className="mt-1">{aiContractorMatch.reason}</p>
+                          <p className="mt-1 text-[#ffc08d]">{aiContractorMatch.riskNote}</p>
+                        </div>
+                      )}
                       <button
                         type="button"
                         onClick={() => assignContractor(selectedReport)}

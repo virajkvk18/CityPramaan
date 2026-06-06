@@ -1,0 +1,248 @@
+import {
+  formatRetrievedRulesForPrompt,
+  retrieveCivicRules,
+  type RetrievedRule,
+} from "./civic-rag-rules";
+import type { ContractorProfile, CivicReport } from "./mock-data";
+
+export type AiProviderConfig = {
+  provider: "groq" | "xai";
+  label: string;
+  endpoint: string;
+  apiKey: string;
+  model: string;
+};
+
+export type AiAgentResult<T> = {
+  mode: "real-ai" | "ruleset-fallback";
+  provider: "groq" | "xai" | "local";
+  fallbackReason?: string;
+  retrievedRules: RetrievedRule[];
+  result: T;
+};
+
+export function getAiProviderConfig(): AiProviderConfig | null {
+  const groqKey = process.env.GROQ_API_KEY;
+
+  if (groqKey) {
+    return {
+      provider: "groq",
+      label: "Groq",
+      endpoint: "https://api.groq.com/openai/v1/chat/completions",
+      apiKey: groqKey,
+      model: process.env.GROQ_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct",
+    };
+  }
+
+  const xaiKey = process.env.XAI_API_KEY;
+
+  if (xaiKey) {
+    return {
+      provider: "xai",
+      label: "xAI",
+      endpoint: "https://api.x.ai/v1/chat/completions",
+      apiKey: xaiKey,
+      model: process.env.XAI_MODEL || "grok-2-vision-1212",
+    };
+  }
+
+  return null;
+}
+
+export async function runJsonAgent<T>({
+  agentName,
+  task,
+  input,
+  fallback,
+  schema,
+  imageDataUrls = [],
+  ruleQuery,
+}: {
+  agentName: string;
+  task: string;
+  input: unknown;
+  fallback: T;
+  schema: string;
+  imageDataUrls?: string[];
+  ruleQuery: {
+    text?: string;
+    category?: string;
+    city?: string;
+    report?: Partial<CivicReport>;
+    contractor?: Partial<ContractorProfile>;
+    limit?: number;
+  };
+}): Promise<AiAgentResult<T>> {
+  const retrievedRules = retrieveCivicRules(ruleQuery);
+  const provider = getAiProviderConfig();
+
+  if (!provider) {
+    return {
+      mode: "ruleset-fallback",
+      provider: "local",
+      fallbackReason: "No GROQ_API_KEY or XAI_API_KEY configured.",
+      retrievedRules,
+      result: fallback,
+    };
+  }
+
+  try {
+    const raw = await callChatCompletion({
+      provider,
+      agentName,
+      task,
+      input,
+      schema,
+      retrievedRules,
+      imageDataUrls,
+    });
+
+    return {
+      mode: "real-ai",
+      provider: provider.provider,
+      retrievedRules,
+      result: parseJsonObject(raw) as T,
+    };
+  } catch (error) {
+    return {
+      mode: "ruleset-fallback",
+      provider: provider.provider,
+      fallbackReason: error instanceof Error ? error.message : "AI provider request failed.",
+      retrievedRules,
+      result: fallback,
+    };
+  }
+}
+
+async function callChatCompletion({
+  provider,
+  agentName,
+  task,
+  input,
+  schema,
+  retrievedRules,
+  imageDataUrls,
+}: {
+  provider: AiProviderConfig;
+  agentName: string;
+  task: string;
+  input: unknown;
+  schema: string;
+  retrievedRules: RetrievedRule[];
+  imageDataUrls: string[];
+}) {
+  const content: Array<
+    | { type: "text"; text: string }
+    | { type: "image_url"; image_url: { url: string } }
+  > = [
+    {
+      type: "text",
+      text: `
+Agent: ${agentName}
+Task: ${task}
+
+Retrieved CityPramaan civic rules:
+${formatRetrievedRulesForPrompt(retrievedRules)}
+
+Input data:
+${JSON.stringify(input, null, 2)}
+
+Return only compact valid JSON. Do not add markdown.
+JSON schema / required keys:
+${schema}
+`.trim(),
+    },
+  ];
+
+  for (const imageDataUrl of imageDataUrls.filter((url) => url && url.length < 3_900_000).slice(0, 2)) {
+    content.push({
+      type: "image_url",
+      image_url: { url: imageDataUrl },
+    });
+  }
+
+  const payload: Record<string, unknown> = {
+    model: provider.model,
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are a CityPramaan civic AI agent for Indian municipal issue verification. Use the retrieved rules as ground truth. Return only valid JSON.",
+      },
+      {
+        role: "user",
+        content,
+      },
+    ],
+    temperature: 0.12,
+    response_format: { type: "json_object" },
+  };
+
+  if (provider.provider === "groq") {
+    payload.max_completion_tokens = 1000;
+  } else {
+    payload.max_tokens = 1000;
+  }
+
+  const response = await fetch(provider.endpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${provider.apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`${provider.label} failed with ${response.status}: ${text.slice(0, 240)}`);
+  }
+
+  const json = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  const contentText = json.choices?.[0]?.message?.content;
+
+  if (!contentText) {
+    throw new Error(`${provider.label} returned an empty response.`);
+  }
+
+  return contentText;
+}
+
+export function parseJsonObject(content: string) {
+  try {
+    return JSON.parse(content) as Record<string, unknown>;
+  } catch {
+    const match = content.match(/\{[\s\S]*\}/);
+
+    if (!match) {
+      throw new Error("AI response was not JSON.");
+    }
+
+    return JSON.parse(match[0]) as Record<string, unknown>;
+  }
+}
+
+export function clampNumber(value: unknown, fallback: number, max = 100) {
+  const number = typeof value === "number" ? value : Number(value);
+
+  if (!Number.isFinite(number)) {
+    return fallback;
+  }
+
+  return Math.max(0, Math.min(max, Math.round(number)));
+}
+
+export function asString(value: unknown, fallback: string) {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+export function asStringArray(value: unknown, fallback: string[]) {
+  if (!Array.isArray(value)) {
+    return fallback;
+  }
+
+  const values = value.filter((item): item is string => typeof item === "string" && Boolean(item.trim()));
+  return values.length ? values.slice(0, 8) : fallback;
+}

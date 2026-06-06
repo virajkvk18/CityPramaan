@@ -42,6 +42,7 @@ import { useLanguage } from "@/src/lib/use-language";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 import { getAuthSnapshot, getCurrentUser, roleLabels, subscribeAuth } from "@/src/lib/auth-storage";
 import { getContractorsSnapshot, specializationLabels, subscribeContractors } from "@/src/lib/contractor-storage";
+import { requestRepairAudit, type AiRepairAuditResult } from "@/src/lib/ai-agents-client";
 import {
   buildExplorerTxUrl,
   connectWallet,
@@ -134,12 +135,14 @@ export default function ContractorPage() {
   const [repairNotes, setRepairNotes] = useState("");
   const [repairImageLoading, setRepairImageLoading] = useState(false);
   const [audited, setAudited] = useState(false);
+  const [repairAuditResult, setRepairAuditResult] = useState<AiRepairAuditResult | null>(null);
   const [submittedId, setSubmittedId] = useState("");
   const [submittedTxUrl, setSubmittedTxUrl] = useState("");
   const [auditProcessing, setAuditProcessing] = useState(false);
   const [actionMessage, setActionMessage] = useState(
     `${t("selectedCase")}, ${t("uploadAfterRepairEvidence")}, then submit proof for issuer approval.`
   );
+  const displayedRepairAudit = repairAuditResult ?? selectedReport?.repairAudit ?? null;
 
   function updateWorkStatus(report: CivicReport, stage: "accepted" | "started" | "completed") {
     const now = new Date();
@@ -195,6 +198,7 @@ export default function ContractorPage() {
     setRepairImageDataUrl("");
     setRepairImageLoading(true);
     setAudited(false);
+    setRepairAuditResult(null);
     setSubmittedId("");
     setSubmittedTxUrl("");
     setActionMessage("Preparing repair proof image for public record...");
@@ -211,26 +215,44 @@ export default function ContractorPage() {
     }
   }
 
-  function runRepairAudit() {
-    if (!repairImage || !selectedReport) {
+  async function performRepairAudit(report = selectedReport) {
+    if (!repairImage || !report) {
       setActionMessage(t("uploadAfterRepairEvidence"));
-      return;
+      return null;
     }
 
     if (repairImageLoading || !repairImageDataUrl) {
       setActionMessage("Repair proof image is still being prepared. Please wait a moment.");
-      return;
+      return null;
     }
 
     setAudited(false);
+    setRepairAuditResult(null);
     setAuditProcessing(true);
-    setActionMessage(t("aiRepairAudit"));
+    setActionMessage("Running real AI repair audit with civic RAG rules...");
 
-    window.setTimeout(() => {
+    try {
+      const result = await requestRepairAudit({
+        report,
+        repairImageName: repairImage,
+        repairImageDataUrl,
+        repairNotes,
+        contractorName: currentContractor?.name ?? report.contractor,
+      });
+
+      setRepairAuditResult(result);
       setAudited(true);
+      setActionMessage(
+        `${t("aiRepairAudit")} ${t("ready")}. AI score ${result.qualityScore}/100, status ${result.status}. Proof can now be sent for issuer approval.`
+      );
+      return result;
+    } finally {
       setAuditProcessing(false);
-      setActionMessage(`${t("aiRepairAudit")} ${t("ready")}. Proof can now be sent for issuer approval.`);
-    }, 900);
+    }
+  }
+
+  function runRepairAudit() {
+    void performRepairAudit();
   }
 
   function submitRepairProof() {
@@ -255,22 +277,18 @@ export default function ContractorPage() {
     }
 
     if (!audited) {
-      setAudited(false);
-      setAuditProcessing(true);
-      setActionMessage(`${t("aiRepairAudit")}... preparing proof for issuer approval.`);
-
-      window.setTimeout(() => {
-        setAudited(true);
-        setAuditProcessing(false);
-        void submitProofForApproval(selectedReport);
-      }, 900);
+      performRepairAudit(selectedReport).then((result) => {
+        if (result) {
+          void submitProofForApproval(selectedReport, result);
+        }
+      });
       return;
     }
 
-    void submitProofForApproval(selectedReport);
+    void submitProofForApproval(selectedReport, repairAuditResult);
   }
 
-  async function submitProofForApproval(report: CivicReport) {
+  async function submitProofForApproval(report: CivicReport, auditResult = repairAuditResult) {
     const now = new Date();
     const isPowerOutage = report.issueCategory === "POWER_OUTAGE";
     const reportCity = getCityByKey(report.cityKey ?? selectedCity.key);
@@ -302,18 +320,26 @@ export default function ContractorPage() {
       return;
     }
 
-    const repairAudit = {
-      materialMatch: isPowerOutage ? "Restoration signal verified" : "95.4%",
-      repairIntegrity: isPowerOutage ? "Power Restored" : "High",
-      geoVariance: "+/-0.5 m",
-      beforeAfterDelta: isPowerOutage ? "Outage area restored" : "84% visible damage reduction",
-      closureConfidence: isPowerOutage ? "94.1%" : "92.7%",
-      visibleDamageRemaining: isPowerOutage ? "No active outage signal" : "Low",
-      recommendation:
-        isPowerOutage
-          ? "Utility restoration proof indicates the transformer / feeder fault is resolved. Case is ready for issuer confirmation and public restoration update."
-          : "AI compared the citizen issue photo with contractor repair proof. The damaged surface appears filled, GPS variance is low, and the case is ready for citizen owner verification.",
-    };
+    const repairAudit = auditResult
+      ? {
+          materialMatch: auditResult.materialMatch,
+          repairIntegrity: auditResult.repairIntegrity,
+          geoVariance: auditResult.geoVariance,
+          beforeAfterDelta: auditResult.beforeAfterDelta,
+          closureConfidence: auditResult.closureConfidence,
+          visibleDamageRemaining: auditResult.visibleDamageRemaining,
+          recommendation: auditResult.recommendation,
+        }
+      : {
+          materialMatch: isPowerOutage ? "Restoration signal verified" : "AI audit pending",
+          repairIntegrity: isPowerOutage ? "Power Restored" : "Needs issuer review",
+          geoVariance: "Location consistency pending",
+          beforeAfterDelta: isPowerOutage ? "Outage area restored" : "After-repair proof submitted",
+          closureConfidence: isPowerOutage ? "86%" : "74%",
+          visibleDamageRemaining: "Unknown",
+          recommendation:
+            "Repair proof was submitted, but AI audit details were unavailable. Ward Admin should manually verify before approval.",
+        };
     const updated = appendReportEvent(
       {
         ...report,
@@ -325,6 +351,7 @@ export default function ContractorPage() {
         warrantyStatus: "NOT_ACTIVE",
         workCompletedAt: report.workCompletedAt ?? now.toISOString(),
         warrantyDaysLeft: null,
+        warrantyPeriodDays: auditResult?.warrantyDays ?? report.warrantyPeriodDays,
         warrantyActivatedAt: undefined,
         warrantyExpiresAt: undefined,
         repairNotes: repairNotes.trim() || report.repairNotes,
@@ -722,13 +749,19 @@ export default function ContractorPage() {
                         </div>
                       ) : (
                         <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-                          <Audit label={t("asset")} value="95.4%" tone="emerald" />
-                          <Audit label={t("repairIntegrity")} value="High" tone="emerald" />
-                          <Audit label={t("geoMatch")} value="+/-0.5 m" tone="cyan" />
-                          <Audit label={t("warranty")} value="90 Days" tone="amber" />
-                          <Audit label="AI closure confidence" value="92.7%" tone="emerald" />
-                          <Audit label="Visible damage left" value="Low" tone="cyan" />
+                          <Audit label={t("asset")} value={displayedRepairAudit?.materialMatch ?? "Pending"} tone="emerald" />
+                          <Audit label={t("repairIntegrity")} value={displayedRepairAudit?.repairIntegrity ?? "Pending"} tone="emerald" />
+                          <Audit label={t("geoMatch")} value={displayedRepairAudit?.geoVariance ?? "Pending"} tone="cyan" />
+                          <Audit label={t("warranty")} value={repairAuditResult?.warrantyDays ? `${repairAuditResult.warrantyDays} Days` : `${selectedReport.warrantyPeriodDays ?? 30} Days`} tone="amber" />
+                          <Audit label="AI closure confidence" value={displayedRepairAudit?.closureConfidence ?? "Pending"} tone="emerald" />
+                          <Audit label="Visible damage left" value={displayedRepairAudit?.visibleDamageRemaining ?? "Pending"} tone="cyan" />
                         </div>
+                      )}
+
+                      {displayedRepairAudit?.recommendation && !auditProcessing && (
+                        <p className="mt-4 rounded border border-[#00dbe9]/20 bg-[#00dbe9]/10 p-3 text-sm leading-6 text-[#d3fbff]">
+                          {displayedRepairAudit.recommendation}
+                        </p>
                       )}
 
                       {submittedId === selectedReport.id && (
