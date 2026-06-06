@@ -1,6 +1,16 @@
 "use client";
 
 import type { ContractorProfile, CivicReport } from "./mock-data";
+import type { RetrievedRule } from "./civic-rag-rules";
+
+export type AiAgentAudit = {
+  mode: "real-ai" | "ruleset-fallback";
+  provider: string;
+  fallbackReason?: string;
+  agentName: string;
+  providerLabel: string;
+  retrievedRules: Array<Pick<RetrievedRule, "id" | "title" | "category" | "ruleText" | "slaHours" | "warrantyDays" | "matchScore">>;
+};
 
 export type AiRepairAuditResult = {
   materialMatch: string;
@@ -13,6 +23,7 @@ export type AiRepairAuditResult = {
   warrantyDays: number;
   status: "PASS" | "NEEDS_REVIEW" | "FAIL";
   recommendation: string;
+  aiAudit?: AiAgentAudit;
 };
 
 export type AiContractorMatchResult = {
@@ -21,6 +32,7 @@ export type AiContractorMatchResult = {
   matchScore: number;
   reason: string;
   riskNote: string;
+  aiAudit?: AiAgentAudit;
 };
 
 export type AiPublicSummaryResult = {
@@ -29,6 +41,7 @@ export type AiPublicSummaryResult = {
   currentStatus: string;
   nextAction: string;
   transparencyNote: string;
+  aiAudit?: AiAgentAudit;
 };
 
 export type AiWarrantyRiskResult = {
@@ -38,12 +51,19 @@ export type AiWarrantyRiskResult = {
   matchedReportIds: string[];
   reason: string;
   recommendedAction: string;
+  aiAudit?: AiAgentAudit;
 };
 
 type AgentResponse<T> = {
   mode?: "real-ai" | "ruleset-fallback";
   provider?: string;
   fallbackReason?: string;
+  retrievedRules?: AiAgentAudit["retrievedRules"];
+  agentTrace?: {
+    agentName?: string;
+    retrievedRuleIds?: string[];
+    providerLabel?: string;
+  };
   result?: T;
 };
 
@@ -68,7 +88,7 @@ export async function requestRepairAudit(input: {
     }
 
     const payload = (await response.json()) as AgentResponse<AiRepairAuditResult>;
-    return payload.result ?? fallback;
+    return withAudit<AiRepairAuditResult>(payload.result ?? fallback, payload, fallback);
   } catch (error) {
     console.warn("CityPramaan repair audit AI unavailable:", error);
     return fallback;
@@ -79,7 +99,7 @@ export async function requestContractorMatch(input: {
   report: CivicReport;
   contractors: ContractorProfile[];
 }) {
-  const fallback = {
+  const fallback: AiContractorMatchResult = {
     recommendedContractorId: input.contractors[0]?.contractorId ?? "",
     contractorName: input.contractors[0]?.name ?? "No contractor available",
     matchScore: input.contractors[0] ? 65 : 0,
@@ -99,7 +119,7 @@ export async function requestContractorMatch(input: {
     }
 
     const payload = (await response.json()) as AgentResponse<AiContractorMatchResult>;
-    return payload.result ?? fallback;
+    return withAudit<AiContractorMatchResult>(payload.result ?? fallback, payload, fallback);
   } catch (error) {
     console.warn("CityPramaan contractor matching AI unavailable:", error);
     return fallback;
@@ -129,7 +149,7 @@ export async function requestPublicSummary(input: { report: CivicReport }) {
     }
 
     const payload = (await response.json()) as AgentResponse<AiPublicSummaryResult>;
-    return payload.result ?? fallback;
+    return withAudit<AiPublicSummaryResult>(payload.result ?? fallback, payload, fallback);
   } catch (error) {
     console.warn("CityPramaan public summary AI unavailable:", error);
     return fallback;
@@ -154,7 +174,7 @@ export async function requestWarrantyRisk(input: {
     }
 
     const payload = (await response.json()) as AgentResponse<AiWarrantyRiskResult>;
-    return payload.result ?? fallback;
+    return withAudit<AiWarrantyRiskResult>(payload.result ?? fallback, payload, fallback);
   } catch (error) {
     console.warn("CityPramaan warranty risk AI unavailable:", error);
     return fallback;
@@ -209,4 +229,26 @@ function buildWarrantyRiskFallback(report: CivicReport, reports: CivicReport[]):
 
 function normalize(value?: string) {
   return (value ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function withAudit<T extends { aiAudit?: AiAgentAudit }>(
+  result: T,
+  payload: AgentResponse<T>,
+  fallback: T
+) {
+  if (!payload.mode && !payload.provider && !payload.retrievedRules && !payload.agentTrace) {
+    return result;
+  }
+
+  return {
+    ...result,
+    aiAudit: {
+      mode: payload.mode ?? "ruleset-fallback",
+      provider: payload.provider ?? "local",
+      fallbackReason: payload.fallbackReason,
+      agentName: payload.agentTrace?.agentName ?? "CityPramaan AI Agent",
+      providerLabel: payload.agentTrace?.providerLabel ?? payload.provider ?? "Local ruleset",
+      retrievedRules: payload.retrievedRules ?? fallback.aiAudit?.retrievedRules ?? [],
+    },
+  };
 }

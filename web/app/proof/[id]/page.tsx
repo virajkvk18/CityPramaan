@@ -38,6 +38,7 @@ import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 import {
   requestPublicSummary,
   requestWarrantyRisk,
+  type AiAgentAudit,
   type AiPublicSummaryResult,
   type AiWarrantyRiskResult,
 } from "@/src/lib/ai-agents-client";
@@ -510,6 +511,7 @@ export default function ProofTimelinePage() {
             <p className="mt-4 rounded-lg border border-white/10 bg-zinc-950/55 p-3 text-xs leading-5 text-zinc-400">
               {publicSummary?.transparencyNote ?? "Reporter private identity stays protected while public proof remains visible."}
             </p>
+            {publicSummary?.aiAudit && <AgentAuditPanel audit={publicSummary.aiAudit} />}
           </div>
 
           <div className={`rounded-2xl border p-5 ${warrantyRiskTone(warrantyRisk?.riskLevel)}`}>
@@ -542,6 +544,7 @@ export default function ProofTimelinePage() {
             <p className="mt-3 rounded-lg border border-white/10 bg-zinc-950/55 p-3 text-sm leading-6">
               {warrantyRisk?.recommendedAction ?? "Continue normal warranty monitoring."}
             </p>
+            {warrantyRisk?.aiAudit && <AgentAuditPanel audit={warrantyRisk.aiAudit} />}
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
@@ -1038,6 +1041,38 @@ function warrantyRiskTone(level?: AiWarrantyRiskResult["riskLevel"]) {
     default:
       return "border-[#00dbe9]/20 bg-[#00dbe9]/5 text-zinc-300";
   }
+}
+
+function AgentAuditPanel({ audit }: { audit: AiAgentAudit }) {
+  return (
+    <div className="mt-4 rounded-lg border border-white/10 bg-zinc-950/55 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#7df4ff]">
+          Explainability audit
+        </p>
+        <span className="rounded border border-white/10 bg-black/35 px-2 py-1 font-mono text-[10px] uppercase text-zinc-300">
+          {audit.mode} | {audit.providerLabel}
+        </span>
+      </div>
+      {audit.fallbackReason && (
+        <p className="mt-2 text-xs leading-5 text-[#ffc08d]">{audit.fallbackReason}</p>
+      )}
+      <div className="mt-3 space-y-2">
+        {audit.retrievedRules.slice(0, 3).map((rule) => (
+          <div key={rule.id} className="rounded border border-white/10 bg-black/25 p-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-white">{rule.title}</p>
+              <span className="font-mono text-[10px] text-[#00eb88]">{rule.matchScore}</span>
+            </div>
+            <p className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-400">{rule.ruleText}</p>
+            <p className="mt-1 font-mono text-[10px] uppercase text-zinc-500">
+              {rule.category} | SLA {rule.slaHours ?? "contextual"}h | Warranty {rule.warrantyDays ?? "contextual"}d
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function MiniState({

@@ -34,7 +34,7 @@ import { fetchBackendReports, mergeReportsById } from "@/src/lib/report-sync";
 import { translate } from "@/src/lib/language-context";
 import { getLanguageSnapshot, subscribeLanguage } from "@/src/lib/language-storage";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
-import { requestWarrantyRisk, type AiWarrantyRiskResult } from "@/src/lib/ai-agents-client";
+import { requestWarrantyRisk, type AiAgentAudit, type AiWarrantyRiskResult } from "@/src/lib/ai-agents-client";
 
 export default function WarrantyScannerPage() {
   const linkedIssueId = useSyncExternalStore(
@@ -390,6 +390,7 @@ export default function WarrantyScannerPage() {
                     <p className="mt-3 rounded border border-white/10 bg-black/25 p-3 text-sm leading-6">
                       {warrantyRisk?.recommendedAction ?? "Run scan to generate warranty action."}
                     </p>
+                    {warrantyRisk?.aiAudit && <AgentAuditPanel audit={warrantyRisk.aiAudit} />}
                   </div>
                 </section>
 
@@ -826,6 +827,36 @@ function warrantyRiskPanelTone(level?: AiWarrantyRiskResult["riskLevel"]) {
     default:
       return "border-[#00dbe9]/20 bg-[#00dbe9]/10 text-[#d3fbff]";
   }
+}
+
+function AgentAuditPanel({ audit }: { audit: AiAgentAudit }) {
+  return (
+    <div className="mt-4 rounded border border-white/10 bg-black/25 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em]">
+          Explainability audit
+        </p>
+        <span className="rounded border border-white/10 bg-black/35 px-2 py-1 font-mono text-[10px] uppercase">
+          {audit.mode} | {audit.providerLabel}
+        </span>
+      </div>
+      {audit.fallbackReason && <p className="mt-2 text-xs leading-5 text-[#ffc08d]">{audit.fallbackReason}</p>}
+      <div className="mt-3 grid gap-2 md:grid-cols-2">
+        {audit.retrievedRules.slice(0, 4).map((rule) => (
+          <div key={rule.id} className="rounded border border-white/10 bg-black/25 p-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-white">{rule.title}</p>
+              <span className="font-mono text-[10px] text-[#00eb88]">{rule.matchScore}</span>
+            </div>
+            <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#dbc2b0]/75">{rule.ruleText}</p>
+            <p className="mt-1 font-mono text-[10px] uppercase text-[#dbc2b0]/50">
+              {rule.category} | SLA {rule.slaHours ?? "contextual"}h | Warranty {rule.warrantyDays ?? "contextual"}d
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function Diagnostic({
