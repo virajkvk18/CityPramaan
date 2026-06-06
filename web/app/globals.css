@@ -3361,6 +3361,52 @@ nav.fixed {
   color: var(--gov-navy) !important;
 }
 
+.cp-dark-landing-content,
+.cp-dark-landing-content .cp-landing-section {
+  color: #ffffff !important;
+}
+
+.cp-dark-landing-content .cp-landing-section h2,
+.cp-dark-landing-content .cp-landing-section h2.text-white,
+.cp-dark-landing-content .cp-landing-section .text-white {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.cp-dark-landing-content .cp-landing-section h3,
+.cp-dark-landing-content .cp-landing-section h3.text-white {
+  color: #f8fbff !important;
+  -webkit-text-fill-color: #f8fbff !important;
+}
+
+.cp-dark-landing-content .cp-landing-section p,
+.cp-dark-landing-content .cp-landing-section p.text-white,
+.cp-dark-landing-content .cp-landing-section [class*="text-white/"],
+.cp-dark-landing-content .cp-landing-section [class*="text-[#dbc2b0]"],
+.cp-dark-landing-content .cp-landing-section [class*="text-[#e5e2e3]"] {
+  color: rgba(234, 242, 255, 0.86) !important;
+  -webkit-text-fill-color: rgba(234, 242, 255, 0.86) !important;
+}
+
+.cp-dark-landing-content .cp-landing-section .cp-kicker-glow {
+  color: #00dbe9 !important;
+  -webkit-text-fill-color: #00dbe9 !important;
+}
+
+.cp-dark-landing-content .cp-signal-chip {
+  color: #071145 !important;
+  -webkit-text-fill-color: #071145 !important;
+}
+
+.cp-dark-landing-content .cp-landing-section .cp-article-card,
+.cp-dark-landing-content .cp-landing-section .cp-stat-color-card,
+.cp-dark-landing-content .cp-landing-section .cp-workflow-card,
+.cp-dark-landing-content .cp-landing-section .cp-public-proof-rule,
+.cp-dark-landing-content .cp-landing-section .cp-proof-node {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
 .cp-action-row,
 .cp-mobile-landing-nav {
   scrollbar-width: none;
