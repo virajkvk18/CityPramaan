@@ -397,6 +397,15 @@ export function formatWalletError(error: unknown) {
     return "Transaction was rejected in MetaMask. Please open MetaMask and approve the signature/transaction to continue.";
   }
 
+  if (
+    code === -32002 ||
+    lower.includes("could not coalesce") ||
+    lower.includes("rpc endpoint returned too many errors") ||
+    lower.includes("eth_blocknumber")
+  ) {
+    return "Tenderly RPC is temporarily overloaded or rate-limited. Your local profile/report data is safe. Wait 1 minute, keep only one app tab open, confirm MetaMask is on CityPramaan Tenderly TestNet, then try Anchor on blockchain again.";
+  }
+
   if (lower.includes("insufficient funds")) {
     return "This wallet has no testnet gas for the selected network. Top up the Tenderly account or use the funded owner wallet.";
   }
