@@ -25,7 +25,7 @@ curl -X POST http://localhost:5000/api/auth/register \
   -d "{\"email\":\"citizen@example.com\",\"password\":\"password123\",\"name\":\"Citizen One\",\"contactNumber\":\"+919999999999\",\"role\":\"USER\"}"
 ```
 
-The account is created with `emailVerified: false`. A 6-digit code is emailed through SMTP. In local development without SMTP, the code is printed to the server console and returned as `devVerificationCode`.
+The account is created with `emailVerified: false`. A 6-digit code is emailed through Resend or SMTP. In local development without an email provider, the code is printed to the server console and returned as `devVerificationCode`.
 
 Verify email:
 
@@ -95,4 +95,15 @@ Sign the returned `message`, then post `walletAddress`, `message`, and `signatur
 
 ## Production Notes
 
-Set a strong `JWT_SECRET` and SMTP settings. Production refuses console-only OTP delivery. If `ADMIN_INVITE_CODE` or `CONTRACTOR_INVITE_CODE` is set, self-registration for those roles must include the matching `inviteCode`.
+Set a strong `JWT_SECRET` and a real email provider. Production refuses console-only OTP delivery.
+
+On Render free web services, prefer Resend:
+
+```env
+RESEND_API_KEY=re_...
+RESEND_FROM=CityPramaan <no-reply@yourdomain.com>
+```
+
+Leave `SMTP_*` blank unless your host allows outbound SMTP or your SMTP provider supports an unblocked port. Gmail SMTP uses ports `465` or `587`, which are blocked for Render free web services.
+
+If `ADMIN_INVITE_CODE` or `CONTRACTOR_INVITE_CODE` is set, self-registration for those roles must include the matching `inviteCode`.

@@ -72,6 +72,11 @@ export const env = {
   smtpFrom: process.env.SMTP_FROM || 'CityPramaan <no-reply@citypramaan.local>',
   smtpTimeoutMs: getNumber('SMTP_TIMEOUT_MS', 10000),
   smtpForceIpv4: getBoolean('SMTP_FORCE_IPV4', true),
+  resendApiKey: process.env.RESEND_API_KEY || '',
+  resendFrom:
+    process.env.RESEND_FROM ||
+    process.env.SMTP_FROM ||
+    'CityPramaan <no-reply@citypramaan.local>',
 };
 
 export function hasPinataConfig(): boolean {
@@ -80,4 +85,8 @@ export function hasPinataConfig(): boolean {
 
 export function hasSmtpConfig(): boolean {
   return Boolean(env.smtpHost && env.smtpUser && env.smtpPass);
+}
+
+export function hasResendConfig(): boolean {
+  return Boolean(env.resendApiKey && env.resendFrom);
 }

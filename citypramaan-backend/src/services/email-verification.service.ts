@@ -10,7 +10,7 @@ const EMAIL_PATTERN =
 
 export interface EmailVerificationIssue {
   expiresAt: string;
-  delivery: 'smtp' | 'console';
+  delivery: 'resend' | 'smtp' | 'console';
   devVerificationCode?: string;
 }
 
