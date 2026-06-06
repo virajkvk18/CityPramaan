@@ -181,12 +181,11 @@ export default function ReportIssuePage() {
   const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const tr = (key: Parameters<typeof translate>[1]) => translate(languageSnapshot, key);
   const [ethereumAvailable, setEthereumAvailable] = useState(false);
-  const localProofMode = wallet.demo || !ethereumAvailable;
   const walletLabel = wallet.connected
     ? shortWalletAddress(wallet.address)
-    : localProofMode
-      ? "Local proof mode ready"
-      : "Connect MetaMask to sign";
+    : ethereumAvailable
+      ? "Connect MetaMask to sign"
+      : "Install MetaMask to sign";
   const [imageName, setImageName] = useState("");
   const [imageDataUrl, setImageDataUrl] = useState("");
   const [imageLoading, setImageLoading] = useState(false);
@@ -1229,18 +1228,18 @@ export default function ReportIssuePage() {
             <div className="mb-5 space-y-2 rounded border border-white/5 bg-black/40 p-4">
               <SignRow
                 label="Contract"
-                value={localProofMode ? "CityPramaan Proof Registry" : "CityPramaanRegistry"}
+                value="CityPramaanRegistry"
               />
               <SignRow label="Method" value="createReport(publicId, reportHash)" />
               <SignRow label="Issue" value={aiResult?.issueType ?? "Infrastructure issue"} />
               <SignRow label="Proof Tag" value={aiResult?.proofTag ?? "CIVIC_ASSET_PROOF"} />
               <SignRow
                 label="Network"
-                value={localProofMode ? "Local proof ledger" : wallet.chainKey.replace("-", " ")}
+                value={wallet.chainKey.replace("-", " ")}
               />
               <SignRow
                 label="Gas"
-                value={localProofMode ? "No gas needed for local proof mode" : "Uses real testnet gas from your wallet"}
+                value="Uses real testnet gas from your wallet"
               />
             </div>
 
@@ -1250,8 +1249,7 @@ export default function ReportIssuePage() {
                 <p className="font-semibold">{tr("blockchainProof")}</p>
               </div>
               <p className="mt-2 text-sm text-[#dbc2b0]">
-                A public report record will be created for {location}.{" "}
-                {localProofMode ? "MetaMask can be connected later for live testnet signing." : ""}
+                A public report record will be created for {location} after you sign the on-chain transaction.
               </p>
             </div>
 
