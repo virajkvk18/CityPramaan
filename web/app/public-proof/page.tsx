@@ -18,6 +18,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
+import { FabricProofCard } from "@/src/components/proof/FabricProofCard";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { LocationDetectButton } from "@/src/components/layout/LocationDetectButton";
 import { NotificationBell } from "@/src/components/layout/NotificationBell";
@@ -388,6 +389,12 @@ function ReportCard({ report }: { report: CivicReport }) {
         <HashBox label="Evidence Hash" value={report.evidenceHash} />
         <HashBox label="Proof Bundle" value={report.proofBundleHash} />
       </div>
+
+      {report.fabricProof && (
+        <div className="mt-5">
+          <FabricProofCard proof={report.fabricProof} />
+        </div>
+      )}
 
       <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
         <div className="rounded-lg border border-white/10 bg-black/25 p-4">

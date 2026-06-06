@@ -24,6 +24,7 @@ import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { ChainProofCard } from "@/src/components/proof/ChainProofCard";
+import { FabricProofCard } from "@/src/components/proof/FabricProofCard";
 import { DEFAULT_CITY_KEY, getCityByKey } from "@/src/lib/city-context";
 import { getCitySnapshot, subscribeCity } from "@/src/lib/city-storage";
 import { getReportsForCity, type CivicReport } from "@/src/lib/mock-data";
@@ -406,6 +407,12 @@ export default function ProofTimelinePage() {
             transactionHash={primaryTransactionHash}
             warrantyStatus={warrantyLabel(report, t)}
           />
+
+          {report.fabricProof && (
+            <div className="mt-6">
+              <FabricProofCard proof={report.fabricProof} />
+            </div>
+          )}
 
           <div className="cp-cyber-card cp-cyber-card-hover cp-proof-timeline-card mt-6 rounded-2xl p-6">
             <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

@@ -30,6 +30,7 @@ import {
   Zap,
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
+import { FabricProofCard } from "@/src/components/proof/FabricProofCard";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { NotificationBell } from "@/src/components/layout/NotificationBell";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
@@ -54,6 +55,7 @@ import { requestInfrastructureAnalysis } from "@/src/lib/ai-analysis-client";
 import { getCurrentUser } from "@/src/lib/auth-storage";
 import { createProofBundleHash, deriveTransactionHash, sha256Hex } from "@/src/lib/proof-hashing";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
+import type { FabricProofMetadata } from "@/src/lib/fabric-proof-service";
 
 const issuePresets = [
   {
@@ -117,6 +119,36 @@ function getDistanceKm(fromLat: number, fromLng: number, toLat: number, toLng: n
 
 function toRadians(value: number) {
   return (value * Math.PI) / 180;
+}
+
+async function recordReportCreatedFabricProof(report: CivicReport) {
+  try {
+    const response = await fetch("/api/fabric/proof", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        reportId: report.id,
+        eventType: "REPORT_CREATED",
+        proofHash: report.proofBundleHash ?? report.evidenceHash ?? report.txHash,
+        actorRole: "CITIZEN",
+        organization: "Citizen",
+        status: "REPORTED",
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn("CityPramaan Fabric proof adapter unavailable:", await response.text());
+      return undefined;
+    }
+
+    const payload = (await response.json()) as { proof?: FabricProofMetadata };
+    return payload.proof;
+  } catch (error) {
+    console.warn("CityPramaan Fabric proof adapter unavailable:", error);
+    return undefined;
+  }
 }
 
 async function reverseGeocodeArea(latitude: number, longitude: number) {
@@ -184,6 +216,8 @@ export default function ReportIssuePage() {
   const [proofError, setProofError] = useState("");
   const [createdTxHash, setCreatedTxHash] = useState("");
   const [createdProofHash, setCreatedProofHash] = useState("");
+  const [createdFabricProof, setCreatedFabricProof] = useState<FabricProofMetadata | undefined>();
+  const [proofMode, setProofMode] = useState<"real" | "demo">("real");
   const [aiProcessing, setAiProcessing] = useState(false);
   const [aiResult, setAiResult] = useState<InfrastructureAnalysis | null>(null);
   const googleMapsUrl = buildGoogleMapsUrl(latitude, longitude);
@@ -260,6 +294,7 @@ export default function ReportIssuePage() {
     setProofError("");
     setCreatedTxHash("");
     setCreatedProofHash("");
+    setCreatedFabricProof(undefined);
   }
 
   const applyRealCoordinates = useCallback(async (
@@ -499,7 +534,16 @@ export default function ReportIssuePage() {
         ],
       };
 
-      await saveReportEverywhere(newReport);
+      const fabricProof = await recordReportCreatedFabricProof(newReport);
+      const reportWithFabricProof = fabricProof
+        ? {
+            ...newReport,
+            fabricProof,
+            fabricProofs: [...(newReport.fabricProofs ?? []), fabricProof],
+          }
+        : newReport;
+
+      await saveReportEverywhere(reportWithFabricProof);
 
       setAiResult(result);
       setSelectedCityKey(reportCity.key);
@@ -508,6 +552,11 @@ export default function ReportIssuePage() {
       setCreatedTxHash(txHash);
       setCreatedProofHash(proofBundleHash);
       setProofError("AI/RAG proof created. Fabric anchoring is ready for teammate integration.");
+      setCreatedFabricProof(fabricProof);
+      setProofMode(mode);
+      if (fallbackMessage) {
+        setProofError(fallbackMessage);
+      }
     } catch (error) {
       const message =
         error instanceof Error
@@ -1141,6 +1190,9 @@ export default function ReportIssuePage() {
                       <span className="uppercase text-[#dbc2b0]/55">Proof bundle</span>
                       <span className="truncate text-[#7df4ff]">{createdProofHash || "Stored"}</span>
                     </div>
+                  </div>
+                  <div className="mt-3">
+                    <FabricProofCard proof={createdFabricProof} />
                   </div>
                   <Link
                     href="/"

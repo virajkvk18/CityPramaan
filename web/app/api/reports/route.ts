@@ -51,6 +51,8 @@ const reportColumns = [
   "warrantyPeriodDays",
   "evidenceHash",
   "proofBundleHash",
+  "fabricProof",
+  "fabricProofs",
   "repairEvidenceHash",
   "repairTxHash",
   "aiPriorityScore",

@@ -1,4 +1,5 @@
 import { DEFAULT_CITY_KEY, formatCityLocation, getCityByKey, type CityKey } from "./city-context";
+import type { FabricProofMetadata } from "./fabric-proof-service";
 
 export type ReportStatus =
   | "OPEN"
@@ -89,6 +90,8 @@ export type CivicReport = {
   warrantyPeriodDays?: number;
   evidenceHash?: string;
   proofBundleHash?: string;
+  fabricProof?: FabricProofMetadata;
+  fabricProofs?: FabricProofMetadata[];
   repairEvidenceHash?: string;
   repairTxHash?: string;
   aiPriorityScore?: number;
