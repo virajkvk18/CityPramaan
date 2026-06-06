@@ -43,10 +43,7 @@ import {
   type CityKey,
 } from "@/src/lib/city-context";
 import { getCitySnapshot, setSelectedCityKey, subscribeCity } from "@/src/lib/city-storage";
-import {
-  analyzeInfrastructureIssue,
-  type InfrastructureAnalysis,
-} from "@/src/lib/infrastructure-analyzer";
+import { type InfrastructureAnalysis } from "@/src/lib/infrastructure-analyzer";
 import { getLanguageSnapshot, subscribeLanguage } from "@/src/lib/language-storage";
 import { translate } from "@/src/lib/language-context";
 import { buildGoogleMapsUrl, type CivicReport } from "@/src/lib/mock-data";
@@ -55,6 +52,7 @@ import {
   readFileAsDataUrl,
 } from "@/src/lib/report-storage";
 import { saveReportEverywhere } from "@/src/lib/report-sync";
+import { requestInfrastructureAnalysis } from "@/src/lib/ai-analysis-client";
 import { getCurrentUser } from "@/src/lib/auth-storage";
 import { createProofBundleHash, deriveTransactionHash, sha256Hex } from "@/src/lib/proof-hashing";
 import {
@@ -228,23 +226,26 @@ export default function ReportIssuePage() {
     return () => window.clearTimeout(timer);
   }, []);
 
-  function runAiVerification() {
+  async function runAiVerification() {
     setVerified(false);
     setAiResult(null);
     setAiProcessing(true);
+    setProofError("");
 
-    window.setTimeout(() => {
-      setAiResult(
-        analyzeInfrastructureIssue({
-          description,
-          imageName,
-          location,
-          cityName: cityDisplay.cityName,
-        })
-      );
+    try {
+      const result = await requestInfrastructureAnalysis({
+        description,
+        imageName,
+        imageDataUrl,
+        location,
+        cityName: cityDisplay.cityName,
+      });
+
+      setAiResult(result);
       setVerified(true);
+    } finally {
       setAiProcessing(false);
-    }, 900);
+    }
   }
 
   async function handleIssueFile(file?: File) {
@@ -430,12 +431,13 @@ export default function ReportIssuePage() {
         : `${location} (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`;
       const result =
         aiResult ??
-        analyzeInfrastructureIssue({
+        (await requestInfrastructureAnalysis({
           description,
           imageName,
+          imageDataUrl,
           location: savedLocation,
           cityName: reportCity.name,
-        });
+        }));
 
       const now = new Date().toISOString();
       const reportId = createLocalReportId();
@@ -1054,7 +1056,7 @@ export default function ReportIssuePage() {
                       classify the asset, severity, SLA, warranty risk and proof type.
                     </p>
                     <button
-                      onClick={runAiVerification}
+                      onClick={() => void runAiVerification()}
                       disabled={aiProcessing}
                       className="mt-4 flex w-full items-center justify-center gap-2 rounded bg-[#00dbe9] px-4 py-3 text-sm font-semibold text-[#00363a] transition hover:bg-[#7df4ff] disabled:cursor-wait disabled:opacity-70"
                     >
@@ -1066,7 +1068,7 @@ export default function ReportIssuePage() {
 
                 {verified && (
                   <button
-                    onClick={runAiVerification}
+                    onClick={() => void runAiVerification()}
                     className="mt-4 w-full rounded border border-[#00dbe9]/40 bg-[#00dbe9]/10 px-4 py-2 font-mono text-xs text-[#00dbe9] transition hover:bg-[#00dbe9]/15"
                   >
                     Re-run unified analysis
