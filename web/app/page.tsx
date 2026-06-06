@@ -558,40 +558,27 @@ export default function Home() {
 
   if (!currentUser) {
     return (
-      <main className="cp-page-shell cp-theme-locked-dark relative min-h-screen overflow-x-hidden bg-black text-white">
-        <section className="cp-video-landing relative min-h-[100svh] overflow-hidden">
-          <video
-            className="absolute inset-0 h-full w-full object-cover"
-            autoPlay
-            loop
-            muted
-            preload="auto"
-            playsInline
-            aria-hidden="true"
-          >
-            <source src={CITY_HERO_MOBILE_VIDEO_URL} type="video/mp4" media="(max-width: 639px)" />
-            <source src={CITY_HERO_VIDEO_URL} type="video/mp4" media="(min-width: 640px)" />
-          </video>
-          <div className="cp-landing-video-scrim pointer-events-none absolute inset-0" />
-
-          <div className="relative z-10 flex min-h-[100svh] flex-col px-3 pb-5 pt-3 sm:px-6 sm:pb-7 sm:pt-4 md:px-10 lg:px-14">
-            <header className="liquid-glass flex flex-col gap-2 rounded-xl px-3 py-3 sm:px-4">
+      <main className="cp-page-shell cp-official-landing relative min-h-screen overflow-x-hidden bg-[#f6f8fb] text-[#1a1c1c]">
+        <section className="cp-official-hero relative overflow-hidden border-b border-[#c6c5d5] bg-[linear-gradient(135deg,#ffffff_0%,#f7f9fc_54%,#eef3ff_100%)]">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(254,152,50,0.16),transparent_28%),radial-gradient(circle_at_82%_18%,rgba(29,78,216,0.12),transparent_30%),radial-gradient(circle_at_20px_20px,rgba(0,0,60,0.045)_1px,transparent_1.5px)] bg-[size:auto,auto,40px_40px]" />
+          <div className="relative z-10 mx-auto flex min-h-[100svh] max-w-7xl flex-col px-4 pb-8 pt-4 sm:px-6 lg:px-10">
+            <header className="cp-official-nav flex flex-col gap-3 rounded-2xl border border-[#c6c5d5] bg-white/95 px-3 py-3 shadow-[0_10px_30px_rgba(0,0,60,0.1)] sm:px-4">
               <div className="flex w-full items-center justify-between gap-2">
                 <Link href="/" className="flex min-w-0 flex-1 items-center gap-3">
                   <BrandLogo className="min-w-0" size="sm" />
                 </Link>
 
-                <nav className="hidden items-center gap-5 font-mono text-[11px] font-black uppercase tracking-[0.2em] text-white/88 lg:flex xl:gap-8">
-                  <Link href="/story" className="transition hover:text-white">
+                <nav className="hidden items-center gap-5 text-[12px] font-extrabold uppercase tracking-[0.08em] text-[#00003c] lg:flex xl:gap-7">
+                  <Link href="/story" className="transition hover:text-[#1d4ed8]">
                     Story
                   </Link>
-                  <Link href="/auth" className="transition hover:text-white">
+                  <Link href="/auth" className="transition hover:text-[#1d4ed8]">
                     Warranty
                   </Link>
-                  <Link href="/public-proof" className="transition hover:text-white">
+                  <Link href="/public-proof" className="transition hover:text-[#1d4ed8]">
                     Public Proof
                   </Link>
-                  <Link href="/auth" className="transition hover:text-white">
+                  <Link href="/auth" className="transition hover:text-[#1d4ed8]">
                     Report
                   </Link>
                 </nav>
@@ -599,13 +586,13 @@ export default function Home() {
                 <div className="flex shrink-0 items-center gap-2">
                   <Link
                     href="/about"
-                    className="hidden min-h-9 items-center justify-center rounded-lg border border-white/25 px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-white transition hover:bg-white hover:text-black sm:inline-flex lg:min-h-10 lg:px-4 lg:text-[11px]"
+                    className="hidden min-h-10 items-center justify-center rounded-lg border border-[#c6c5d5] bg-white px-4 py-2 text-sm font-bold text-[#00003c] transition hover:border-[#1d4ed8] hover:text-[#1d4ed8] sm:inline-flex"
                   >
                     About
                   </Link>
                   <Link
                     href="/auth"
-                    className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg bg-white px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-black transition hover:bg-gray-100 sm:px-4 lg:min-h-10 lg:gap-2 lg:text-[11px]"
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-[#00003c] px-4 py-2 text-sm font-extrabold text-white shadow-[0_8px_18px_rgba(0,0,60,0.18)] transition hover:bg-[#111b63]"
                   >
                     <LogIn size={14} />
                     Sign In
@@ -613,7 +600,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <nav className="cp-mobile-landing-nav flex w-full gap-2 overflow-x-auto pt-1 lg:hidden">
+              <nav className="cp-mobile-landing-nav grid w-full grid-cols-2 gap-2 pt-1 min-[520px]:grid-cols-5 lg:hidden">
                 <Link href="/story" className="landing-nav-chip">
                   Story
                 </Link>
@@ -632,15 +619,18 @@ export default function Home() {
               </nav>
             </header>
 
-            <section className="flex flex-1 flex-col justify-end py-7 sm:py-12 lg:py-14">
-              <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)] lg:items-end">
-                <div className="max-w-4xl">
+            <section className="grid flex-1 items-center gap-8 py-8 sm:py-12 lg:grid-cols-[minmax(0,1.02fr)_minmax(360px,0.98fr)] lg:py-16">
+              <div className="max-w-4xl">
+                <div>
+                  <p className="mb-4 inline-flex rounded-full border border-[#1d4ed8]/20 bg-[#edf4ff] px-4 py-2 text-xs font-extrabold uppercase tracking-[0.12em] text-[#1d4ed8]">
+                    Public Infrastructure Accountability Portal
+                  </p>
                   <AnimatedHeading
                     text={`Proof of repair\nfor accountable cities.`}
-                    className="cp-landing-title mb-4 text-[1.85rem] font-black leading-[1.08] text-white min-[390px]:text-[2.05rem] sm:text-[2.9rem] md:text-[3.55rem] lg:text-[4.1rem] xl:text-[4.85rem]"
+                    className="cp-landing-title mb-5 text-[2.55rem] font-black leading-[0.98] text-[#00003c] min-[390px]:text-[3rem] sm:text-[4rem] md:text-[4.7rem] lg:text-[5.1rem] xl:text-[5.7rem]"
                   />
                   <FadeIn delay={800} duration={1000}>
-                    <p className="cp-landing-subtitle mb-5 max-w-2xl rounded-xl border border-white/10 bg-black/24 px-3 py-2 text-[13px] font-semibold leading-6 text-white/95 shadow-[0_12px_38px_rgba(0,0,0,0.24)] backdrop-blur-[2px] sm:bg-black/20 sm:px-4 sm:py-3 sm:text-base md:text-lg md:leading-7">
+                    <p className="cp-landing-subtitle mb-6 max-w-3xl rounded-2xl border border-[#c6c5d5] bg-white px-5 py-4 text-base font-semibold leading-8 text-[#263548] shadow-[0_12px_30px_rgba(0,0,60,0.08)] sm:text-lg">
                       A simple civic service portal to report public infrastructure issues, track
                       complaint progress, verify contractor repairs, and keep public proof open for every city.
                     </p>
@@ -649,46 +639,74 @@ export default function Home() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                       <Link
                         href="/auth"
-                        className="cp-landing-primary-cta inline-flex min-h-11 items-center justify-center rounded-lg bg-white px-5 py-3 text-center font-mono text-[10px] font-black uppercase tracking-[0.18em] text-black transition hover:bg-gray-100 sm:px-8 sm:text-[11px] sm:tracking-[0.2em]"
+                        className="cp-landing-primary-cta inline-flex min-h-12 items-center justify-center rounded-xl bg-[#00003c] px-6 py-3 text-center text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(0,0,60,0.18)] transition hover:bg-[#111b63] sm:px-8"
                       >
                         Report an Issue
                       </Link>
                       <Link
                         href="/public-proof"
-                        className="cp-landing-secondary-cta liquid-glass inline-flex min-h-11 items-center justify-center rounded-lg border border-white/25 px-5 py-3 text-center font-mono text-[10px] font-black uppercase tracking-[0.18em] text-white transition hover:bg-white hover:text-black sm:px-8 sm:text-[11px] sm:tracking-[0.2em]"
+                        className="cp-landing-secondary-cta inline-flex min-h-12 items-center justify-center rounded-xl border border-[#1d4ed8]/30 bg-[#edf4ff] px-6 py-3 text-center text-sm font-extrabold text-[#1d4ed8] transition hover:bg-[#dbeafe] sm:px-8"
                       >
                         Track Complaint
                       </Link>
                       <Link
                         href="/auth"
-                        className="cp-landing-tertiary-cta liquid-glass inline-flex min-h-11 items-center justify-center rounded-lg border border-white/25 px-5 py-3 text-center font-mono text-[10px] font-black uppercase tracking-[0.18em] text-white transition hover:bg-white hover:text-black sm:px-8 sm:text-[11px] sm:tracking-[0.2em]"
+                        className="cp-landing-tertiary-cta inline-flex min-h-12 items-center justify-center rounded-xl border border-[#fe9832]/35 bg-[#fff3e7] px-6 py-3 text-center text-sm font-extrabold text-[#9a4f00] transition hover:bg-[#ffdcc2] sm:px-8"
                       >
                         Admin Login
                       </Link>
                       <Link
                         href="/auth"
-                        className="cp-landing-tertiary-cta liquid-glass inline-flex min-h-11 items-center justify-center rounded-lg border border-white/25 px-5 py-3 text-center font-mono text-[10px] font-black uppercase tracking-[0.18em] text-white transition hover:bg-white hover:text-black sm:px-8 sm:text-[11px] sm:tracking-[0.2em]"
+                        className="cp-landing-tertiary-cta inline-flex min-h-12 items-center justify-center rounded-xl border border-[#1f8a3b]/28 bg-[#eaf7ee] px-6 py-3 text-center text-sm font-extrabold text-[#0d5f28] transition hover:bg-[#d9f0df] sm:px-8"
                       >
                         Contractor Panel
                       </Link>
                     </div>
                   </FadeIn>
+
+                  <div className="mt-7 grid gap-3 sm:grid-cols-3">
+                    <HeroTrustChip tone="blue" label="Open Public Proof" />
+                    <HeroTrustChip tone="green" label="Contractor Visible" />
+                    <HeroTrustChip tone="saffron" label="Warranty Memory" />
+                  </div>
                 </div>
 
-                <div className="flex items-end justify-start lg:justify-end">
-                  <FadeIn delay={1400} duration={1000}>
-                    <div className="liquid-glass w-full max-w-md rounded-xl border border-white/20 px-4 py-4 sm:px-6">
-                      <p className="text-base font-semibold text-white sm:text-lg md:text-xl">
-                        Report. Repair. Verify.
+              <FadeIn delay={1100} duration={1000}>
+                <div className="cp-hero-visual-panel relative overflow-hidden rounded-3xl border border-[#c6c5d5] bg-white p-3 shadow-[0_24px_70px_rgba(0,0,60,0.16)]">
+                  <div className="relative min-h-[420px] overflow-hidden rounded-2xl bg-[#00003c] sm:min-h-[520px]">
+                    <video
+                      className="absolute inset-0 h-full w-full object-cover opacity-70"
+                      autoPlay
+                      loop
+                      muted
+                      preload="auto"
+                      playsInline
+                      aria-hidden="true"
+                    >
+                      <source src={CITY_HERO_MOBILE_VIDEO_URL} type="video/mp4" media="(max-width: 639px)" />
+                      <source src={CITY_HERO_VIDEO_URL} type="video/mp4" media="(min-width: 640px)" />
+                    </video>
+                    <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,60,0.1),rgba(0,0,60,0.7))]" />
+                    <div className="absolute left-4 right-4 top-4 rounded-2xl border border-white/20 bg-white/92 p-4 shadow-[0_16px_36px_rgba(0,0,0,0.16)] backdrop-blur sm:left-6 sm:right-auto sm:w-[310px]">
+                      <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[#1d4ed8]">
+                        Live civic node
                       </p>
-                      <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-3">
+                      <h2 className="mt-2 text-3xl font-black text-[#00003c]">{dashboardCityName}</h2>
+                      <p className="mt-2 text-sm font-semibold leading-6 text-[#344154]">
+                        Reports stay visible until repair proof, issuer approval, and warranty status are recorded.
+                      </p>
+                    </div>
+                    <div className="absolute bottom-4 left-4 right-4 rounded-2xl border border-white/20 bg-white/95 p-4 shadow-[0_18px_40px_rgba(0,0,0,0.18)] backdrop-blur sm:bottom-6 sm:left-6 sm:right-6">
+                      <p className="text-xl font-black text-[#00003c]">Report. Repair. Verify.</p>
+                      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
                         <PublicMetric label="Active" value={`${activeDashboardReports.length}`} />
                         <PublicMetric label="Proofs" value={`${214 + localCityReports.length}`} />
                         <PublicMetric label="Node" value={dashboardCityName} wide />
                       </div>
                     </div>
-                  </FadeIn>
+                  </div>
                 </div>
+              </FadeIn>
               </div>
             </section>
           </div>
@@ -1262,7 +1280,7 @@ function AnimatedHeading({ text, className = "" }: { text: string; className?: s
   }, []);
 
   return (
-    <h1 className={className} style={{ letterSpacing: "0.02em" }}>
+    <h1 className={className} style={{ color: "var(--gov-navy)", letterSpacing: "-0.035em" }}>
       {lines.map((line, lineIndex) => {
         const previousLength = lines
           .slice(0, lineIndex)
@@ -1972,16 +1990,36 @@ function AuditMetric({ label, value, tone }: { label: string; value: string; ton
   );
 }
 
+function HeroTrustChip({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: "blue" | "green" | "saffron";
+}) {
+  const tones = {
+    blue: "border-[#1d4ed8]/24 bg-[#edf4ff] text-[#1d4ed8]",
+    green: "border-[#1f8a3b]/24 bg-[#eaf7ee] text-[#0d5f28]",
+    saffron: "border-[#fe9832]/28 bg-[#fff3e7] text-[#9a4f00]",
+  };
+
+  return (
+    <div className={`rounded-xl border px-4 py-3 text-sm font-extrabold ${tones[tone]}`}>
+      {label}
+    </div>
+  );
+}
+
 function PublicMetric({ label, value, wide = false }: { label: string; value: string; wide?: boolean }) {
   return (
     <div
-      className={`min-h-[74px] rounded-md border border-white/10 bg-black/28 p-3 sm:min-h-24 sm:p-4 ${
+      className={`min-h-[74px] rounded-xl border border-[#c6c5d5] bg-[#f8fafc] p-3 sm:min-h-24 sm:p-4 ${
         wide ? "col-span-2 min-w-0 text-left" : "min-w-0 text-center sm:text-left"
       }`}
       title={value}
     >
-      <p className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[#a38d7c] sm:text-[10px] sm:tracking-[0.16em]">{label}</p>
-      <p className={`mt-1 font-black leading-tight text-white sm:mt-2 ${
+      <p className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-[#1d4ed8] sm:text-[10px]">{label}</p>
+      <p className={`mt-1 font-black leading-tight text-[#00003c] sm:mt-2 ${
         wide
           ? "block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-xl sm:text-2xl"
           : "text-lg sm:text-2xl"
