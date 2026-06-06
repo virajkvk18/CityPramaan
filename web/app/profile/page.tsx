@@ -107,7 +107,7 @@ function ProfileEditor({ initialProfile, onLogout }: { initialProfile: PublicUse
         agencyName,
       });
       setProfile(updated);
-      setMessage("Profile saved. Profile hash is ready for teammate Fabric integration.");
+      setMessage("Profile saved to Supabase. Profile hash is ready for teammate Fabric integration.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not save profile.");
     } finally {

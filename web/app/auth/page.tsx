@@ -89,7 +89,7 @@ export default function AuthPage() {
           setMessage(
             result.devVerificationCode
               ? `Development OTP: ${result.devVerificationCode}`
-              : "Verification code sent to your email."
+              : "Verification email sent."
           );
           return;
         }
@@ -117,7 +117,7 @@ export default function AuthPage() {
         setDevVerificationCode(result.devVerificationCode);
         setMessage(`Development OTP: ${result.devVerificationCode}`);
       } else {
-        setMessage("Verification code sent again.");
+        setMessage("Verification email sent again.");
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not resend verification code.");

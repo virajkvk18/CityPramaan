@@ -62,7 +62,7 @@ type BackendAuthPayload = {
   refreshToken?: string;
   emailVerificationRequired?: boolean;
   verificationExpiresAt?: string;
-  delivery?: "smtp" | "console";
+  delivery?: "supabase" | "brevo" | "resend" | "smtp" | "console";
   devVerificationCode?: string;
   error?: string;
 };
@@ -73,7 +73,7 @@ export type SignUpResult =
       user: PublicUserProfile;
       email: string;
       verificationExpiresAt?: string;
-      delivery?: "smtp" | "console";
+      delivery?: "supabase" | "brevo" | "resend" | "smtp" | "console";
       devVerificationCode?: string;
     }
   | {
@@ -232,11 +232,13 @@ export async function updateCurrentProfile(
     ...profileProof,
     profileCompletedAt: isProfileComplete(updatedBase) ? new Date().toISOString() : updatedBase.profileCompletedAt,
   };
+  const synced = await updateBackendProfile(stripPrivateFields(updated));
+  const syncedLocalUser = publicToLocalUser(synced, existing);
 
-  saveUsers(users.map((user) => (user.id === sessionId ? updated : user)));
-  syncContractorProfile(updated);
-  setSession(updated.id);
-  return stripPrivateFields(updated);
+  saveUsers(users.map((user) => (user.id === sessionId ? syncedLocalUser : user)));
+  syncContractorProfile(syncedLocalUser);
+  setSession(syncedLocalUser.id);
+  return stripPrivateFields(syncedLocalUser);
 }
 
 export function updateCurrentProfileChainProof(profileChainTxHash: string, walletAddress?: string) {
@@ -261,6 +263,13 @@ export function updateCurrentProfileChainProof(profileChainTxHash: string, walle
   };
 
   saveUsers(users.map((user) => (user.id === sessionId ? updated : user)));
+  void updateBackendProfile(stripPrivateFields(updated))
+    .then((synced) => {
+      savePublicUser(synced);
+    })
+    .catch((error) => {
+      console.warn("Profile chain proof Supabase sync failed:", error);
+    });
   syncContractorProfile(updated);
   setSession(updated.id);
   return stripPrivateFields(updated);
@@ -379,7 +388,7 @@ async function loginWithBackend(payload: { email: string; password: string }) {
 }
 
 async function backendAuthFetch(path: string, payload: Record<string, unknown>) {
-  const response = await fetch(`${getBackendBaseUrl()}${path}`, {
+  const response = await fetch(`${getAuthApiBaseUrl()}${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -393,6 +402,38 @@ async function backendAuthFetch(path: string, payload: Record<string, unknown>) 
   }
 
   return body;
+}
+
+async function updateBackendProfile(user: PublicUserProfile) {
+  const accessToken = getBackendAccessToken();
+
+  if (!accessToken) {
+    throw new BackendAuthError("Login required before updating profile.", 401);
+  }
+
+  const response = await fetch(`${getAuthApiBaseUrl()}/api/auth/me`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(user),
+  });
+  const body = (await response.json().catch(() => ({}))) as BackendAuthPayload;
+
+  if (!response.ok || !body.user) {
+    throw new BackendAuthError(body.error || `Profile update failed with status ${response.status}`, response.status);
+  }
+
+  return body.user;
+}
+
+function getBackendAccessToken() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return window.localStorage.getItem(AUTH_ACCESS_TOKEN_KEY) ?? "";
 }
 
 function saveBackendTokens(accessToken?: string, refreshToken?: string) {
@@ -409,9 +450,9 @@ function saveBackendTokens(accessToken?: string, refreshToken?: string) {
   }
 }
 
-function getBackendBaseUrl() {
-  const configured = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, "");
-  return configured || "http://localhost:5000";
+function getAuthApiBaseUrl() {
+  const configured = process.env.NEXT_PUBLIC_AUTH_API_URL?.replace(/\/$/, "");
+  return configured || "";
 }
 
 async function createProfileProof(user: UserProfile) {
