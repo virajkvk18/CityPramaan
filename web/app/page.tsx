@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
+import { LocationDetectButton } from "@/src/components/layout/LocationDetectButton";
 import { NotificationBell } from "@/src/components/layout/NotificationBell";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { AnimatedCityMap } from "@/src/components/map/AnimatedCityMap";
@@ -340,7 +341,7 @@ function getRoleIncidentActions(role: AuthRole | undefined, selectedId: string):
     case "WARD_ADMIN":
       return [
         { label: "Review proof", icon: ScanSearch, href: "/ward-admin", tone: "gold" },
-        { label: "Public reports", icon: Blocks, href: "/reports", tone: "cyan" },
+        { label: "Public reports", icon: Blocks, href: "/public-proof", tone: "cyan" },
       ];
     case "CONTRACTOR":
       return [
@@ -354,7 +355,7 @@ function getRoleIncidentActions(role: AuthRole | undefined, selectedId: string):
       ];
     default:
       return [
-        { label: "Public reports", icon: Blocks, href: "/reports", tone: "cyan" },
+        { label: "Public reports", icon: Blocks, href: "/public-proof", tone: "cyan" },
         { label: "Login / signup", icon: LogIn, href: "/auth", tone: "gold" },
       ];
   }
@@ -367,7 +368,7 @@ function getRoleMobileNavItems(role: AuthRole | undefined): RoleNavItem[] {
         { label: "Home", icon: Gauge, href: "/ward-admin", active: true },
         { label: "Review", icon: ScanSearch, href: "/ward-admin" },
         { label: "Warranty", icon: ShieldCheck, href: "/warranty" },
-        { label: "Reports", icon: Blocks, href: "/reports" },
+        { label: "Reports", icon: Blocks, href: "/public-proof" },
         { label: "Profile", icon: UserRound, href: "/profile" },
       ];
     case "CONTRACTOR":
@@ -375,7 +376,7 @@ function getRoleMobileNavItems(role: AuthRole | undefined): RoleNavItem[] {
         { label: "Home", icon: Gauge, href: "/contractor", active: true },
         { label: "Queue", icon: Building2, href: "/contractor" },
         { label: "Proof", icon: BadgeCheck, href: "/contractor" },
-        { label: "Public", icon: Blocks, href: "/reports" },
+        { label: "Public", icon: Blocks, href: "/public-proof" },
         { label: "Profile", icon: UserRound, href: "/profile" },
       ];
     case "USER":
@@ -383,13 +384,13 @@ function getRoleMobileNavItems(role: AuthRole | undefined): RoleNavItem[] {
         { label: "Home", icon: Gauge, href: "/citizen", active: true },
         { label: "Report", icon: AlertTriangle, href: "/report" },
         { label: "Track", icon: Clock3, href: "/warranty" },
-        { label: "Proof", icon: Blocks, href: "/reports" },
+        { label: "Proof", icon: Blocks, href: "/public-proof" },
         { label: "Profile", icon: UserRound, href: "/profile" },
       ];
     default:
       return [
         { label: "Home", icon: Gauge, href: "/", active: true },
-        { label: "Reports", icon: Blocks, href: "/reports" },
+        { label: "Reports", icon: Blocks, href: "/public-proof" },
         { label: "Story", icon: FileImage, href: "/story" },
         { label: "About", icon: ShieldCheck, href: "/about" },
         { label: "Login", icon: LogIn, href: "/auth" },
@@ -497,7 +498,7 @@ export default function Home() {
     [localCityReports]
   );
   const selected = activeLocalReports[0] ?? activeDashboardReports[0] ?? cityReports[3];
-  const roleNavItems = currentUser ? getRoleNavItems(currentUser.role, "/reports") : [];
+  const roleNavItems = currentUser ? getRoleNavItems(currentUser.role, "/public-proof") : [];
   const roleActionLinks = roleNavItems.filter((item) => !item.active).slice(0, 5);
   const roleAuditMetrics = getRoleAuditMetrics(
     currentUser?.role,
@@ -587,7 +588,7 @@ export default function Home() {
                   <Link href="/auth" className="transition hover:text-white">
                     Warranty
                   </Link>
-                  <Link href="/reports" className="transition hover:text-white">
+                  <Link href="/public-proof" className="transition hover:text-white">
                     Public Proof
                   </Link>
                   <Link href="/auth" className="transition hover:text-white">
@@ -622,7 +623,7 @@ export default function Home() {
                 <Link href="/auth" className="landing-nav-chip">
                   Warranty
                 </Link>
-                <Link href="/reports" className="landing-nav-chip">
+                <Link href="/public-proof" className="landing-nav-chip">
                   Public Proof
                 </Link>
                 <Link href="/auth" className="landing-nav-chip">
@@ -647,7 +648,7 @@ export default function Home() {
                   <FadeIn delay={1200} duration={1000}>
                     <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                       <Link
-                        href="/auth"
+                        href="/public-proof"
                         className="cp-landing-primary-cta inline-flex min-h-11 items-center justify-center rounded-lg bg-white px-5 py-3 text-center font-mono text-[10px] font-black uppercase tracking-[0.18em] text-black transition hover:bg-gray-100 sm:px-8 sm:text-[11px] sm:tracking-[0.2em]"
                       >
                         Start a Report
@@ -685,6 +686,9 @@ export default function Home() {
           activeReports={activeDashboardReports.length}
           proofRecords={214 + localCityReports.length}
           cityName={dashboardCityName}
+          locationLabel={cityDisplay.locationLabel}
+          coordinates={cityDisplay.coordinates}
+          locationIsDetected={cityDisplay.isDetectedForSelected}
         />
       </main>
     );
@@ -1292,15 +1296,80 @@ function LandingEvidenceSections({
   activeReports,
   proofRecords,
   cityName,
+  locationLabel,
+  coordinates,
+  locationIsDetected,
 }: {
   activeReports: number;
   proofRecords: number;
   cityName: string;
+  locationLabel: string;
+  coordinates: string;
+  locationIsDetected: boolean;
 }) {
   return (
     <div className="relative z-10 bg-[#020304] text-white">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(255,153,51,0.16),transparent_28%),radial-gradient(circle_at_86%_20%,rgba(0,219,233,0.14),transparent_28%),linear-gradient(to_right,rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:auto,auto,34px_34px,34px_34px]" />
       <div className="cp-landing-aurora pointer-events-none absolute inset-0" />
+
+      <section className="cp-landing-section relative mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-10 lg:py-20">
+        <div className="cp-scroll-reveal cp-public-proof-spotlight overflow-hidden rounded-3xl border border-[#00dbe9]/24 bg-[radial-gradient(circle_at_16%_18%,rgba(0,219,233,0.2),transparent_30%),radial-gradient(circle_at_82%_18%,rgba(255,153,51,0.18),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.085),rgba(255,255,255,0.025))] p-5 shadow-[0_34px_90px_rgba(0,0,0,0.46)] backdrop-blur-xl sm:p-7 lg:p-9">
+          <div className="grid gap-7 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
+            <div>
+              <p className="cp-kicker-glow font-mono text-xs font-black uppercase tracking-[0.22em] text-[#7df4ff]">
+                Public Proof | Open Civic Registry
+              </p>
+              <h2 className="mt-3 max-w-4xl text-3xl font-black leading-tight text-white sm:text-5xl">
+                Anyone can verify what is happening in their own city.
+              </h2>
+              <p className="mt-5 max-w-2xl text-base leading-7 text-[#e5e2e3] sm:text-lg">
+                Public Proof is the open view of CityPramaan. After location permission, people can see
+                anonymous citizen reports from their area, repair status, AI analysis, contractor identity,
+                proof hashes, and warranty history without login.
+              </p>
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <Link
+                  href="/public-proof"
+                  className="cp-landing-cta-link inline-flex min-h-12 items-center justify-center rounded-lg border border-[#00dbe9]/45 bg-[#00dbe9]/14 px-5 py-3 font-mono text-xs font-black uppercase tracking-[0.16em] text-[#7df4ff] transition hover:bg-[#00dbe9]/22"
+                >
+                  View Public Proof
+                </Link>
+                <LocationDetectButton compact />
+              </div>
+            </div>
+
+            <div className="grid gap-3">
+              <div className="rounded-2xl border border-white/10 bg-black/35 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="font-mono text-[10px] font-black uppercase tracking-[0.18em] text-[#ffc08d]">
+                      Current public city
+                    </p>
+                    <p className="mt-2 text-3xl font-black text-white">{cityName}</p>
+                  </div>
+                  <span className={`rounded-full border px-3 py-1 font-mono text-[10px] font-black uppercase tracking-[0.14em] ${
+                    locationIsDetected
+                      ? "border-[#00eb88]/35 bg-[#00eb88]/10 text-[#5bffa1]"
+                      : "border-[#ffc08d]/35 bg-[#ffc08d]/10 text-[#ffdcc2]"
+                  }`}>
+                    {locationIsDetected ? "GPS matched" : "Permission pending"}
+                  </span>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-[#dbc2b0]">{locationLabel}</p>
+                <p className="mt-2 font-mono text-xs text-[#7df4ff]">{coordinates}</p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <PublicProofRule icon={<MapPin size={18} />} title="City-only feed" detail="Default view shows reports from the detected or selected city." />
+                <PublicProofRule icon={<UserRound size={18} />} title="Reporter hidden" detail="Citizen name and contact stay anonymous in public view." />
+                <PublicProofRule icon={<Building2 size={18} />} title="Contractor visible" detail="Public can see the assigned contractor and repair responsibility." />
+                <PublicProofRule icon={<Blocks size={18} />} title="Proof timeline" detail="Issue, repair proof, warranty, and repeat failure history stay open." />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section className="cp-landing-section relative mx-auto grid max-w-7xl gap-8 px-4 py-16 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:px-10 lg:py-24">
         <div className="cp-scroll-reveal">
@@ -1565,7 +1634,7 @@ function LandingEvidenceSections({
 
             <div className="grid gap-3 sm:grid-cols-2">
               <LandingCta href="/auth" label="Start Reporting" tone="gold" />
-              <LandingCta href="/reports" label="View Public Proof" tone="cyan" />
+              <LandingCta href="/public-proof" label="View Public Proof" tone="cyan" />
               <LandingCta href="/auth" label="Enter Citizen Panel" tone="glass" />
               <LandingCta href="/auth" label="Enter Ward Admin Panel" tone="glass" />
               <LandingCta href="/auth" label="Enter Contractor Panel" tone="glass" />
@@ -1625,6 +1694,28 @@ function LandingSignalChip({
     <span className={`cp-signal-chip inline-flex min-h-9 items-center rounded-full border px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.16em] ${tones[tone]}`}>
       {label}
     </span>
+  );
+}
+
+function PublicProofRule({
+  icon,
+  title,
+  detail,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  detail: string;
+}) {
+  return (
+    <div className="cp-public-proof-rule rounded-xl border border-white/10 bg-white/[0.045] p-4 shadow-[0_14px_36px_rgba(0,0,0,0.22)]">
+      <div className="mb-3 grid h-10 w-10 place-items-center rounded-lg border border-[#00dbe9]/24 bg-[#00dbe9]/10 text-[#7df4ff]">
+        {icon}
+      </div>
+      <p className="font-mono text-[11px] font-black uppercase tracking-[0.15em] text-white">
+        {title}
+      </p>
+      <p className="mt-2 text-sm leading-6 text-[#dbc2b0]">{detail}</p>
+    </div>
   );
 }
 

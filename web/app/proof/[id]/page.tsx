@@ -364,12 +364,12 @@ export default function ProofTimelinePage() {
   }
 
   return (
-    <main className="cp-page-shell relative min-h-screen overflow-hidden bg-[#050505] text-zinc-100">
+    <main className="cp-page-shell cp-proof-page relative min-h-screen overflow-hidden bg-[#050505] text-zinc-100">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_14%_8%,rgba(255,153,51,0.16),transparent_24%),radial-gradient(circle_at_82%_12%,rgba(0,219,233,0.14),transparent_28%),radial-gradient(circle_at_48%_94%,rgba(0,235,136,0.08),transparent_30%)]" />
       <div className="bg-holo-grid pointer-events-none fixed inset-0" />
       <div className="stitch-cityline pointer-events-none fixed bottom-0 left-0 right-0 h-44 opacity-20" />
 
-      <header className="relative z-10 flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-[#ff9933]/15 bg-[#030507]/75 px-4 py-3 shadow-[0_0_30px_rgba(0,219,233,0.08)] backdrop-blur-xl sm:h-16 sm:flex-nowrap sm:px-6 sm:py-0">
+      <header className="cp-proof-header relative z-10 flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-[#ff9933]/15 bg-[#030507]/75 px-4 py-3 shadow-[0_0_30px_rgba(0,219,233,0.08)] backdrop-blur-xl sm:h-16 sm:flex-nowrap sm:px-6 sm:py-0">
         <Link href="/" className="flex min-w-0 items-center gap-2 text-sm text-zinc-300 hover:text-white">
           <ArrowLeft size={16} />
           <span className="hidden sm:inline">{t("backToCommandCenter")}</span>
@@ -382,9 +382,9 @@ export default function ProofTimelinePage() {
         </div>
       </header>
 
-      <section className="relative z-10 mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-6 xl:grid-cols-[1fr_380px] xl:px-6 xl:py-8">
+      <section className="cp-proof-content relative z-10 mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-6 xl:grid-cols-[1fr_380px] xl:px-6 xl:py-8">
         <div>
-          <div className="rounded-2xl border border-fuchsia-400/20 bg-[linear-gradient(145deg,rgba(217,70,239,0.16),rgba(0,219,233,0.06))] p-6 shadow-[0_0_24px_rgba(217,70,239,0.1)]">
+          <div className="cp-proof-hero rounded-2xl border border-fuchsia-400/20 bg-[linear-gradient(145deg,rgba(217,70,239,0.16),rgba(0,219,233,0.06))] p-6 shadow-[0_0_24px_rgba(217,70,239,0.1)]">
             <div className="flex flex-wrap items-center gap-3">
               <span
                 className={`inline-flex items-center gap-2 rounded-sm border px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-[0.16em] ${statusTone[report.status]}`}
@@ -397,7 +397,7 @@ export default function ProofTimelinePage() {
               </span>
             </div>
 
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+            <h1 className="cp-proof-title mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
               {t("publicProofTimeline")}: {report.title}
             </h1>
 
@@ -422,7 +422,7 @@ export default function ProofTimelinePage() {
             warrantyStatus={warrantyLabel(report, t)}
           />
 
-          <div className="cp-cyber-card cp-cyber-card-hover mt-6 rounded-2xl p-6">
+          <div className="cp-cyber-card cp-cyber-card-hover cp-proof-timeline-card mt-6 rounded-2xl p-6">
             <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs font-medium uppercase text-orange-300">{t("publicAudit")}</p>
@@ -1060,7 +1060,7 @@ function ProofSnapshotCard({
       : "Location proof stored with report";
 
   return (
-    <section className="mt-6 rounded-2xl border border-[#00dbe9]/20 bg-[linear-gradient(135deg,rgba(0,219,233,0.11),rgba(255,153,51,0.05))] p-5 shadow-[0_0_28px_rgba(0,219,233,0.08)]">
+    <section className="cp-proof-snapshot-card mt-6 rounded-2xl border border-[#00dbe9]/20 bg-[linear-gradient(135deg,rgba(0,219,233,0.11),rgba(255,153,51,0.05))] p-5 shadow-[0_0_28px_rgba(0,219,233,0.08)]">
       <div className="mb-4 flex flex-col justify-between gap-3 border-b border-white/10 pb-4 sm:flex-row sm:items-end">
         <div>
           <p className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-[#00dbe9]">
@@ -1117,7 +1117,7 @@ function ProofSnapshotItem({
   value: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-zinc-950/55 p-4">
+    <div className="cp-proof-snapshot-item rounded-xl border border-white/10 bg-zinc-950/55 p-4">
       <div className="mb-2 flex items-center gap-2 text-[#7df4ff]">
         {icon}
         <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#dbc2b0]/70">{label}</p>
@@ -1190,7 +1190,7 @@ function EvidenceCard({
   };
 
   return (
-    <div className={`overflow-hidden rounded-xl border ${toneMap[tone]}`}>
+    <div className={`cp-proof-evidence-card overflow-hidden rounded-xl border ${toneMap[tone]}`}>
       <div className="relative h-56 bg-zinc-950">
         {image ? (
           <img src={image} alt={label} className="absolute inset-0 h-full w-full object-cover opacity-90" />

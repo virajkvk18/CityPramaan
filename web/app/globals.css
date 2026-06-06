@@ -2784,6 +2784,174 @@ html[data-theme="bright"] .cp-theme-locked-dark .cp-landing-secondary-cta {
     display: none;
   }
 
+  .cp-public-proof-spotlight {
+    border-radius: 1.1rem !important;
+    padding: 1rem !important;
+    box-shadow:
+      0 18px 48px rgba(0, 0, 0, 0.34),
+      0 0 24px rgba(0, 219, 233, 0.08) !important;
+  }
+
+  .cp-public-proof-rule {
+    padding: 0.9rem !important;
+  }
+
+  .cp-public-proof-rule p {
+    overflow-wrap: anywhere;
+  }
+
+  .cp-public-reports-header {
+    align-items: center !important;
+    gap: 0.7rem !important;
+    padding: 0.7rem 0.85rem !important;
+  }
+
+  .cp-proof-header {
+    align-items: center !important;
+    gap: 0.7rem !important;
+    padding: 0.7rem 0.85rem !important;
+  }
+
+  .cp-public-reports-header > div,
+  .cp-proof-header > div,
+  .cp-public-reports-header a,
+  .cp-proof-header a {
+    min-width: 0;
+  }
+
+  .cp-public-reports-content {
+    padding-left: 0.9rem !important;
+    padding-right: 0.9rem !important;
+    padding-top: 5.6rem !important;
+  }
+
+  .cp-proof-content {
+    padding-left: 0.9rem !important;
+    padding-right: 0.9rem !important;
+    padding-top: 1rem !important;
+  }
+
+  .cp-public-reports-hero {
+    gap: 1rem !important;
+  }
+
+  .cp-public-reports-title {
+    font-size: 2rem !important;
+    line-height: 1.04 !important;
+    overflow-wrap: anywhere;
+  }
+
+  .cp-public-report-hero-actions a,
+  .cp-public-report-hero-actions button {
+    width: 100%;
+  }
+
+  .cp-public-report-stats {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 0.75rem !important;
+  }
+
+  .cp-public-stat-card {
+    min-height: 132px;
+    padding: 0.85rem !important;
+  }
+
+  .cp-public-stat-card p:last-child {
+    font-size: 1.65rem !important;
+    line-height: 1.1 !important;
+  }
+
+  .cp-public-city-card,
+  .cp-public-report-filters,
+  .cp-public-latest-card {
+    padding: 0.95rem !important;
+  }
+
+  .cp-public-report-filters label {
+    min-height: 48px;
+    padding: 0.78rem !important;
+  }
+
+  .cp-public-report-filters input,
+  .cp-public-report-filters select {
+    font-size: 0.78rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .cp-public-report-layout {
+    gap: 1rem !important;
+  }
+
+  .cp-public-report-card {
+    border-radius: 1rem !important;
+    padding: 0.95rem !important;
+  }
+
+  .cp-public-report-card h2 {
+    font-size: 1.25rem !important;
+    line-height: 1.18 !important;
+    overflow-wrap: anywhere;
+  }
+
+  .cp-public-report-detail-grid {
+    min-width: 0 !important;
+    width: 100%;
+    padding: 0.85rem !important;
+  }
+
+  .cp-public-report-actions a {
+    flex: 1 1 100%;
+    min-height: 44px;
+  }
+
+  .cp-public-hash-box {
+    padding: 0.82rem !important;
+  }
+
+  .cp-public-hash-box p,
+  .cp-proof-snapshot-item p,
+  .cp-proof-page [class*="break-all"],
+  .cp-public-reports-page [class*="break-all"] {
+    overflow-wrap: anywhere;
+  }
+
+  .cp-public-latest-card {
+    position: static !important;
+    top: auto !important;
+  }
+
+  .cp-proof-hero,
+  .cp-proof-snapshot-card,
+  .cp-proof-timeline-card,
+  .cp-proof-evidence-card {
+    border-radius: 1rem !important;
+  }
+
+  .cp-proof-hero,
+  .cp-proof-snapshot-card,
+  .cp-proof-timeline-card {
+    padding: 1rem !important;
+  }
+
+  .cp-proof-title {
+    font-size: 2rem !important;
+    line-height: 1.04 !important;
+    overflow-wrap: anywhere;
+  }
+
+  .cp-proof-snapshot-card h2 {
+    font-size: 1.35rem !important;
+    line-height: 1.15 !important;
+  }
+
+  .cp-proof-snapshot-item {
+    padding: 0.9rem !important;
+  }
+
+  .cp-proof-evidence-card > div:first-child {
+    height: 13.5rem !important;
+  }
+
   .cp-evidence-marquee {
     gap: 0.9rem !important;
     grid-template-columns: minmax(0, 1fr) !important;
