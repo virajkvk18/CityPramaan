@@ -131,7 +131,7 @@ async function recordReportCreatedFabricProof(report: CivicReport) {
       body: JSON.stringify({
         reportId: report.id,
         eventType: "REPORT_CREATED",
-        proofHash: report.proofBundleHash ?? report.evidenceHash ?? report.txHash,
+        proofHash: report.evidenceHash ?? report.proofBundleHash ?? report.txHash ?? report.id,
         actorRole: "CITIZEN",
         organization: "Citizen",
         status: "REPORTED",
@@ -553,10 +553,6 @@ export default function ReportIssuePage() {
       setCreatedProofHash(proofBundleHash);
       setProofError("AI/RAG proof created. Fabric anchoring is ready for teammate integration.");
       setCreatedFabricProof(fabricProof);
-      setProofMode(mode);
-      if (fallbackMessage) {
-        setProofError(fallbackMessage);
-      }
     } catch (error) {
       const message =
         error instanceof Error
@@ -1191,9 +1187,11 @@ export default function ReportIssuePage() {
                       <span className="truncate text-[#7df4ff]">{createdProofHash || "Stored"}</span>
                     </div>
                   </div>
-                  <div className="mt-3">
-                    <FabricProofCard proof={createdFabricProof} />
-                  </div>
+                  {createdFabricProof && (
+                    <div className="mt-3">
+                      <FabricProofCard proof={createdFabricProof} />
+                    </div>
+                  )}
                   <Link
                     href="/"
                     className="mt-4 inline-flex w-full items-center justify-center rounded border border-[#00eb88]/30 bg-[#00eb88]/10 px-4 py-2 text-sm font-semibold text-[#00eb88] transition hover:bg-[#00eb88]/20"
