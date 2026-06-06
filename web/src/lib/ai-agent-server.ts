@@ -22,7 +22,7 @@ export type AiAgentResult<T> = {
 };
 
 export function getAiProviderConfig(): AiProviderConfig | null {
-  const groqKey = process.env.GROQ_API_KEY;
+  const groqKey = process.env.CITYPRAMAAN_GROQ_API_KEY;
 
   if (groqKey) {
     return {
@@ -30,11 +30,11 @@ export function getAiProviderConfig(): AiProviderConfig | null {
       label: "Groq",
       endpoint: "https://api.groq.com/openai/v1/chat/completions",
       apiKey: groqKey,
-      model: process.env.GROQ_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct",
+      model: process.env.CITYPRAMAAN_GROQ_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct",
     };
   }
 
-  const xaiKey = process.env.XAI_API_KEY;
+  const xaiKey = process.env.CITYPRAMAAN_XAI_API_KEY;
 
   if (xaiKey) {
     return {
@@ -42,7 +42,7 @@ export function getAiProviderConfig(): AiProviderConfig | null {
       label: "xAI",
       endpoint: "https://api.x.ai/v1/chat/completions",
       apiKey: xaiKey,
-      model: process.env.XAI_MODEL || "grok-2-vision-1212",
+      model: process.env.CITYPRAMAAN_XAI_MODEL || "grok-2-vision-1212",
     };
   }
 
@@ -80,7 +80,7 @@ export async function runJsonAgent<T>({
     return {
       mode: "ruleset-fallback",
       provider: "local",
-      fallbackReason: "No GROQ_API_KEY or XAI_API_KEY configured.",
+      fallbackReason: "No CITYPRAMAAN_GROQ_API_KEY or CITYPRAMAAN_XAI_API_KEY configured.",
       retrievedRules,
       result: fallback,
     };

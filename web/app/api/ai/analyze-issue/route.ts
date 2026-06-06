@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       mode: "ruleset-fallback",
       provider: "local",
-      fallbackReason: "No GROQ_API_KEY or XAI_API_KEY configured.",
+      fallbackReason: "No CITYPRAMAAN_GROQ_API_KEY or CITYPRAMAAN_XAI_API_KEY configured.",
       retrievedRules,
       analysis: {
         ...fallback,
@@ -104,7 +104,7 @@ function normalizeInput(body: AnalyzeIssueBody) {
 }
 
 function getProviderConfig(): ProviderConfig | null {
-  const groqKey = process.env.GROQ_API_KEY;
+  const groqKey = process.env.CITYPRAMAAN_GROQ_API_KEY;
 
   if (groqKey) {
     return {
@@ -112,11 +112,11 @@ function getProviderConfig(): ProviderConfig | null {
       label: "Groq Vision",
       endpoint: "https://api.groq.com/openai/v1/chat/completions",
       apiKey: groqKey,
-      model: process.env.GROQ_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct",
+      model: process.env.CITYPRAMAAN_GROQ_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct",
     };
   }
 
-  const xaiKey = process.env.XAI_API_KEY;
+  const xaiKey = process.env.CITYPRAMAAN_XAI_API_KEY;
 
   if (xaiKey) {
     return {
@@ -124,7 +124,7 @@ function getProviderConfig(): ProviderConfig | null {
       label: "xAI Grok Vision",
       endpoint: "https://api.x.ai/v1/chat/completions",
       apiKey: xaiKey,
-      model: process.env.XAI_MODEL || "grok-2-vision-1212",
+      model: process.env.CITYPRAMAAN_XAI_MODEL || "grok-2-vision-1212",
     };
   }
 
