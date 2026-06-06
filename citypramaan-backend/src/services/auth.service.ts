@@ -127,7 +127,18 @@ export async function registerUser(input: RegisterInput): Promise<RegistrationRe
     return user;
   });
 
-  const verification = await issueEmailVerification(user);
+  let verification;
+
+  try {
+    verification = await issueEmailVerification(user);
+  } catch (error) {
+    store.update((db) => {
+      db.users = db.users.filter((item) => item.id !== user.id);
+      db.emailVerifications = db.emailVerifications.filter((item) => item.userId !== user.id);
+      db.contractors = db.contractors.filter((item) => item.userId !== user.id);
+    });
+    throw error;
+  }
 
   return {
     user: toPublicUser(user),
