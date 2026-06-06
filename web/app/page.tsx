@@ -562,7 +562,7 @@ export default function Home() {
       <main className="cp-page-shell cp-official-landing relative min-h-screen overflow-x-hidden bg-[#f6f8fb] text-[#1a1c1c]">
         <section className="cp-official-hero relative overflow-hidden border-b border-[#c6c5d5] bg-[linear-gradient(135deg,#ffffff_0%,#f7f9fc_54%,#eef3ff_100%)]">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(254,152,50,0.16),transparent_28%),radial-gradient(circle_at_82%_18%,rgba(29,78,216,0.12),transparent_30%),radial-gradient(circle_at_20px_20px,rgba(0,0,60,0.045)_1px,transparent_1.5px)] bg-[size:auto,auto,40px_40px]" />
-          <div className="relative z-10 mx-auto flex max-w-7xl flex-col px-4 pb-8 pt-4 sm:px-6 lg:min-h-[100svh] lg:px-10">
+          <div className="relative z-10 mx-auto flex max-w-7xl flex-col px-4 pb-7 pt-4 sm:px-6 lg:px-10">
             <header className="cp-official-nav flex flex-col gap-3 rounded-2xl border border-[#d9e2f2] bg-white/96 px-4 py-4 shadow-[0_14px_42px_rgba(15,23,42,0.08)] sm:px-6">
               <div className="flex w-full items-center justify-between gap-2">
                 <Link href="/" className="flex min-w-0 flex-1 items-center gap-3">
@@ -620,7 +620,7 @@ export default function Home() {
               </nav>
             </header>
 
-            <section className="grid flex-1 items-center gap-10 py-8 sm:py-12 lg:grid-cols-[minmax(0,470px)_minmax(0,1fr)] lg:gap-20 lg:py-10 xl:grid-cols-[minmax(0,520px)_minmax(0,1fr)]">
+            <section className="grid items-center gap-10 py-7 sm:py-9 lg:grid-cols-[minmax(0,470px)_minmax(0,1fr)] lg:gap-20 lg:py-8 xl:grid-cols-[minmax(0,520px)_minmax(0,1fr)]">
               <div className="max-w-[520px]">
                 <div>
                   <p className="mb-4 inline-flex rounded-full border border-[#1d4ed8]/25 bg-[#edf4ff] px-4 py-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#00003c]">
@@ -628,7 +628,7 @@ export default function Home() {
                   </p>
                   <AnimatedHeading
                     text={`Proof of\nrepair\nfor\naccountable\ncities.`}
-                    className="cp-landing-title mb-5 max-w-[520px] text-[3rem] font-black leading-[0.92] text-[#00003c] min-[390px]:text-[3.45rem] sm:text-[4.5rem] md:text-[5rem] lg:text-[4.55rem] xl:text-[5.05rem]"
+                    className="cp-landing-title mb-5 max-w-[520px] text-[3rem] font-black leading-[0.92] text-[#00003c] min-[390px]:text-[3.45rem] sm:text-[4.3rem] md:text-[4.75rem] lg:text-[4.35rem] xl:text-[4.85rem]"
                   />
                   <FadeIn delay={800} duration={1000}>
                     <p className="cp-landing-subtitle mb-6 max-w-xl rounded-xl border border-[#c6c5d5] bg-white px-5 py-4 text-base font-semibold leading-7 text-[#263548] shadow-[0_12px_30px_rgba(0,0,60,0.08)]">
@@ -669,7 +669,7 @@ export default function Home() {
                     </div>
                   </FadeIn>
 
-                  <div className="mt-7 grid max-w-xl gap-3 sm:grid-cols-3">
+                  <div className="mt-6 grid max-w-xl gap-3 sm:grid-cols-3">
                     <HeroTrustChip tone="blue" label="Open Public Proof" />
                     <HeroTrustChip tone="green" label="Contractor Visible" />
                     <HeroTrustChip tone="saffron" label="Warranty Memory" />
@@ -678,8 +678,8 @@ export default function Home() {
               </div>
 
               <FadeIn delay={1100} duration={1000}>
-                <div className="cp-hero-visual-panel relative overflow-hidden rounded-3xl border border-[#d8deeb] bg-white p-3 shadow-[0_28px_80px_rgba(15,23,42,0.16)] lg:mt-8">
-                  <div className="relative min-h-[390px] overflow-hidden rounded-2xl bg-[#00003c] sm:min-h-[430px] lg:min-h-[405px] xl:min-h-[440px]">
+                <div className="cp-hero-visual-panel relative overflow-hidden rounded-3xl border border-[#d8deeb] bg-white p-3 shadow-[0_28px_80px_rgba(15,23,42,0.16)]">
+                  <div className="relative min-h-[370px] overflow-hidden rounded-2xl bg-[#00003c] sm:min-h-[405px] lg:min-h-[370px] xl:min-h-[405px]">
                     <video
                       className="absolute inset-0 h-full w-full object-cover opacity-70"
                       autoPlay
@@ -1351,11 +1351,11 @@ function LandingEvidenceSections({
   locationIsDetected: boolean;
 }) {
   return (
-    <div className="cp-dark-landing-content relative z-10 bg-[#020304] text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(255,153,51,0.16),transparent_28%),radial-gradient(circle_at_86%_20%,rgba(0,219,233,0.14),transparent_28%),linear-gradient(to_right,rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:auto,auto,34px_34px,34px_34px]" />
+    <div className="cp-light-landing-content relative z-10 bg-[#f6f8fb] text-[#1a1c1c]">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(255,153,51,0.12),transparent_28%),radial-gradient(circle_at_86%_20%,rgba(29,78,216,0.1),transparent_28%),radial-gradient(circle_at_20px_20px,rgba(0,0,60,0.035)_1px,transparent_1.5px)] bg-[size:auto,auto,40px_40px]" />
       <div className="cp-landing-aurora pointer-events-none absolute inset-0" />
 
-      <section className="cp-landing-section relative mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-10 lg:py-20">
+        <section className="cp-landing-section relative mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-10 lg:py-16">
         <div className="cp-scroll-reveal cp-public-proof-spotlight overflow-hidden rounded-3xl border border-[#00dbe9]/24 bg-[radial-gradient(circle_at_16%_18%,rgba(0,219,233,0.2),transparent_30%),radial-gradient(circle_at_82%_18%,rgba(255,153,51,0.18),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.085),rgba(255,255,255,0.025))] p-5 shadow-[0_34px_90px_rgba(0,0,0,0.46)] backdrop-blur-xl sm:p-7 lg:p-9">
           <div className="grid gap-7 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
             <div>
