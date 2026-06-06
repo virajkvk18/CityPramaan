@@ -53,6 +53,8 @@ export const env = {
   corsOrigins: getCsv('CORS_ORIGIN', [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3001',
   ]),
   dataDir,
   dataFile: path.resolve(dataDir, process.env.DATA_FILE || 'citypramaan-db.json'),
