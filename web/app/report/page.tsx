@@ -59,7 +59,7 @@ import { getCurrentUser } from "@/src/lib/auth-storage";
 import { createProofBundleHash, deriveTransactionHash, sha256Hex } from "@/src/lib/proof-hashing";
 import {
   buildExplorerTxUrl,
-  connectWallet,
+  createDemoProofTransactionHash,
   createReportTransaction,
   formatWalletError,
   getWalletSnapshot,
@@ -209,6 +209,7 @@ export default function ReportIssuePage() {
   const [createdTxHash, setCreatedTxHash] = useState("");
   const [createdTxUrl, setCreatedTxUrl] = useState("");
   const [createdProofHash, setCreatedProofHash] = useState("");
+  const [proofMode, setProofMode] = useState<"real" | "demo">("real");
   const [aiProcessing, setAiProcessing] = useState(false);
   const [aiResult, setAiResult] = useState<InfrastructureAnalysis | null>(null);
   const googleMapsUrl = buildGoogleMapsUrl(latitude, longitude);
@@ -453,9 +454,27 @@ export default function ReportIssuePage() {
         savedLocation,
         now,
       ]);
-      const connectedWallet = wallet.connected ? wallet : await connectWallet(wallet.chainKey);
-      const txHash = await createReportTransaction(reportId, proofBundleHash);
-      const txUrl = buildExplorerTxUrl(txHash, connectedWallet.chainKey);
+      let txHash = "";
+      let txUrl = "";
+      let mode: "real" | "demo" = "real";
+      let fallbackMessage = "";
+
+      if (wallet.connected && hasEthereumProvider()) {
+        try {
+          txHash = await createReportTransaction(reportId, proofBundleHash);
+          txUrl = buildExplorerTxUrl(txHash, wallet.chainKey);
+        } catch (transactionError) {
+          mode = "demo";
+          txHash = await createDemoProofTransactionHash(`report:${reportId}:${proofBundleHash}`);
+          txUrl = "";
+          fallbackMessage = `Tenderly/MetaMask transaction failed, so a demo proof was saved instead. ${formatWalletError(transactionError)}`;
+        }
+      } else {
+        mode = "demo";
+        txHash = await createDemoProofTransactionHash(`report:${reportId}:${proofBundleHash}`);
+        fallbackMessage = "Demo proof saved locally. Connect MetaMask to create a real blockchain transaction.";
+      }
+
       const aiTxHash = await deriveTransactionHash(`${reportId}:${result.proofTag}:aiVerification`);
 
       const newReport: CivicReport = {
@@ -543,6 +562,10 @@ export default function ReportIssuePage() {
       setCreatedTxHash(txHash);
       setCreatedTxUrl(txUrl);
       setCreatedProofHash(proofBundleHash);
+      setProofMode(mode);
+      if (fallbackMessage) {
+        setProofError(fallbackMessage);
+      }
     } catch (error) {
       const message =
         formatWalletError(error) ||
@@ -1164,6 +1187,12 @@ export default function ReportIssuePage() {
                     </p>
                   )}
                   <div className="mt-3 space-y-2 rounded bg-black/45 p-3 font-mono text-xs">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="uppercase text-[#dbc2b0]/55">Proof mode</span>
+                      <span className={proofMode === "real" ? "text-[#00eb88]" : "text-[#ffc08d]"}>
+                        {proofMode === "real" ? "Real blockchain" : "Demo/local proof"}
+                      </span>
+                    </div>
                     <div className="flex items-center justify-between gap-3">
                       <span className="uppercase text-[#dbc2b0]/55">Tx hash</span>
                       <span className="truncate text-[#00eb88]">{createdTxHash || "Created"}</span>

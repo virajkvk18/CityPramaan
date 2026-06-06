@@ -350,7 +350,7 @@ export async function readProofRecords(publicIds: string[]) {
 }
 
 export function buildExplorerTxUrl(txHash: string, chainKey: SupportedChainKey = getPreferredChainKey()) {
-  if (!txHash || !txHash.startsWith("0x")) {
+  if (!txHash || !txHash.startsWith("0x") || isDemoProofTransaction(txHash)) {
     return "";
   }
 
@@ -368,6 +368,24 @@ export function shortWalletAddress(address: string) {
   }
 
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+export async function createDemoProofTransactionHash(seed: string) {
+  const encoder = new TextEncoder();
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    encoder.encode(`${seed}:${Date.now()}:${Math.random()}`)
+  );
+  const suffix = Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, 60);
+
+  return `0xdemo${suffix}`;
+}
+
+export function isDemoProofTransaction(txHash: string) {
+  return txHash.startsWith("0xdemo");
 }
 
 export function formatWalletError(error: unknown) {
