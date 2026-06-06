@@ -1,6 +1,6 @@
 "use client";
 
-import { buildContractorFromSignup, upsertContractorProfile } from "./contractor-storage";
+import { buildContractorFromSignup, syncContractorProfileToBackend, upsertContractorProfile } from "./contractor-storage";
 
 export type AuthRole = "USER" | "WARD_ADMIN" | "CONTRACTOR";
 
@@ -12,6 +12,8 @@ export type UserProfile = {
   role: AuthRole;
   passwordHash: string;
   passwordSalt: string;
+  emailVerified?: boolean;
+  emailVerifiedAt?: string;
   walletAddress: string;
   address?: string;
   city?: string;
@@ -35,6 +37,8 @@ export type PublicUserProfile = Omit<UserProfile, "passwordHash" | "passwordSalt
 
 export const AUTH_USERS_KEY = "city-pramaan:auth-users";
 export const AUTH_SESSION_KEY = "city-pramaan:auth-session";
+export const AUTH_ACCESS_TOKEN_KEY = "city-pramaan:auth-access-token";
+export const AUTH_REFRESH_TOKEN_KEY = "city-pramaan:auth-refresh-token";
 export const AUTH_UPDATED_EVENT = "city-pramaan:auth-updated";
 
 export const roleLabels: Record<AuthRole, string> = {
@@ -42,6 +46,40 @@ export const roleLabels: Record<AuthRole, string> = {
   WARD_ADMIN: "Ward admin",
   CONTRACTOR: "Contractor",
 };
+
+class BackendAuthError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
+type BackendAuthPayload = {
+  user?: PublicUserProfile;
+  accessToken?: string;
+  refreshToken?: string;
+  emailVerificationRequired?: boolean;
+  verificationExpiresAt?: string;
+  delivery?: "smtp" | "console";
+  devVerificationCode?: string;
+  error?: string;
+};
+
+export type SignUpResult =
+  | {
+      status: "verification_required";
+      user: PublicUserProfile;
+      email: string;
+      verificationExpiresAt?: string;
+      delivery?: "smtp" | "console";
+      devVerificationCode?: string;
+    }
+  | {
+      status: "authenticated";
+      user: PublicUserProfile;
+    };
 
 export function getAuthSnapshot() {
   if (typeof window === "undefined") {
@@ -93,69 +131,65 @@ export async function signUpUser(input: {
   contractorWard?: string;
   contractorSpecialization?: string;
   agencyName?: string;
-}) {
+}): Promise<SignUpResult> {
   const email = normalizeEmail(input.email);
-  const users = loadUsers();
-
-  if (users.some((user) => user.email === email)) {
-    throw new Error("An account already exists with this email address.");
-  }
 
   if (input.password.length < 8) {
     throw new Error("Password must be at least 8 characters.");
   }
 
-  const now = new Date().toISOString();
-  const salt = createId();
-  const passwordHash = await hashText(`${salt}:${input.password}`);
-  const walletAddress = await createProfileWallet(email);
-  const user: UserProfile = {
-    id: createId(),
+  const backendSignup = await registerWithBackend({
+    ...input,
     email,
-    name: input.name.trim(),
-    contactNumber: input.contactNumber.trim(),
-    role: input.role,
-    contractorIdentityNumber: input.contractorIdentityNumber?.trim(),
-    contractorArea: input.contractorArea?.trim(),
-    ward: input.contractorWard?.trim(),
-    contractorSpecialization: input.contractorSpecialization?.trim(),
-    agencyName: input.agencyName?.trim(),
-    verificationStatus: input.role === "CONTRACTOR" ? "Verified" : undefined,
-    availabilityStatus: input.role === "CONTRACTOR" ? "Available" : undefined,
-    passwordHash,
-    passwordSalt: salt,
-    walletAddress,
-    createdAt: now,
-    updatedAt: now,
-  };
-  const profileProof = await createProfileProof(user);
-  const saved = {
-    ...user,
-    ...profileProof,
-  };
+  });
 
-  saveUsers([...users, saved]);
-  syncContractorProfile(saved);
-  setSession(saved.id);
-  return stripPrivateFields(saved);
+  if (backendSignup.emailVerificationRequired) {
+    if (!backendSignup.user) {
+      throw new BackendAuthError("Signup did not return a user profile.", 500);
+    }
+
+    savePublicUser(backendSignup.user);
+    return {
+      status: "verification_required",
+      user: backendSignup.user,
+      email: backendSignup.user.email,
+      verificationExpiresAt: backendSignup.verificationExpiresAt,
+      delivery: backendSignup.delivery,
+      devVerificationCode: backendSignup.devVerificationCode,
+    };
+  }
+
+  const user = saveAuthenticatedBackendSession(backendSignup);
+  syncContractorProfile(publicToLocalUser(user));
+  return { status: "authenticated", user };
 }
 
 export async function loginUser(emailInput: string, password: string) {
   const email = normalizeEmail(emailInput);
-  const user = loadUsers().find((item) => item.email === email);
 
-  if (!user) {
-    throw new Error("No account found for this email address.");
-  }
+  const backendLogin = await loginWithBackend({
+    email,
+    password,
+  });
+  const user = saveAuthenticatedBackendSession(backendLogin);
+  syncContractorProfile(publicToLocalUser(user));
+  return user;
+}
 
-  const passwordHash = await hashText(`${user.passwordSalt}:${password}`);
+export async function verifyEmailCode(emailInput: string, code: string) {
+  const email = normalizeEmail(emailInput);
+  const response = await backendAuthFetch("/api/auth/verify-email", {
+    email,
+    code: code.trim(),
+  });
+  const user = saveAuthenticatedBackendSession(response);
+  syncContractorProfile(publicToLocalUser(user));
+  return user;
+}
 
-  if (passwordHash !== user.passwordHash) {
-    throw new Error("Incorrect password.");
-  }
-
-  setSession(user.id);
-  return stripPrivateFields(user);
+export async function resendVerificationCode(emailInput: string) {
+  const email = normalizeEmail(emailInput);
+  return backendAuthFetch("/api/auth/resend-verification", { email });
 }
 
 export function logoutUser() {
@@ -164,6 +198,8 @@ export function logoutUser() {
   }
 
   window.localStorage.removeItem(AUTH_SESSION_KEY);
+  window.localStorage.removeItem(AUTH_ACCESS_TOKEN_KEY);
+  window.localStorage.removeItem(AUTH_REFRESH_TOKEN_KEY);
   window.dispatchEvent(new Event(AUTH_UPDATED_EVENT));
 }
 
@@ -266,6 +302,45 @@ function saveUsers(users: UserProfile[]) {
   window.dispatchEvent(new Event(AUTH_UPDATED_EVENT));
 }
 
+function savePublicUser(user: PublicUserProfile) {
+  const users = loadUsers();
+  const existing = users.find((item) => item.id === user.id || item.email === user.email);
+  const localUser = publicToLocalUser(user, existing);
+  const nextUsers = [localUser, ...users.filter((item) => item.id !== localUser.id && item.email !== localUser.email)];
+
+  saveUsers(nextUsers);
+  return localUser;
+}
+
+function savePublicUserSession(user: PublicUserProfile) {
+  const localUser = savePublicUser(user);
+  setSession(localUser.id);
+}
+
+function saveAuthenticatedBackendSession(payload: BackendAuthPayload) {
+  if (!payload.user) {
+    throw new BackendAuthError("Authentication did not return a user profile.", 500);
+  }
+
+  savePublicUserSession(payload.user);
+  saveBackendTokens(payload.accessToken, payload.refreshToken);
+  return payload.user;
+}
+
+function publicToLocalUser(user: PublicUserProfile, existing?: UserProfile): UserProfile {
+  const now = new Date().toISOString();
+
+  return {
+    ...existing,
+    ...user,
+    passwordHash: existing?.passwordHash ?? "",
+    passwordSalt: existing?.passwordSalt ?? "",
+    walletAddress: user.walletAddress || existing?.walletAddress || "",
+    createdAt: user.createdAt ?? existing?.createdAt ?? now,
+    updatedAt: user.updatedAt ?? existing?.updatedAt ?? now,
+  };
+}
+
 function setSession(userId: string) {
   if (typeof window === "undefined") {
     return;
@@ -280,6 +355,63 @@ function stripPrivateFields(user: UserProfile): PublicUserProfile {
   void passwordHash;
   void passwordSalt;
   return publicUser;
+}
+
+async function registerWithBackend(
+  payload: {
+    email: string;
+    password: string;
+    name?: string;
+    contactNumber?: string;
+    role?: AuthRole;
+    contractorIdentityNumber?: string;
+    contractorArea?: string;
+    contractorWard?: string;
+    contractorSpecialization?: string;
+    agencyName?: string;
+  }
+) {
+  return backendAuthFetch("/api/auth/register", payload);
+}
+
+async function loginWithBackend(payload: { email: string; password: string }) {
+  return backendAuthFetch("/api/auth/login", payload);
+}
+
+async function backendAuthFetch(path: string, payload: Record<string, unknown>) {
+  const response = await fetch(`${getBackendBaseUrl()}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  const body = (await response.json().catch(() => ({}))) as BackendAuthPayload;
+
+  if (!response.ok) {
+    throw new BackendAuthError(body.error || `Authentication failed with status ${response.status}`, response.status);
+  }
+
+  return body;
+}
+
+function saveBackendTokens(accessToken?: string, refreshToken?: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (accessToken) {
+    window.localStorage.setItem(AUTH_ACCESS_TOKEN_KEY, accessToken);
+  }
+
+  if (refreshToken) {
+    window.localStorage.setItem(AUTH_REFRESH_TOKEN_KEY, refreshToken);
+  }
+}
+
+function getBackendBaseUrl() {
+  const configured = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, "");
+  return configured || "http://localhost:5000";
 }
 
 async function createProfileProof(user: UserProfile) {
@@ -317,24 +449,20 @@ function syncContractorProfile(user: UserProfile) {
     return;
   }
 
-  upsertContractorProfile(
-    buildContractorFromSignup({
-      userId: user.id,
-      name: user.name,
-      email: user.email,
-      phone: user.contactNumber,
-      identityNumber: user.contractorIdentityNumber || user.contractorLicense,
-      area: user.contractorArea || user.address || user.city,
-      ward: user.ward,
-      specialization: user.contractorSpecialization,
-      agencyName: user.agencyName,
-    })
-  );
-}
+  const contractor = buildContractorFromSignup({
+    userId: user.id,
+    name: user.name,
+    email: user.email,
+    phone: user.contactNumber,
+    identityNumber: user.contractorIdentityNumber || user.contractorLicense,
+    area: user.contractorArea || user.address || user.city,
+    ward: user.ward,
+    specialization: user.contractorSpecialization,
+    agencyName: user.agencyName,
+  });
 
-async function createProfileWallet(seed: string) {
-  const hash = await hashText(`profile-wallet:${seed}`);
-  return `0x${hash.slice(2, 10)}...${hash.slice(-6)}`;
+  upsertContractorProfile(contractor);
+  void syncContractorProfileToBackend(contractor);
 }
 
 async function hashText(input: string) {
@@ -344,14 +472,6 @@ async function hashText(input: string) {
   return `0x${Array.from(new Uint8Array(digest))
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("")}`;
-}
-
-function createId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function normalizeEmail(email: string) {

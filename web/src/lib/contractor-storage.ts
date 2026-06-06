@@ -29,6 +29,34 @@ export function loadContractors(): ContractorProfile[] {
   }
 }
 
+export async function fetchBackendContractors() {
+  try {
+    const response = await fetch("/api/contractors", { cache: "no-store" });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const payload = (await response.json()) as { contractors?: ContractorProfile[] };
+    return Array.isArray(payload.contractors) ? payload.contractors : [];
+  } catch (error) {
+    console.warn("CityPramaan contractor registry unavailable:", error);
+    return [];
+  }
+}
+
+export function mergeContractorLists(...groups: ContractorProfile[][]) {
+  const map = new Map<string, ContractorProfile>();
+
+  for (const group of groups) {
+    for (const contractor of group) {
+      map.set(contractor.contractorId, contractor);
+    }
+  }
+
+  return Array.from(map.values());
+}
+
 export function getContractorsSnapshot() {
   if (typeof window === "undefined") {
     return "[]";
@@ -65,6 +93,20 @@ export function upsertContractorProfile(contractor: ContractorProfile) {
   const existing = loadContractors().filter((item) => item.contractorId !== contractor.contractorId);
   window.localStorage.setItem(CONTRACTORS_KEY, JSON.stringify([contractor, ...existing]));
   window.dispatchEvent(new Event(CONTRACTORS_UPDATED_EVENT));
+}
+
+export async function syncContractorProfileToBackend(contractor: ContractorProfile) {
+  try {
+    await fetch("/api/contractors", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(contractor),
+    });
+  } catch (error) {
+    console.warn("CityPramaan contractor backend sync unavailable:", error);
+  }
 }
 
 export function attachReportToContractor(contractorId: string, reportId: string) {
@@ -185,17 +227,7 @@ function demoContractors(cityKey = DEFAULT_CITY_KEY): ContractorProfile[] {
 }
 
 function mergeContractors(primary: ContractorProfile[], fallback: ContractorProfile[]) {
-  const map = new Map<string, ContractorProfile>();
-
-  for (const contractor of fallback) {
-    map.set(contractor.contractorId, contractor);
-  }
-
-  for (const contractor of primary) {
-    map.set(contractor.contractorId, contractor);
-  }
-
-  return Array.from(map.values());
+  return mergeContractorLists(fallback, primary);
 }
 
 function normalizeCategory(value?: string) {

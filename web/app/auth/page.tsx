@@ -7,7 +7,7 @@ import { FormEvent, useState } from "react";
 import { ArrowLeft, BadgeCheck, Building2, Eye, EyeOff, Mail, Phone, ShieldCheck, User, Wrench } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
-import { type AuthRole, loginUser, roleLabels, signUpUser } from "@/src/lib/auth-storage";
+import { type AuthRole, loginUser, resendVerificationCode, roleLabels, signUpUser, verifyEmailCode } from "@/src/lib/auth-storage";
 
 const roleOptions: Array<{ value: AuthRole; icon: typeof User; detail: string }> = [
   { value: "USER", icon: User, detail: "Report civic issues and track public proof." },
@@ -40,7 +40,7 @@ function getRoleLandingPath(role: AuthRole) {
 
 export default function AuthPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<"login" | "signup">("signup");
+  const [mode, setMode] = useState<"login" | "signup" | "verify">("signup");
   const [role, setRole] = useState<AuthRole>("USER");
   const [name, setName] = useState("");
   const [contactNumber, setContactNumber] = useState("");
@@ -51,6 +51,9 @@ export default function AuthPage() {
   const [agencyName, setAgencyName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verificationEmail, setVerificationEmail] = useState("");
+  const [devVerificationCode, setDevVerificationCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -61,8 +64,11 @@ export default function AuthPage() {
     setBusy(true);
 
     try {
-      if (mode === "signup") {
-        await signUpUser({
+      if (mode === "verify") {
+        const user = await verifyEmailCode(verificationEmail || email, verificationCode);
+        router.push(getRoleLandingPath(user.role));
+      } else if (mode === "signup") {
+        const result = await signUpUser({
           email,
           password,
           name,
@@ -74,6 +80,20 @@ export default function AuthPage() {
           contractorSpecialization: role === "CONTRACTOR" ? contractorSpecialization : undefined,
           agencyName: role === "CONTRACTOR" ? agencyName : undefined,
         });
+
+        if (result.status === "verification_required") {
+          setVerificationEmail(result.email);
+          setVerificationCode(result.devVerificationCode ?? "");
+          setDevVerificationCode(result.devVerificationCode ?? "");
+          setMode("verify");
+          setMessage(
+            result.devVerificationCode
+              ? `Development OTP: ${result.devVerificationCode}`
+              : "Verification code sent to your email."
+          );
+          return;
+        }
+
         router.push("/profile");
       } else {
         const user = await loginUser(email, password);
@@ -81,6 +101,26 @@ export default function AuthPage() {
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Authentication failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleResendCode() {
+    setMessage("");
+    setBusy(true);
+
+    try {
+      const result = await resendVerificationCode(verificationEmail || email);
+      if (result.devVerificationCode) {
+        setVerificationCode(result.devVerificationCode);
+        setDevVerificationCode(result.devVerificationCode);
+        setMessage(`Development OTP: ${result.devVerificationCode}`);
+      } else {
+        setMessage("Verification code sent again.");
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not resend verification code.");
     } finally {
       setBusy(false);
     }
@@ -152,7 +192,7 @@ export default function AuthPage() {
               type="button"
               onClick={() => setMode("signup")}
               className={`rounded px-4 py-3 font-mono text-xs font-bold uppercase tracking-[0.16em] transition ${
-                mode === "signup" ? "bg-[#ffc08d] text-[#4c2700]" : "text-[#dbc2b0] hover:text-white"
+                mode === "signup" || mode === "verify" ? "bg-[#ffc08d] text-[#4c2700]" : "text-[#dbc2b0] hover:text-white"
               }`}
             >
               Sign up
@@ -169,9 +209,15 @@ export default function AuthPage() {
           </div>
 
           <div className="mb-5">
-            <h2 className="text-2xl font-black text-white">{mode === "signup" ? "Create CityPramaan profile" : "Welcome back"}</h2>
+            <h2 className="text-2xl font-black text-white">
+              {mode === "verify" ? "Enter email OTP" : mode === "signup" ? "Create CityPramaan profile" : "Welcome back"}
+            </h2>
             <p className="mt-2 text-sm text-[#a38d7c]">
-              {mode === "signup" ? `Signing up as ${roleLabels[role]}.` : "Login with your registered email and password."}
+              {mode === "verify"
+                ? `Code sent to ${verificationEmail || email}.`
+                : mode === "signup"
+                  ? `Signing up as ${roleLabels[role]}.`
+                  : "Login with your registered email and password."}
             </p>
           </div>
 
@@ -261,7 +307,45 @@ export default function AuthPage() {
             </>
           )}
 
-          <div className="mt-4 space-y-4">
+          {mode === "verify" ? (
+            <div className="mt-4 space-y-4">
+              <Field
+                icon={<Mail size={17} />}
+                label="Verification email"
+                type="email"
+                value={verificationEmail || email}
+                onChange={(value) => {
+                  setVerificationEmail(value);
+                  setEmail(value);
+                }}
+                required
+              />
+              <Field
+                icon={<BadgeCheck size={17} />}
+                label="OTP code"
+                value={verificationCode}
+                onChange={setVerificationCode}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={10}
+                required
+              />
+              {devVerificationCode && (
+                <p className="rounded-md border border-[#00dbe9]/25 bg-[#00dbe9]/10 px-4 py-3 font-mono text-xs font-bold tracking-[0.14em] text-[#7df4ff]">
+                  DEV OTP: {devVerificationCode}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={() => void handleResendCode()}
+                disabled={busy}
+                className="w-full rounded-md border border-white/10 bg-black/25 px-4 py-3 font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#dbc2b0] transition hover:border-[#00dbe9]/35 hover:text-white disabled:cursor-wait disabled:opacity-60"
+              >
+                Resend code
+              </button>
+            </div>
+          ) : (
+            <div className="mt-4 space-y-4">
             <Field icon={<Mail size={17} />} label="Email address" type="email" value={email} onChange={setEmail} required />
             <label className="block">
               <span className="mb-2 block font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#dbc2b0]">Password</span>
@@ -281,6 +365,7 @@ export default function AuthPage() {
               </span>
             </label>
           </div>
+          )}
 
           {message && <p className="mt-4 rounded-md border border-[#ffb4ab]/30 bg-[#ffb4ab]/10 px-4 py-3 text-sm text-[#ffcec7]">{message}</p>}
 
@@ -289,7 +374,7 @@ export default function AuthPage() {
             disabled={busy}
             className="mt-6 w-full rounded-md bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] px-5 py-4 font-mono text-xs font-black uppercase tracking-[0.18em] text-[#4c2700] shadow-[0_0_26px_rgba(255,153,51,0.18)] transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
           >
-            {busy ? "Processing..." : mode === "signup" ? "Create account" : "Login"}
+            {busy ? "Processing..." : mode === "verify" ? "Verify email" : mode === "signup" ? "Create account" : "Login"}
           </button>
         </form>
       </section>
@@ -313,6 +398,9 @@ function Field({
   onChange,
   type = "text",
   required,
+  inputMode,
+  autoComplete,
+  maxLength,
 }: {
   icon: ReactNode;
   label: string;
@@ -320,6 +408,9 @@ function Field({
   onChange: (value: string) => void;
   type?: string;
   required?: boolean;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
+  autoComplete?: string;
+  maxLength?: number;
 }) {
   return (
     <label className="block">
@@ -331,6 +422,9 @@ function Field({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           required={required}
+          inputMode={inputMode}
+          autoComplete={autoComplete}
+          maxLength={maxLength}
           className="min-h-12 w-full bg-transparent text-sm text-white outline-none"
         />
       </span>
