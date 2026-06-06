@@ -592,7 +592,7 @@ export default function Home() {
                   </Link>
                   <Link
                     href="/auth"
-                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-[#00003c] px-4 py-2 text-sm font-extrabold text-white shadow-[0_8px_18px_rgba(0,0,60,0.18)] transition hover:bg-[#111b63]"
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-[#00003c] px-4 py-2 text-sm font-extrabold !text-white shadow-[0_8px_18px_rgba(0,0,60,0.18)] transition hover:bg-[#111b63]"
                   >
                     <LogIn size={14} />
                     Sign In
@@ -639,7 +639,7 @@ export default function Home() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                       <Link
                         href="/auth"
-                        className="cp-landing-primary-cta inline-flex min-h-12 items-center justify-center rounded-xl bg-[#00003c] px-6 py-3 text-center text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(0,0,60,0.18)] transition hover:bg-[#111b63] sm:px-8"
+                        className="cp-landing-primary-cta inline-flex min-h-12 items-center justify-center rounded-xl bg-[#00003c] px-6 py-3 text-center text-sm font-extrabold !text-white shadow-[0_10px_24px_rgba(0,0,60,0.18)] transition hover:bg-[#111b63] sm:px-8"
                       >
                         Report an Issue
                       </Link>
@@ -651,7 +651,7 @@ export default function Home() {
                       </Link>
                       <Link
                         href="/auth"
-                        className="cp-landing-tertiary-cta inline-flex min-h-12 items-center justify-center rounded-xl border border-[#fe9832]/35 bg-[#fff3e7] px-6 py-3 text-center text-sm font-extrabold text-[#9a4f00] transition hover:bg-[#ffdcc2] sm:px-8"
+                        className="cp-landing-tertiary-cta inline-flex min-h-12 items-center justify-center rounded-xl border border-[#fe9832] bg-[#fe9832] px-6 py-3 text-center text-sm font-extrabold !text-[#231300] transition hover:bg-[#e8880a] sm:px-8"
                       >
                         Admin Login
                       </Link>
