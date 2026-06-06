@@ -1,166 +1,593 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
+  Accessibility,
   AlertTriangle,
   ArrowLeft,
-  ArrowUpRight,
-  Clock3,
-  DatabaseZap,
-  FileText,
-  Filter,
-  Hash,
+  BadgeCheck,
+  BookOpen,
+  Camera,
+  CheckCircle2,
+  Droplets,
+  FileImage,
+  Fingerprint,
+  LayoutDashboard,
+  Moon,
+  LocateFixed,
   MapPin,
+  Router,
   Search,
+  Settings,
   ShieldCheck,
   Sparkles,
+  Trash2,
+  UploadCloud,
+  Wallet,
+  Wrench,
+  X,
+  Zap,
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { NotificationBell } from "@/src/components/layout/NotificationBell";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
-import { DEFAULT_CITY_KEY, demoCities, getCityByKey, type CityKey } from "@/src/lib/city-context";
-import { getCitySnapshot, subscribeCity } from "@/src/lib/city-storage";
-import { getReportsForCity, type CivicReport, type ReportStatus } from "@/src/lib/mock-data";
-import { getLocalReportsSnapshot, subscribeLocalReports } from "@/src/lib/report-storage";
-import { fetchBackendReports, mergeReportsById } from "@/src/lib/report-sync";
+import {
+  DEFAULT_CITY_KEY,
+  demoCities,
+  formatCityLocation,
+  getCityByKey,
+  type CityKey,
+} from "@/src/lib/city-context";
+import { getCitySnapshot, setSelectedCityKey, subscribeCity } from "@/src/lib/city-storage";
+import {
+  analyzeInfrastructureIssue,
+  type InfrastructureAnalysis,
+} from "@/src/lib/infrastructure-analyzer";
+import { getLanguageSnapshot, subscribeLanguage } from "@/src/lib/language-storage";
+import { translate } from "@/src/lib/language-context";
+import { buildGoogleMapsUrl, type CivicReport } from "@/src/lib/mock-data";
+import {
+  createLocalReportId,
+  readFileAsDataUrl,
+} from "@/src/lib/report-storage";
+import { saveReportEverywhere } from "@/src/lib/report-sync";
+import { getCurrentUser } from "@/src/lib/auth-storage";
+import { createProofBundleHash, deriveTransactionHash, sha256Hex } from "@/src/lib/proof-hashing";
+import {
+  buildExplorerTxUrl,
+  connectWallet,
+  createReportTransaction,
+  getWalletSnapshot,
+  hasEthereumProvider,
+  parseWalletSnapshot,
+  shortWalletAddress,
+  subscribeWallet,
+} from "@/src/lib/wallet-storage";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 
-const statusLabels: Record<ReportStatus, string> = {
-  OPEN: "Open",
-  PENDING_PROOF: "Pending Proof",
-  ASSIGNED_TO_CONTRACTOR: "Assigned",
-  WORK_ACCEPTED: "Work Accepted",
-  WORK_STARTED: "Work Started",
-  WORK_COMPLETED: "Work Completed",
-  REPAIR_SUBMITTED: "Repair Submitted",
-  ADMIN_APPROVED: "Admin Approved",
-  REPAIR_REJECTED: "Repair Rejected",
-  CITIZEN_DISPUTED: "Citizen Disputed",
-  UNDER_WARRANTY: "Warranty Active",
-  REPEAT_FAILURE: "Repeat Failure",
-  CLOSED: "Closed",
-};
-
-const statusTone: Record<ReportStatus, string> = {
-  OPEN: "border-[#ffb4ab]/35 bg-[#ffb4ab]/10 text-[#ffdad6]",
-  PENDING_PROOF: "border-[#00dbe9]/35 bg-[#00dbe9]/10 text-[#7df4ff]",
-  ASSIGNED_TO_CONTRACTOR: "border-[#00dbe9]/35 bg-[#00dbe9]/10 text-[#7df4ff]",
-  WORK_ACCEPTED: "border-[#00dbe9]/35 bg-[#00dbe9]/10 text-[#7df4ff]",
-  WORK_STARTED: "border-[#00dbe9]/35 bg-[#00dbe9]/10 text-[#7df4ff]",
-  WORK_COMPLETED: "border-[#ffc08d]/35 bg-[#ffc08d]/10 text-[#ffdcc2]",
-  REPAIR_SUBMITTED: "border-[#ffc08d]/35 bg-[#ffc08d]/10 text-[#ffdcc2]",
-  ADMIN_APPROVED: "border-[#00eb88]/35 bg-[#00eb88]/10 text-[#5bffa1]",
-  REPAIR_REJECTED: "border-[#ffb4ab]/35 bg-[#ffb4ab]/10 text-[#ffdad6]",
-  CITIZEN_DISPUTED: "border-[#d946ef]/40 bg-[#d946ef]/12 text-[#f0abfc]",
-  UNDER_WARRANTY: "border-[#00eb88]/35 bg-[#00eb88]/10 text-[#5bffa1]",
-  REPEAT_FAILURE: "border-[#d946ef]/40 bg-[#d946ef]/12 text-[#f0abfc]",
-  CLOSED: "border-white/15 bg-white/[0.05] text-[#dbc2b0]",
-};
-
-const statusOptions: Array<"ALL" | ReportStatus> = [
-  "ALL",
-  "OPEN",
-  "PENDING_PROOF",
-  "ASSIGNED_TO_CONTRACTOR",
-  "WORK_ACCEPTED",
-  "WORK_STARTED",
-  "WORK_COMPLETED",
-  "REPAIR_SUBMITTED",
-  "ADMIN_APPROVED",
-  "REPAIR_REJECTED",
-  "CITIZEN_DISPUTED",
-  "UNDER_WARRANTY",
-  "REPEAT_FAILURE",
-  "CLOSED",
+const issuePresets = [
+  {
+    label: "Road pothole",
+    icon: AlertTriangle,
+    text: "Large pothole appeared again near the same repaired road segment.",
+  },
+  {
+    label: "Clogged drain",
+    icon: Droplets,
+    text: "Drain is clogged and waterlogging starts during rain near the main road.",
+  },
+  {
+    label: "Night dark zone",
+    icon: Moon,
+    text: "Streetlight is not working at night and the lane has become unsafe for pedestrians.",
+  },
+  {
+    label: "Transformer outage",
+    icon: Zap,
+    text: "Transformer failed after heavy rainfall and homes nearby have no electricity. Citizens need restoration ETA and progress updates.",
+  },
+  {
+    label: "Garbage blackspot",
+    icon: Trash2,
+    text: "Garbage is overflowing at the same corner and the area smells badly.",
+  },
+  {
+    label: "Water leakage",
+    icon: Wrench,
+    text: "Water pipeline leakage is flowing onto the road and damaging the surface.",
+  },
+  {
+    label: "Blocked footpath",
+    icon: Accessibility,
+    text: "Footpath ramp is blocked and wheelchair users cannot pass safely.",
+  },
 ];
 
-export default function ReportsPage() {
-  const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => DEFAULT_CITY_KEY);
-  const localReportsSnapshot = useSyncExternalStore(
-    subscribeLocalReports,
-    getLocalReportsSnapshot,
-    () => "[]"
-  );
-  const selectedCity = getCityByKey(citySnapshot);
-  const cityDisplay = useDetectedLocationDisplay(selectedCity);
-  const [backendReports, setBackendReports] = useState<CivicReport[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | ReportStatus>("ALL");
-  const [cityFilter, setCityFilter] = useState<"ALL" | CityKey>("ALL");
+function getNearestCity(latitude: number, longitude: number) {
+  return demoCities
+    .map((city) => ({
+      city,
+      distance: getDistanceKm(latitude, longitude, city.lat, city.lng),
+    }))
+    .sort((first, second) => first.distance - second.distance)[0].city;
+}
 
-  const localReports = useMemo(
-    () => JSON.parse(localReportsSnapshot) as CivicReport[],
-    [localReportsSnapshot]
-  );
+function getDistanceKm(fromLat: number, fromLng: number, toLat: number, toLng: number) {
+  const earthRadiusKm = 6371;
+  const latDelta = toRadians(toLat - fromLat);
+  const lngDelta = toRadians(toLng - fromLng);
+  const startLat = toRadians(fromLat);
+  const endLat = toRadians(toLat);
+  const a =
+    Math.sin(latDelta / 2) * Math.sin(latDelta / 2) +
+    Math.cos(startLat) * Math.cos(endLat) * Math.sin(lngDelta / 2) * Math.sin(lngDelta / 2);
 
-  useEffect(() => {
-    let active = true;
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
-    async function loadReports() {
-      const reports = await fetchBackendReports();
+function toRadians(value: number) {
+  return (value * Math.PI) / 180;
+}
 
-      if (active) {
-        setBackendReports(reports);
-        setLoading(false);
+async function reverseGeocodeArea(latitude: number, longitude: number) {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+      {
+        headers: {
+          Accept: "application/json",
+        },
       }
+    );
+
+    if (!response.ok) {
+      return "";
     }
 
-    void loadReports();
-
-    return () => {
-      active = false;
+    const data = (await response.json()) as {
+      display_name?: string;
+      address?: Record<string, string | undefined>;
     };
+    const address = data.address ?? {};
+    const areaParts = [
+      address.road,
+      address.neighbourhood,
+      address.suburb,
+      address.city_district,
+      address.city ?? address.town ?? address.village,
+      address.state,
+    ].filter(Boolean);
+
+    return areaParts.length ? areaParts.join(", ") : data.display_name ?? "";
+  } catch {
+    return "";
+  }
+}
+
+export default function ReportIssuePage() {
+  const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => DEFAULT_CITY_KEY);
+  const walletSnapshot = useSyncExternalStore(subscribeWallet, getWalletSnapshot, () => "");
+  const languageSnapshot = useSyncExternalStore(
+    subscribeLanguage,
+    getLanguageSnapshot,
+    () => "en"
+  );
+  const selectedCity = getCityByKey(citySnapshot);
+  const wallet = parseWalletSnapshot(walletSnapshot);
+  const cityDisplay = useDetectedLocationDisplay(selectedCity);
+  const tr = (key: Parameters<typeof translate>[1]) => translate(languageSnapshot, key);
+  const [ethereumAvailable, setEthereumAvailable] = useState(false);
+  const walletLabel = wallet.connected
+    ? shortWalletAddress(wallet.address)
+    : ethereumAvailable
+      ? "Connect MetaMask to sign"
+      : "Install MetaMask to sign";
+  const [imageName, setImageName] = useState("");
+  const [imageDataUrl, setImageDataUrl] = useState("");
+  const [imageLoading, setImageLoading] = useState(false);
+  const [location, setLocation] = useState(() => formatCityLocation(getCityByKey(getCitySnapshot())));
+  const [latitude, setLatitude] = useState(selectedCity.lat);
+  const [longitude, setLongitude] = useState(selectedCity.lng);
+  const [mapsLink, setMapsLink] = useState("");
+  const [locationMessage, setLocationMessage] = useState("Waiting for browser location permission...");
+  const [locationDetecting, setLocationDetecting] = useState(true);
+  const [locationSource, setLocationSource] = useState<"default" | "browser" | "manual" | "maps">("default");
+  const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
+  const [description, setDescription] = useState(
+    "Large pothole appeared again near the same repaired road segment."
+  );
+  const [verified, setVerified] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [signing, setSigning] = useState(false);
+  const [proofCreating, setProofCreating] = useState(false);
+  const [proofError, setProofError] = useState("");
+  const [createdTxHash, setCreatedTxHash] = useState("");
+  const [createdTxUrl, setCreatedTxUrl] = useState("");
+  const [createdProofHash, setCreatedProofHash] = useState("");
+  const [aiProcessing, setAiProcessing] = useState(false);
+  const [aiResult, setAiResult] = useState<InfrastructureAnalysis | null>(null);
+  const googleMapsUrl = buildGoogleMapsUrl(latitude, longitude);
+  const googleMapsEmbedUrl = `https://maps.google.com/maps?q=${latitude},${longitude}&z=16&output=embed`;
+  const autoLocationRequested = useRef(false);
+  const locationSourceLabel = {
+    default: "Default city pin",
+    browser: "Browser GPS",
+    manual: "Manual coordinates",
+    maps: "Google Maps link",
+  }[locationSource];
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setEthereumAvailable(hasEthereumProvider());
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
-  const allReports = useMemo(() => {
-    return mergeReportsById(getReportsForCity(selectedCity.key), backendReports, localReports).sort(sortLatestFirst);
-  }, [backendReports, localReports, selectedCity.key]);
+  function runAiVerification() {
+    setVerified(false);
+    setAiResult(null);
+    setAiProcessing(true);
 
-  const filteredReports = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+    window.setTimeout(() => {
+      setAiResult(
+        analyzeInfrastructureIssue({
+          description,
+          imageName,
+          location,
+          cityName: cityDisplay.cityName,
+        })
+      );
+      setVerified(true);
+      setAiProcessing(false);
+    }, 900);
+  }
 
-    return allReports.filter((report) => {
-      const matchesCity = cityFilter === "ALL" || report.cityKey === cityFilter;
-      const matchesStatus = statusFilter === "ALL" || report.status === statusFilter;
-      const searchable = [
-        report.id,
-        report.title,
-        report.location,
-        report.status,
-        report.severity,
-        report.issueCategory,
-        report.contractor,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
+  async function handleIssueFile(file?: File) {
+    if (!file) {
+      return;
+    }
 
-      return matchesCity && matchesStatus && (!normalizedQuery || searchable.includes(normalizedQuery));
-    });
-  }, [allReports, cityFilter, query, statusFilter]);
+    setImageName(file.name);
+    setImageDataUrl("");
+    setImageLoading(true);
+    setVerified(false);
+    setAiResult(null);
+    setSubmitted(false);
+    setProofError("");
+    setCreatedTxHash("");
+    setCreatedTxUrl("");
+    setCreatedProofHash("");
 
-  const latestReport = filteredReports[0] ?? allReports[0];
-  const summary = useMemo(
-    () => ({
-      total: allReports.length,
-      pending: allReports.filter((report) => report.status === "PENDING_PROOF").length,
-      warranty: allReports.filter((report) => report.status === "UNDER_WARRANTY" || report.warrantyStatus === "ACTIVE").length,
-      critical: allReports.filter((report) => report.severity === "Critical").length,
-    }),
-    [allReports]
-  );
+    try {
+      setImageDataUrl(await readFileAsDataUrl(file));
+    } catch {
+      setImageName("");
+      setProofError("Could not prepare this image. Please capture again or choose another photo.");
+    } finally {
+      setImageLoading(false);
+    }
+  }
+
+  function pinManualLocation(nextLatitude = latitude, nextLongitude = longitude) {
+    const nearestCity = getNearestCity(nextLatitude, nextLongitude);
+    const pinnedLocation = `${nearestCity.primaryArea}, ${nearestCity.name} (${nextLatitude.toFixed(
+      5
+    )}, ${nextLongitude.toFixed(5)})`;
+
+    setSelectedCityKey(nearestCity.key);
+    setLatitude(nextLatitude);
+    setLongitude(nextLongitude);
+    setLocationSource("manual");
+    setLocationAccuracy(null);
+    setLocation(pinnedLocation);
+    setLocationMessage(`Manual coordinates pinned. Nearest CityPramaan city context: ${nearestCity.name}.`);
+    setSubmitted(false);
+    setProofError("");
+    setCreatedTxHash("");
+    setCreatedTxUrl("");
+    setCreatedProofHash("");
+  }
+
+  const applyRealCoordinates = useCallback(async (
+    nextLatitude: number,
+    nextLongitude: number,
+    source: "auto" | "manual",
+    accuracy?: number
+  ) => {
+    const nearestCity = getNearestCity(nextLatitude, nextLongitude);
+
+    setSelectedCityKey(nearestCity.key);
+    setLatitude(nextLatitude);
+    setLongitude(nextLongitude);
+    setLocationSource("browser");
+    setLocationAccuracy(Number.isFinite(accuracy) ? Math.round(accuracy ?? 0) : null);
+    setLocation(`Live GPS location (${nextLatitude.toFixed(5)}, ${nextLongitude.toFixed(5)})`);
+    setLocationMessage("Live GPS coordinates captured. Detecting area name...");
+    setSubmitted(false);
+    setProofError("");
+    setCreatedTxHash("");
+    setCreatedTxUrl("");
+    setCreatedProofHash("");
+
+    const detectedArea = await reverseGeocodeArea(nextLatitude, nextLongitude);
+
+    if (detectedArea) {
+      setLocation(`${detectedArea} (${nextLatitude.toFixed(5)}, ${nextLongitude.toFixed(5)})`);
+      setLocationMessage(
+        `Real location detected from browser ${source === "auto" ? "permission" : "GPS"}: ${detectedArea}. Nearest supported CityPramaan city: ${nearestCity.name}.`
+      );
+      return;
+    }
+
+    setLocationMessage(
+      `Real GPS locked at ${nextLatitude.toFixed(5)}, ${nextLongitude.toFixed(5)}. Area lookup failed, but exact coordinates are saved. Nearest supported CityPramaan city: ${nearestCity.name}.`
+    );
+  }, []);
+
+  const requestBrowserLocation = useCallback((source: "auto" | "manual") => {
+    if (!navigator.geolocation) {
+      setLocationMessage("GPS is not available in this browser. Enter coordinates manually.");
+      setLocationDetecting(false);
+      return;
+    }
+
+    setLocationDetecting(true);
+    setLocationMessage(
+      source === "auto"
+        ? "Requesting real browser location permission..."
+        : "Requesting live GPS permission..."
+    );
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const nextLatitude = Number(position.coords.latitude.toFixed(6));
+        const nextLongitude = Number(position.coords.longitude.toFixed(6));
+
+        void applyRealCoordinates(nextLatitude, nextLongitude, source, position.coords.accuracy).finally(() =>
+          setLocationDetecting(false)
+        );
+      },
+      (error) => {
+        setLocationDetecting(false);
+        setLocationMessage(
+          error.code === error.PERMISSION_DENIED
+            ? "Location permission was blocked. CityPramaan cannot auto-detect your area without browser permission."
+            : "Could not read live GPS right now. Try again, or paste a Google Maps link."
+        );
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  }, [applyRealCoordinates]);
+
+  function useCurrentGps() {
+    requestBrowserLocation("manual");
+  }
+
+  useEffect(() => {
+    if (autoLocationRequested.current) {
+      return;
+    }
+
+    autoLocationRequested.current = true;
+    requestBrowserLocation("auto");
+  }, [requestBrowserLocation]);
+
+  function applyGoogleMapsLink() {
+    const decodedLink = decodeURIComponent(mapsLink);
+    const coordinateMatch =
+      decodedLink.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/) ??
+      decodedLink.match(/[?&](?:q|query)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/) ??
+      decodedLink.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+
+    if (!coordinateMatch) {
+      setLocationMessage("Could not read coordinates from that Google Maps link. Try GPS or manual coordinates.");
+      return;
+    }
+
+    const nextLatitude = Number(coordinateMatch[1]);
+    const nextLongitude = Number(coordinateMatch[2]);
+    const nearestCity = getNearestCity(nextLatitude, nextLongitude);
+
+    setSelectedCityKey(nearestCity.key);
+    setLatitude(nextLatitude);
+    setLongitude(nextLongitude);
+    setLocationSource("maps");
+    setLocationAccuracy(null);
+    setLocation(`Google Maps pinned location (${nextLatitude.toFixed(5)}, ${nextLongitude.toFixed(5)})`);
+    setLocationMessage(`Google Maps link parsed. Nearest CityPramaan city context: ${nearestCity.name}.`);
+    setSubmitted(false);
+    setProofError("");
+    setCreatedTxHash("");
+    setCreatedTxUrl("");
+    setCreatedProofHash("");
+  }
+
+  async function createProof() {
+    if (submitted || proofCreating) {
+      return;
+    }
+
+    if (imageLoading) {
+      setProofError("Photo is still being prepared. Please wait a moment, then sign again.");
+      return;
+    }
+
+    if (!imageDataUrl) {
+      setProofError("Capture or upload a civic issue photo before creating public proof.");
+      return;
+    }
+
+    setProofCreating(true);
+    setProofError("");
+    try {
+      const reportCity = getNearestCity(latitude, longitude);
+      const savedLocation = location.includes(latitude.toFixed(5))
+        ? location
+        : `${location} (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`;
+      const result =
+        aiResult ??
+        analyzeInfrastructureIssue({
+          description,
+          imageName,
+          location: savedLocation,
+          cityName: reportCity.name,
+        });
+
+      const now = new Date().toISOString();
+      const reportId = createLocalReportId();
+      const currentUser = getCurrentUser();
+      const evidenceHash = await sha256Hex(imageDataUrl);
+      const proofBundleHash = await createProofBundleHash([
+        reportId,
+        evidenceHash,
+        result.category,
+        result.severity,
+        result.confidence,
+        latitude,
+        longitude,
+        savedLocation,
+        now,
+      ]);
+      const connectedWallet = wallet.connected ? wallet : await connectWallet(wallet.chainKey);
+      const txHash = await createReportTransaction(reportId, proofBundleHash);
+      const txUrl = buildExplorerTxUrl(txHash, connectedWallet.chainKey);
+      const aiTxHash = await deriveTransactionHash(`${reportId}:${result.proofTag}:aiVerification`);
+
+      const newReport: CivicReport = {
+        id: reportId,
+        cityKey: reportCity.key,
+        title: `${result.issueType} awaiting repair in ${reportCity.name}`,
+        ward: reportCity.repairWard,
+        status: "PENDING_PROOF",
+        severity: result.severity,
+        confidence: result.confidence,
+        contractor: "Awaiting assignment",
+        citizenId: currentUser?.id,
+        citizenName: currentUser?.name ?? "Citizen reporter",
+        citizenContact: currentUser?.contactNumber,
+        adminApprovalStatus: "PENDING",
+        citizenFinalApproval: "PENDING",
+        warrantyStatus: "NOT_ACTIVE",
+        txHash,
+        warrantyDaysLeft: null,
+        location: savedLocation,
+        latitude,
+        longitude,
+        mapUrl: googleMapsUrl,
+        issueCategory: result.category,
+        assetType: result.assetType,
+        aiSummary: result.publicSummary,
+        recommendedAction: result.recommendedAction,
+        slaHours: result.slaHours,
+        aiPriorityScore: result.aiPriorityScore,
+        imageEvidenceScore: result.imageEvidenceScore,
+        aiModelVersion: result.modelVersion,
+        estimatedImpact: result.estimatedImpact,
+        createdAt: now,
+        updatedAt: now,
+        utilityRestoration:
+          result.category === "POWER_OUTAGE"
+            ? {
+                cause: "Weather casualty / suspected transformer or feeder fault",
+                affectedArea: `${reportCity.primaryArea} residential pocket`,
+                estimatedRestoration: "4-6 hours",
+                progressStage: "Fault reported",
+                department: "Electricity Maintenance",
+                citizenUpdate:
+                  "Outage reported and awaiting utility crew acknowledgement. Restoration ETA must stay visible to citizens.",
+              }
+            : undefined,
+        issueImageName: imageName || "citizen-issue-evidence.jpg",
+        issueImageDataUrl: imageDataUrl,
+        evidenceHash,
+        proofBundleHash,
+        history: [
+          {
+            label: "Citizen report created",
+            detail: `${result.issueType} submitted from ${savedLocation}.`,
+            time: new Date(now).toLocaleString(),
+            tx: txHash,
+          },
+          {
+            label: "AI verified civic issue",
+            detail: `${result.category} classified with ${result.confidence}% confidence, ${result.severity} severity, and ${result.aiPriorityScore}/100 priority score.`,
+            time: new Date(now).toLocaleString(),
+            tx: aiTxHash,
+          },
+          ...(result.category === "POWER_OUTAGE"
+            ? [
+                {
+                  label: "Restoration ETA required",
+                  detail:
+                    "Power outage report requires public progress updates: fault acknowledged, crew dispatched, repair in progress, power restored.",
+                  time: new Date(now).toLocaleString(),
+                  tx: "0xeta...pwr",
+                },
+              ]
+            : []),
+        ],
+      };
+
+      await saveReportEverywhere(newReport);
+
+      setAiResult(result);
+      setSelectedCityKey(reportCity.key);
+      setVerified(true);
+      setSubmitted(true);
+      setSigning(false);
+      setCreatedTxHash(txHash);
+      setCreatedTxUrl(txUrl);
+      setCreatedProofHash(proofBundleHash);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not create the on-chain report transaction. Check MetaMask, testnet gas, and contract config.";
+
+      setProofError(message);
+      setLocationMessage(message);
+    } finally {
+      setProofCreating(false);
+    }
+  }
+
+  function chooseCity(cityKey: CityKey) {
+    const city = getCityByKey(cityKey);
+
+    setSelectedCityKey(city.key);
+    setLocation(formatCityLocation(city));
+    setLatitude(city.lat);
+    setLongitude(city.lng);
+    setLocationSource("default");
+    setLocationAccuracy(null);
+    setMapsLink("");
+    setLocationMessage(`${city.name} default Google Maps pin selected.`);
+    setImageName("");
+    setImageDataUrl("");
+    setImageLoading(false);
+    setDescription(`Large pothole appeared again near the repaired road segment at ${city.primaryArea}.`);
+    setVerified(false);
+    setAiResult(null);
+    setSubmitted(false);
+    setProofCreating(false);
+    setProofError("");
+    setCreatedTxHash("");
+    setCreatedTxUrl("");
+    setCreatedProofHash("");
+  }
 
   return (
     <main className="cp-page-shell relative min-h-screen overflow-hidden bg-[#050505] text-[#e5e2e3]">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_14%_8%,rgba(255,153,51,0.14),transparent_24%),radial-gradient(circle_at_84%_10%,rgba(0,219,233,0.14),transparent_26%),radial-gradient(circle_at_48%_94%,rgba(0,235,136,0.08),transparent_30%)]" />
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_14%_8%,rgba(255,153,51,0.16),transparent_24%),radial-gradient(circle_at_82%_12%,rgba(0,219,233,0.14),transparent_28%),radial-gradient(circle_at_48%_94%,rgba(0,235,136,0.08),transparent_30%)]" />
       <div className="bg-holo-grid pointer-events-none fixed inset-0" />
       <div className="stitch-cityline pointer-events-none fixed bottom-0 left-0 right-0 h-44 opacity-20" />
 
-      <header className="fixed top-0 z-50 flex min-h-16 w-full flex-wrap items-center justify-between gap-3 border-b border-[#ff9933]/15 bg-[#030507]/78 px-3 py-3 shadow-[0_0_30px_rgba(0,219,233,0.08)] backdrop-blur-xl md:h-16 md:flex-nowrap md:px-8 md:py-0">
-        <div className="flex min-w-0 items-center gap-3 md:gap-4">
+      <header className="fixed top-0 z-50 flex min-h-16 w-full flex-wrap items-center justify-between gap-3 border-b border-[#ff9933]/15 bg-[#030507]/75 px-3 py-3 shadow-[0_0_30px_rgba(0,219,233,0.08)] backdrop-blur-xl md:h-16 md:flex-nowrap md:px-8 md:py-0">
+        <div className="flex min-w-0 items-center gap-3">
           <Link
             href="/"
             className="grid h-9 w-9 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0] transition hover:border-[#00dbe9]/60 hover:text-[#00dbe9]"
@@ -168,326 +595,736 @@ export default function ReportsPage() {
           >
             <ArrowLeft size={17} />
           </Link>
-          <BrandLogo size="sm" subtitle="Public Report Board" />
+          <BrandLogo size="sm" subtitle={tr("citizenReport")} />
         </div>
-        <div className="flex min-w-0 items-center gap-2 md:gap-3">
+
+        <div className="hidden items-center gap-3 md:flex">
+          <div className="input-recessed flex h-9 w-64 items-center rounded px-3">
+            <Search size={14} className="mr-2 text-[#dbc2b0]/60" />
+            <input
+              className="w-full border-none bg-transparent p-0 font-mono text-xs text-[#e5e2e3] outline-none placeholder:text-[#dbc2b0]/45"
+              placeholder={tr("publicIssueHistory")}
+            />
+          </div>
           <NotificationBell />
+          <button className="grid h-9 w-9 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0]/70 transition hover:text-[#00eb88]">
+            <Settings size={16} />
+          </button>
           <LanguageSelector compact />
           <ThemeToggle />
+          <button className="rounded border border-[#ffc08d]/50 bg-[#ffc08d]/10 px-4 py-2 font-mono text-xs text-[#ffc08d] transition hover:bg-[#ffc08d]/20">
+            {tr("connectWallet")}
+          </button>
         </div>
       </header>
 
-      <section className="relative z-10 px-4 pb-10 pt-24 md:px-8 md:pt-24">
-        <div className="mx-auto max-w-[1480px]">
-          <div className="mb-6 flex flex-col justify-between gap-5 border-b border-white/5 pb-5 lg:flex-row lg:items-end">
+      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-[#ff9933]/15 bg-[linear-gradient(180deg,rgba(255,153,51,0.08),rgba(0,0,0,0.5)_22%,rgba(0,219,233,0.045))] px-4 pb-5 pt-20 shadow-[5px_0_24px_rgba(0,0,0,0.45)] backdrop-blur-2xl md:flex">
+        <div className="mt-2 border-b border-white/10 px-2 pb-5">
+          <BrandLogo size="sm" subtitle={tr("blockchainProof")} />
+        </div>
+
+        <nav className="mt-5 flex flex-1 flex-col gap-1">
+          <NavItem href="/" icon={<LayoutDashboard size={18} />} label={tr("commandCenter")} />
+          <NavItem href="/proof/CP-004" icon={<BadgeCheck size={18} />} label={tr("verifiedRepairs")} />
+          <NavItem
+            href="/report"
+            icon={<Camera size={18} />}
+            label={tr("reportIssue")}
+            active
+          />
+          <NavItem href="/warranty" icon={<ShieldCheck size={18} />} label={tr("warrantyScanner")} />
+          <NavItem href="/pending" icon={<FileImage size={18} />} label={tr("pendingProof")} />
+        </nav>
+
+        <Link
+          href="/report"
+          className="btn-primary-shimmer grid rounded bg-[#ffc08d] px-4 py-3 text-center font-mono text-xs font-semibold text-[#4c2700]"
+        >
+          {tr("submitReport")}
+        </Link>
+
+        <div className="mt-5 border-t border-white/5 pt-4">
+          <NavItem href="/" icon={<Router size={15} />} label={tr("systemStatus")} small />
+          <NavItem href="/about" icon={<BookOpen size={15} />} label={tr("documentation")} small />
+        </div>
+      </aside>
+
+      <section className="relative z-10 min-h-screen px-4 pb-10 pt-24 md:ml-64 md:px-8 md:pt-20">
+        <div className="mx-auto max-w-[1440px]">
+          <header className="mb-7 flex flex-col gap-3 border-b border-white/5 pb-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-[#00dbe9]">
-                Live Civic Proof Registry
-              </p>
-              <h1 className="mt-3 max-w-4xl text-4xl font-black uppercase leading-[0.94] tracking-tight text-white sm:text-6xl">
-                Reports, proofs and warranty status
-              </h1>
-              <p className="mt-4 max-w-3xl text-sm leading-6 text-[#dbc2b0] sm:text-base">
-                A clean public view of every issue saved in CityPramaan. Citizens can check location,
-                status, AI result, hashes, and repair timeline without opening raw JSON.
+              <p className="font-mono text-xs uppercase text-[#00dbe9]">{tr("universalInfrastructureEvidence")}</p>
+              <h1 className="mt-2 text-3xl font-semibold text-white sm:text-5xl">{tr("reportIssue")}</h1>
+              <p className="mt-2 text-sm text-[#dbc2b0]">
+                {tr("filingNode")}: {cityDisplay.cityName}, {cityDisplay.regionName}. You can also type any exact
+                landmark or GPS-backed address below.
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href="/report"
-                className="btn-primary-shimmer inline-flex items-center justify-center rounded bg-[#ffc08d] px-5 py-3 font-mono text-xs font-bold uppercase tracking-[0.14em] text-[#4c2700]"
-              >
-                Report Issue
-              </Link>
-              <Link
-                href="/warranty"
-                className="inline-flex items-center justify-center rounded border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-5 py-3 font-mono text-xs font-bold uppercase tracking-[0.14em] text-[#7df4ff] transition hover:bg-[#00dbe9]/15"
-              >
-                Warranty Scanner
-              </Link>
+            <div className="hidden items-center gap-2 sm:flex">
+              <span className="pulse-indicator h-2 w-2 rounded-full bg-[#00eb88]" />
+              <span className="font-mono text-xs text-[#00eb88]">{tr("nodeSynced")}</span>
             </div>
-          </div>
+          </header>
 
-          <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatCard icon={<DatabaseZap size={18} />} label="Total Records" value={String(summary.total)} tone="cyan" />
-            <StatCard icon={<Clock3 size={18} />} label="Pending Proof" value={String(summary.pending)} tone="gold" />
-            <StatCard icon={<ShieldCheck size={18} />} label="Warranty Active" value={String(summary.warranty)} tone="green" />
-            <StatCard icon={<AlertTriangle size={18} />} label="Critical Issues" value={String(summary.critical)} tone="red" />
-          </div>
-
-          <section className="cp-cyber-card mb-6 rounded-xl p-4">
-            <div className="grid gap-3 lg:grid-cols-[1fr_220px_220px]">
-              <label className="flex items-center gap-3 rounded-lg border border-white/10 bg-black/35 px-4 py-3">
-                <Search size={17} className="text-[#00dbe9]" />
-                <input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search by report ID, issue, location, contractor..."
-                  className="w-full bg-transparent font-mono text-sm text-white outline-none placeholder:text-[#dbc2b0]/45"
-                />
-              </label>
-
-              <label className="flex items-center gap-3 rounded-lg border border-[#ffc08d]/25 bg-[#ffc08d]/10 px-4 py-3">
-                <Filter size={17} className="text-[#ffc08d]" />
-                <select
-                  value={statusFilter}
-                  onChange={(event) => setStatusFilter(event.target.value as "ALL" | ReportStatus)}
-                  className="w-full bg-transparent font-mono text-xs font-bold uppercase text-[#ffdcc2] outline-none"
-                >
-                  {statusOptions.map((status) => (
-                    <option key={status} value={status} className="bg-[#050505] text-white">
-                      {status === "ALL" ? "All Status" : statusLabels[status]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="flex items-center gap-3 rounded-lg border border-[#00eb88]/25 bg-[#00eb88]/10 px-4 py-3">
-                <MapPin size={17} className="text-[#00eb88]" />
-                <select
-                  value={cityFilter}
-                  onChange={(event) => setCityFilter(event.target.value as "ALL" | CityKey)}
-                  className="w-full bg-transparent font-mono text-xs font-bold uppercase text-[#5bffa1] outline-none"
-                >
-                  <option value="ALL" className="bg-[#050505] text-white">
-                    All Cities
-                  </option>
-                  {demoCities.map((city) => (
-                    <option key={city.key} value={city.key} className="bg-[#050505] text-white">
-                      {cityDisplay.isDetectedForSelected && city.key === selectedCity.key
-                        ? `${cityDisplay.cityName} GPS`
-                        : city.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          </section>
-
-          <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
-            <section className="space-y-4">
-              {loading && (
-                <div className="cp-cyber-card rounded-xl p-8 text-center text-[#dbc2b0]">
-                  Loading public reports from Supabase...
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+            <div className="flex flex-col gap-6 lg:col-span-8">
+              <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="flex items-center gap-2 text-2xl font-semibold text-[#00dbe9]">
+                    <Camera size={22} />
+                    {tr("universalInfrastructureEvidence")}
+                  </h2>
+                  <span className="rounded border border-white/10 bg-black/35 px-2 py-1 font-mono text-[10px] text-[#dbc2b0]">
+                    MAX 5MB | IPFS READY
+                  </span>
                 </div>
-              )}
 
-              {!loading && filteredReports.length === 0 && (
-                <div className="cp-cyber-card rounded-xl p-8 text-center">
-                  <p className="text-lg font-semibold text-white">No reports match this filter.</p>
-                  <p className="mt-2 text-sm text-[#dbc2b0]">Try another city, status, or search term.</p>
+                <div className="mb-5 rounded border border-[#00dbe9]/20 bg-[#00dbe9]/10 p-4">
+                  <label className="mb-2 block font-mono text-xs uppercase text-[#00dbe9]">
+                    {tr("cityCoverage")}
+                  </label>
+                  <select
+                    value={selectedCity.key}
+                    onChange={(event) => chooseCity(event.target.value as CityKey)}
+                    className="input-recessed w-full rounded px-4 py-3 font-mono text-sm text-white"
+                  >
+                    {demoCities.map((city) => (
+                      <option key={city.key} value={city.key} className="bg-[#050505] text-white">
+                        {cityDisplay.isDetectedForSelected && city.key === selectedCity.key
+                          ? `${cityDisplay.cityName} GPS | ${cityDisplay.regionName}`
+                          : `${city.name} | ${city.state}`}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              )}
 
-              {filteredReports.map((report) => (
-                <ReportCard key={report.id} report={report} />
-              ))}
-            </section>
+                <label className="group relative grid min-h-52 cursor-pointer place-items-center overflow-hidden rounded-lg border border-dashed border-[#554336] bg-black/25 p-5 text-center transition hover:border-[#00dbe9]/80 sm:min-h-60 sm:p-8">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(event) => void handleIssueFile(event.target.files?.[0])}
+                  />
+                  {imageDataUrl ? (
+                    <img
+                      src={imageDataUrl}
+                      alt="Uploaded civic issue evidence"
+                      className="absolute inset-0 h-full w-full object-cover opacity-70"
+                    />
+                  ) : (
+                    <>
+                      <div className="absolute inset-0 evidence-asphalt opacity-25" />
+                      <div className="absolute left-1/2 top-1/2 h-20 w-36 -translate-x-1/2 -translate-y-1/2 rounded-[48%] border border-[#ffb4ab]/25 bg-[#3a1515]/70 opacity-45 blur-[1px]" />
+                    </>
+                  )}
+                  <div className="absolute inset-0 bg-black/35" />
 
-            <aside className="space-y-5">
-              <section className="cp-cyber-card sticky top-24 rounded-xl p-5">
-                <p className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-[#ffc08d]">
-                  Latest Selected Record
+                  <div className="relative">
+                    <div className="mx-auto grid h-16 w-16 place-items-center rounded-full border border-[#00dbe9]/30 bg-[#00dbe9]/10 text-[#00dbe9] shadow-[0_0_28px_rgba(0,219,233,0.18)]">
+                      {imageLoading ? (
+                        <Sparkles size={28} className="animate-spin" />
+                      ) : imageName ? (
+                        <FileImage size={28} />
+                      ) : (
+                        <UploadCloud size={28} />
+                      )}
+                    </div>
+                    <p className="mt-4 font-medium text-white">
+                      {imageLoading ? "Preparing captured photo..." : imageName || tr("uploadCivicEvidence")}
+                    </p>
+                    <p className="mt-1 font-mono text-xs text-[#dbc2b0]/65">
+                      {imageDataUrl ? "This image will travel to contractor, pending proof, warranty, and public proof." : tr("uploadClickBrowse")}
+                    </p>
+                  </div>
+                </label>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded border border-[#00eb88]/45 bg-[#00eb88]/10 px-4 py-3 font-mono text-xs font-semibold text-[#5bffa1] transition hover:bg-[#00eb88]/15">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(event) => void handleIssueFile(event.target.files?.[0])}
+                    />
+                    <Camera size={16} />
+                    Capture Live Photo
+                  </label>
+
+                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-4 py-3 font-mono text-xs font-semibold text-[#7df4ff] transition hover:bg-[#00dbe9]/15">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(event) => void handleIssueFile(event.target.files?.[0])}
+                    />
+                    <UploadCloud size={16} />
+                    Upload From Gallery
+                  </label>
+                </div>
+
+                <p className="mt-3 rounded border border-white/10 bg-black/25 p-3 text-xs leading-5 text-[#dbc2b0]/75">
+                  On mobile, <span className="text-[#5bffa1]">Capture Live Photo</span> opens the device camera so a citizen standing at the location can submit fresh evidence directly.
                 </p>
-                {latestReport ? (
-                  <>
-                    <div className="mt-4 flex items-start justify-between gap-4">
-                      <div>
-                        <p className="font-mono text-xs text-[#00dbe9]">{latestReport.id}</p>
-                        <h2 className="mt-2 text-xl font-black text-white">{latestReport.title}</h2>
-                      </div>
-                      <StatusBadge status={latestReport.status} />
-                    </div>
-                    <div className="mt-5 grid gap-3">
-                      <MiniRow label="Location" value={latestReport.location} />
-                      <MiniRow label="AI Confidence" value={`${latestReport.confidence}%`} />
-                      <MiniRow label="Severity" value={latestReport.severity} />
-                      <MiniRow label="Proof Hash" value={shortHash(latestReport.proofBundleHash)} />
-                      <MiniRow label="Tx Hash" value={shortHash(latestReport.txHash)} />
-                    </div>
-                    <div className="mt-5 flex gap-3">
-                      <Link
-                        href={`/proof/${latestReport.id}`}
-                        className="flex-1 rounded border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-4 py-3 text-center font-mono text-xs font-bold uppercase text-[#7df4ff] transition hover:bg-[#00dbe9]/15"
-                      >
-                        Open Proof
-                      </Link>
-                      <a
-                        href={latestReport.mapUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="grid h-11 w-11 place-items-center rounded border border-[#ffc08d]/35 bg-[#ffc08d]/10 text-[#ffdcc2] transition hover:bg-[#ffc08d]/15"
-                        aria-label="Open map"
-                      >
-                        <ArrowUpRight size={17} />
-                      </a>
-                    </div>
-                  </>
-                ) : (
-                  <p className="mt-4 text-sm text-[#dbc2b0]">No report selected.</p>
+                {proofError && (
+                  <p className="mt-3 rounded border border-[#ffb4ab]/25 bg-[#ffb4ab]/10 px-3 py-2 text-sm text-[#ffdad6]">
+                    {proofError}
+                  </p>
                 )}
               </section>
+
+              <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
+                <div className="grid gap-6">
+                  <div>
+                    <label className="mb-3 block font-mono text-xs uppercase text-[#00dbe9]">
+                      {tr("quickIssueTypes")}
+                    </label>
+                    <div className="cp-stagger-grid grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
+                      {issuePresets.map((preset) => {
+                        const Icon = preset.icon;
+
+                        return (
+                          <button
+                            key={preset.label}
+                            onClick={() => {
+                              setDescription(preset.text);
+                              setVerified(false);
+                              setAiResult(null);
+                              setSubmitted(false);
+                              setCreatedTxHash("");
+                              setCreatedProofHash("");
+                            }}
+                            className="flex items-center gap-2 rounded border border-white/10 bg-black/25 px-3 py-2 text-left text-xs text-[#dbc2b0] transition hover:border-[#00dbe9]/45 hover:text-[#00dbe9]"
+                          >
+                            <Icon size={15} />
+                            {preset.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="mb-3 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+                      <div>
+                        <label className="block font-mono text-xs uppercase text-[#00dbe9]">
+                          {tr("mapLocation")}
+                        </label>
+                        <p className="mt-1 text-xs text-[#dbc2b0]/70">{tr("mapLocationSubtitle")}</p>
+                      </div>
+                      <a
+                        href={googleMapsUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center gap-2 rounded border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-3 py-2 font-mono text-xs text-[#00dbe9] transition hover:bg-[#00dbe9]/15"
+                      >
+                        <MapPin size={14} />
+                        {tr("openGoogleMaps")}
+                      </a>
+                    </div>
+
+                    <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+                      <div className="flex overflow-hidden rounded-lg border border-[#00dbe9]/20 bg-black/35">
+                        <div className="flex min-h-full w-full flex-col">
+                        <iframe
+                          title="Selected Google Maps location"
+                          src={googleMapsEmbedUrl}
+                          className="h-72 w-full shrink-0 grayscale-[0.15]"
+                          loading="lazy"
+                          referrerPolicy="no-referrer-when-downgrade"
+                        />
+
+                        <div className="grid flex-1 gap-3 border-t border-[#00dbe9]/15 bg-[linear-gradient(135deg,rgba(0,219,233,0.09),rgba(255,153,51,0.045))] p-4 sm:grid-cols-2">
+                          <div className="rounded border border-white/10 bg-black/30 p-3">
+                            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#dbc2b0]/60">
+                              Location source
+                            </p>
+                            <p className="mt-1 font-mono text-sm font-semibold text-[#7df4ff]">
+                              {locationSourceLabel}
+                            </p>
+                          </div>
+                          <div className="rounded border border-white/10 bg-black/30 p-3">
+                            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#dbc2b0]/60">
+                              GPS accuracy
+                            </p>
+                            <p className="mt-1 font-mono text-sm font-semibold text-[#5bffa1]">
+                              {locationAccuracy ? `~${locationAccuracy} m` : locationSource === "browser" ? "Captured" : "Manual"}
+                            </p>
+                          </div>
+                          <div className="rounded border border-white/10 bg-black/30 p-3">
+                            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#dbc2b0]/60">
+                              Proof coordinates
+                            </p>
+                            <p className="mt-1 font-mono text-sm font-semibold text-white">
+                              {latitude.toFixed(5)}, {longitude.toFixed(5)}
+                            </p>
+                          </div>
+                          <div className="rounded border border-white/10 bg-black/30 p-3">
+                            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#dbc2b0]/60">
+                              Nearest city node
+                            </p>
+                            <p className="mt-1 font-mono text-sm font-semibold text-[#ffc08d]">
+                              {cityDisplay.cityName}
+                            </p>
+                          </div>
+                          <div className="rounded border border-[#00eb88]/20 bg-[#00eb88]/10 p-3 sm:col-span-2">
+                            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#5bffa1]">
+                              Location proof packet
+                            </p>
+                            <p className="mt-2 text-xs leading-5 text-[#d3fbff]">
+                              This report will store the exact latitude/longitude with the issue image, so the contractor, issuer, and public proof page can verify where the evidence was captured.
+                            </p>
+                          </div>
+                        </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="input-recessed flex items-center rounded px-4 py-3">
+                          <MapPin size={17} className="mr-2 text-[#ffc08d]" />
+                          <input
+                            value={location}
+                            onChange={(event) => {
+                              setLocation(event.target.value);
+                              setSubmitted(false);
+                              setCreatedTxHash("");
+                              setCreatedProofHash("");
+                            }}
+                            className="w-full bg-transparent font-mono text-sm text-white outline-none"
+                            aria-label={tr("selectedAddress")}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <label className="rounded border border-white/10 bg-black/25 p-2">
+                            <span className="block font-mono text-[10px] uppercase text-[#dbc2b0]/60">Lat</span>
+                            <input
+                              type="number"
+                              step="0.000001"
+                              value={latitude}
+                              onChange={(event) => setLatitude(Number(event.target.value))}
+                              onBlur={() => pinManualLocation()}
+                              className="mt-1 w-full bg-transparent font-mono text-sm text-white outline-none"
+                            />
+                          </label>
+                          <label className="rounded border border-white/10 bg-black/25 p-2">
+                            <span className="block font-mono text-[10px] uppercase text-[#dbc2b0]/60">Lng</span>
+                            <input
+                              type="number"
+                              step="0.000001"
+                              value={longitude}
+                              onChange={(event) => setLongitude(Number(event.target.value))}
+                              onBlur={() => pinManualLocation()}
+                              className="mt-1 w-full bg-transparent font-mono text-sm text-white outline-none"
+                            />
+                          </label>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={useCurrentGps}
+                          disabled={locationDetecting}
+                          className="radar-pulse flex w-full items-center justify-center gap-2 rounded border border-[#00eb88] bg-[#00eb88]/5 px-4 py-3 font-mono text-xs text-[#00eb88] transition hover:bg-[#00eb88]/10"
+                        >
+                          <LocateFixed size={16} className={locationDetecting ? "animate-spin" : ""} />
+                          {locationDetecting ? "Detecting real location..." : tr("useCurrentGps")}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => pinManualLocation()}
+                          className="flex w-full items-center justify-center gap-2 rounded border border-[#ffc08d]/35 bg-[#ffc08d]/10 px-4 py-3 font-mono text-xs text-[#ffc08d] transition hover:bg-[#ffc08d]/15"
+                        >
+                          {tr("manualCoordinates")}
+                        </button>
+
+                        <div className="rounded border border-white/10 bg-black/25 p-3">
+                          <label className="mb-2 block font-mono text-[10px] uppercase text-[#dbc2b0]/60">
+                            {tr("openGoogleMaps")}
+                          </label>
+                          <input
+                            value={mapsLink}
+                            onChange={(event) => setMapsLink(event.target.value)}
+                            placeholder="https://www.google.com/maps/..."
+                            className="w-full rounded border border-white/10 bg-black/40 px-3 py-2 text-xs text-white outline-none focus:border-[#00dbe9]/60"
+                          />
+                          <button
+                            type="button"
+                            onClick={applyGoogleMapsLink}
+                            className="mt-2 w-full rounded border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-3 py-2 font-mono text-xs text-[#00dbe9] transition hover:bg-[#00dbe9]/15"
+                          >
+                            {tr("manualCoordinates")}
+                          </button>
+                        </div>
+
+                        <p className="rounded border border-white/10 bg-black/25 p-3 text-xs leading-5 text-[#dbc2b0]/75">
+                          {locationMessage}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="mb-2 flex items-center justify-between">
+                      <label className="block font-mono text-xs uppercase text-[#00dbe9]">
+                        {tr("technicalObservation")}
+                      </label>
+                      <span className="font-mono text-xs text-[#dbc2b0]/55">
+                        {description.length} / 1024 bytes
+                      </span>
+                    </div>
+                    <textarea
+                      value={description}
+                      onChange={(event) => {
+                        setDescription(event.target.value);
+                        setVerified(false);
+                        setAiResult(null);
+                        setSubmitted(false);
+                        setCreatedTxHash("");
+                        setCreatedProofHash("");
+                      }}
+                      className="input-recessed min-h-36 w-full resize-none rounded px-4 py-3 text-sm text-white"
+                      placeholder={tr("reportIssuePlaceholder")}
+                    />
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <aside className="flex flex-col gap-6 lg:col-span-4">
+              <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="flex items-center gap-2 font-mono text-xs uppercase text-[#00dbe9]">
+                    <Sparkles size={15} />
+                    {tr("aiPreVerification")}
+                  </h3>
+                  <span className="rounded bg-black/35 px-2 py-1 font-mono text-[10px] text-[#dbc2b0]/70">
+                    {tr("aiIssueBrain")}
+                  </span>
+                </div>
+
+                {aiProcessing ? (
+                  <div className="space-y-3">
+                    <div className="shimmer-bg h-4 w-3/4 rounded" />
+                    <div className="shimmer-bg h-4 w-1/2 rounded" />
+                    <div className="shimmer-bg mt-2 h-4 w-full rounded" />
+                    <p className="text-shimmer mt-3 font-mono text-xs font-semibold">
+                      {tr("unifiedAnalysis")}...
+                    </p>
+                  </div>
+                ) : verified && aiResult ? (
+                  <div className="rounded border border-[#00eb88]/30 bg-[#00eb88]/5 p-5">
+                    <CheckCircle2 className="mx-auto text-[#00eb88]" size={40} />
+                    <p className="mt-3 text-center text-lg font-semibold text-[#00eb88]">
+                      {aiResult.issueType}
+                    </p>
+                    <div className="mt-3 flex items-end justify-center gap-1">
+                      <span className="text-4xl font-semibold text-white">{aiResult.confidence}</span>
+                      <span className="mb-1 font-mono text-xs text-[#00eb88]">{tr("aiConfidence")}</span>
+                    </div>
+                    <div className="mt-4 space-y-2">
+                      <AnalysisRow label={tr("asset")} value={aiResult.assetType} />
+                      <AnalysisRow label={tr("severity")} value={aiResult.severity} />
+                      <AnalysisRow label="SLA" value={`${aiResult.slaHours} hours`} />
+                      <AnalysisRow label={tr("duplicateRisk")} value={aiResult.duplicateRisk} />
+                      <AnalysisRow label="AI Priority Score" value={`${aiResult.aiPriorityScore}/100`} />
+                      <AnalysisRow label="Image Evidence Score" value={`${aiResult.imageEvidenceScore}/100`} />
+                      <AnalysisRow label="Model" value={aiResult.modelVersion} />
+                    </div>
+                    <div className="mt-4 rounded border border-white/10 bg-black/25 p-3">
+                      <p className="font-mono text-[10px] uppercase text-[#00dbe9]">{tr("aiVerdict")}</p>
+                      <p className="mt-2 text-sm leading-6 text-[#dbc2b0]">{aiResult.recommendedAction}</p>
+                      <p className="mt-2 text-xs leading-5 text-[#dbc2b0]/75">
+                        Impact: {aiResult.estimatedImpact}
+                      </p>
+                    </div>
+                    <div className="mt-4 grid gap-2">
+                      {aiResult.evidenceSignals.slice(0, 3).map((signal) => (
+                        <div key={signal} className="flex items-center gap-2 text-xs text-[#dbc2b0]">
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#00eb88]" />
+                          {signal}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded border border-white/10 bg-black/25 p-4">
+                    <p className="text-sm text-[#dbc2b0]">
+                      Upload evidence or describe any infrastructure issue. One AI function will
+                      classify the asset, severity, SLA, warranty risk and proof type.
+                    </p>
+                    <button
+                      onClick={runAiVerification}
+                      disabled={aiProcessing}
+                      className="mt-4 flex w-full items-center justify-center gap-2 rounded bg-[#00dbe9] px-4 py-3 text-sm font-semibold text-[#00363a] transition hover:bg-[#7df4ff] disabled:cursor-wait disabled:opacity-70"
+                    >
+                      <Sparkles size={16} />
+                      {tr("analyzeIssue")}
+                    </button>
+                  </div>
+                )}
+
+                {verified && (
+                  <button
+                    onClick={runAiVerification}
+                    className="mt-4 w-full rounded border border-[#00dbe9]/40 bg-[#00dbe9]/10 px-4 py-2 font-mono text-xs text-[#00dbe9] transition hover:bg-[#00dbe9]/15"
+                  >
+                    Re-run unified analysis
+                  </button>
+                )}
+              </section>
+
+              <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-6">
+                <div className="mb-5 flex items-center justify-between">
+                  <h3 className="font-mono text-xs uppercase text-[#dbc2b0]">{tr("citizenIdentity")}</h3>
+                  <span className="flex items-center gap-1 rounded border border-[#00eb88]/30 bg-[#00eb88]/10 px-2 py-1 font-mono text-[10px] text-[#00eb88]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#00eb88]" />
+                    {tr("active")}
+                  </span>
+                </div>
+                <div className="flex items-center gap-4 border-b border-white/5 pb-4">
+                  <div className="grid h-12 w-12 place-items-center rounded border border-white/10 bg-[#201f20] text-[#dbc2b0]">
+                    <Fingerprint size={25} />
+                  </div>
+                  <div>
+                    <p className="break-all font-mono text-sm text-white">
+                      {wallet.connected ? wallet.address : walletLabel}
+                    </p>
+                    <p className="font-mono text-xs text-[#dbc2b0]/60">
+                      Node ID: {selectedCity.key.toUpperCase()}-9942
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <div className="mb-1 flex justify-between">
+                    <span className="font-mono text-[10px] uppercase text-[#dbc2b0]/60">
+                      {tr("resolverReputationActive")}
+                    </span>
+                    <span className="font-mono text-sm text-[#ffc08d]">842.50</span>
+                  </div>
+                  <div className="h-1 overflow-hidden rounded-full bg-[#201f20]">
+                    <div className="h-full w-[84%] bg-[#ffc08d]" />
+                  </div>
+                </div>
+              </section>
+
+              <section className="cp-cyber-card rounded-lg p-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (imageLoading) {
+                      setProofError("Photo is still being prepared. Please wait a moment.");
+                      return;
+                    }
+
+                    if (!imageDataUrl) {
+                      setProofError("Capture or upload a civic issue photo before creating public proof.");
+                      return;
+                    }
+
+                    setProofError("");
+                    setSigning(true);
+                  }}
+                  disabled={aiProcessing || submitted || proofCreating}
+                  className="royal-blue-glow flex w-full items-center justify-center gap-2 rounded border border-[#2A2D35] bg-[#1A1C23] px-4 py-4 font-mono text-xs font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ShieldCheck size={16} />
+                  {imageLoading
+                    ? "Preparing photo..."
+                    : proofCreating
+                      ? `${tr("createProof")}...`
+                      : submitted
+                        ? tr("newProofCreated")
+                        : tr("createProof")}
+                </button>
+                {proofError && (
+                  <p className="mt-3 rounded border border-[#ffb4ab]/25 bg-[#ffb4ab]/10 px-3 py-2 text-sm text-[#ffdad6]">
+                    {proofError}
+                  </p>
+                )}
+                {!verified && (
+                  <p className="mt-3 text-center text-xs text-[#dbc2b0]/60">
+                    {tr("unifiedAnalysis")}. {tr("readyToSign")}.
+                  </p>
+                )}
+              </section>
+
+              {submitted && (
+                <section className="cp-cyber-card rounded-lg border-[#00eb88]/30 bg-[#00eb88]/10 p-6">
+                  <div className="flex items-center gap-2 text-[#00eb88]">
+                    <CheckCircle2 size={18} />
+                    <p className="font-semibold">{tr("newProofCreated")}</p>
+                  </div>
+                  <p className="mt-3 text-sm text-[#dbc2b0]">
+                    {tr("latestCitizenReport")} {tr("viewOnCommandCenter")}. {tr("blockchainTransaction")}.
+                  </p>
+                  {aiResult && (
+                    <p className="mt-2 text-sm text-[#dbc2b0]">
+                      Classified as <span className="text-[#00eb88]">{aiResult.issueType}</span>.
+                    </p>
+                  )}
+                  <div className="mt-3 space-y-2 rounded bg-black/45 p-3 font-mono text-xs">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="uppercase text-[#dbc2b0]/55">Tx hash</span>
+                      <span className="truncate text-[#00eb88]">{createdTxHash || "Created"}</span>
+                    </div>
+                    {createdTxUrl && (
+                      <a
+                        href={createdTxUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block truncate text-[#7df4ff] underline-offset-4 hover:underline"
+                      >
+                        Open transaction in explorer
+                      </a>
+                    )}
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="uppercase text-[#dbc2b0]/55">Proof bundle</span>
+                      <span className="truncate text-[#7df4ff]">{createdProofHash || "Stored"}</span>
+                    </div>
+                  </div>
+                  <Link
+                    href="/"
+                    className="mt-4 inline-flex w-full items-center justify-center rounded border border-[#00eb88]/30 bg-[#00eb88]/10 px-4 py-2 text-sm font-semibold text-[#00eb88] transition hover:bg-[#00eb88]/20"
+                  >
+                    {tr("viewOnCommandCenter")}
+                  </Link>
+                </section>
+              )}
             </aside>
           </div>
         </div>
       </section>
+
+      {signing && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-[#050505]/82 p-4 backdrop-blur-xl">
+          <div className="cp-cyber-card pointer-events-auto relative z-[1000] w-full max-w-md rounded-lg border-[#00dbe9]/40 p-7 shadow-[0_0_34px_rgba(0,219,233,0.16)]">
+            <div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4">
+              <h3 className="flex items-center gap-2 font-mono text-xs uppercase text-[#00dbe9]">
+                <ShieldCheck size={16} />
+                {tr("signAndCreate")}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setSigning(false)}
+                className="grid h-8 w-8 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0] transition hover:text-[#ffb4ab]"
+                aria-label="Close signing request"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            <div className="mb-6 grid place-items-center py-4 text-center">
+              <div className="mb-4 grid h-16 w-16 animate-spin place-items-center rounded-full border-2 border-dashed border-[#00dbe9] text-[#00dbe9]">
+                <Fingerprint size={24} />
+              </div>
+              <div className="mb-4 h-1 w-full overflow-hidden rounded bg-[#201f20]">
+                <div className="shimmer-bg h-full w-full" />
+              </div>
+              <p className="font-mono text-sm text-white">{tr("readyToSign")}</p>
+              <p className="font-mono text-sm text-[#ffc08d]">{walletLabel}</p>
+            </div>
+
+            <div className="mb-5 space-y-2 rounded border border-white/5 bg-black/40 p-4">
+              <SignRow
+                label="Contract"
+                value="CityPramaanRegistry"
+              />
+              <SignRow label="Method" value="createReport(publicId, reportHash)" />
+              <SignRow label="Issue" value={aiResult?.issueType ?? "Infrastructure issue"} />
+              <SignRow label="Proof Tag" value={aiResult?.proofTag ?? "CIVIC_ASSET_PROOF"} />
+              <SignRow
+                label="Network"
+                value={wallet.chainKey.replace("-", " ")}
+              />
+              <SignRow
+                label="Gas"
+                value="Uses real testnet gas from your wallet"
+              />
+            </div>
+
+            <div className="rounded border border-[#00eb88]/20 bg-[#00eb88]/10 p-4">
+              <div className="flex items-center gap-2 text-[#00eb88]">
+                <Wallet size={16} />
+                <p className="font-semibold">{tr("blockchainProof")}</p>
+              </div>
+              <p className="mt-2 text-sm text-[#dbc2b0]">
+                A public report record will be created for {location} after you sign the on-chain transaction.
+              </p>
+            </div>
+
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setSigning(false)}
+                className="flex-1 rounded border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void createProof()}
+                disabled={imageLoading || proofCreating}
+                className="relative z-10 flex-1 rounded bg-[#ffc08d] px-4 py-2 text-sm font-semibold text-[#4c2700] shadow-[0_0_22px_rgba(255,153,51,0.22)] transition hover:bg-[#ffdcc2] disabled:cursor-wait disabled:opacity-70"
+              >
+                {imageLoading ? "Preparing..." : proofCreating ? `${tr("signAndCreate")}...` : tr("signAndCreate")}
+              </button>
+            </div>
+
+            {proofError && (
+              <p className="mt-3 rounded border border-[#ffb4ab]/25 bg-[#ffb4ab]/10 px-3 py-2 text-sm text-[#ffdad6]">
+                {proofError}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }
 
-function ReportCard({ report }: { report: CivicReport }) {
-  const latestHistory = report.history?.[report.history.length - 1];
-
-  return (
-    <article className="cp-cyber-card cp-cyber-card-hover rounded-xl p-5">
-      <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded border border-[#00dbe9]/30 bg-[#00dbe9]/10 px-2 py-1 font-mono text-xs font-bold text-[#7df4ff]">
-              {report.id}
-            </span>
-            <StatusBadge status={report.status} />
-            <span className="rounded border border-[#ffb4ab]/25 bg-[#ffb4ab]/10 px-2 py-1 font-mono text-[10px] font-bold uppercase text-[#ffdad6]">
-              {report.severity}
-            </span>
-          </div>
-          <h2 className="mt-3 text-2xl font-black text-white">{report.title}</h2>
-          <p className="mt-2 flex items-start gap-2 text-sm leading-6 text-[#dbc2b0]">
-            <MapPin size={16} className="mt-1 shrink-0 text-[#ffc08d]" />
-            <span>{report.location}</span>
-          </p>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-[#e5e2e3]/80">
-            {report.aiSummary ?? "AI summary will appear after report verification."}
-          </p>
-        </div>
-
-        <div className="grid min-w-[220px] gap-2 rounded-lg border border-white/10 bg-black/35 p-4">
-          <MiniRow label="AI Score" value={`${report.confidence}%`} />
-          <MiniRow label="SLA" value={report.slaHours ? `${report.slaHours} hrs` : "Not set"} />
-          <MiniRow label="Ward" value={report.ward} />
-          <MiniRow label="Contractor" value={report.contractor} />
-        </div>
-      </div>
-
-      <div className="mt-5 grid gap-3 md:grid-cols-2">
-        <HashBox label="Evidence Hash" value={report.evidenceHash} />
-        <HashBox label="Proof Bundle" value={report.proofBundleHash} />
-      </div>
-
-      <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
-        <div className="rounded-lg border border-white/10 bg-black/25 p-4">
-          <div className="mb-3 flex items-center gap-2 font-mono text-xs font-bold uppercase text-[#d3fbff]">
-            <Sparkles size={15} />
-            Latest Timeline Update
-          </div>
-          <p className="font-semibold text-white">{latestHistory?.label ?? "Report created"}</p>
-          <p className="mt-1 text-sm leading-6 text-[#dbc2b0]">
-            {latestHistory?.detail ?? report.recommendedAction ?? "Awaiting next public proof update."}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href={`/proof/${report.id}`}
-            className="inline-flex items-center gap-2 rounded border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-4 py-3 font-mono text-xs font-bold uppercase text-[#7df4ff] transition hover:bg-[#00dbe9]/15"
-          >
-            <FileText size={15} />
-            Details
-          </Link>
-          <a
-            href={report.mapUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded border border-[#ffc08d]/35 bg-[#ffc08d]/10 px-4 py-3 font-mono text-xs font-bold uppercase text-[#ffdcc2] transition hover:bg-[#ffc08d]/15"
-          >
-            <MapPin size={15} />
-            Map
-          </a>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function StatCard({
+function NavItem({
+  href,
   icon,
   label,
-  value,
-  tone,
+  active = false,
+  small = false,
 }: {
-  icon: React.ReactNode;
+  href: string;
+  icon: ReactNode;
   label: string;
-  value: string;
-  tone: "cyan" | "gold" | "green" | "red";
+  active?: boolean;
+  small?: boolean;
 }) {
-  const toneClasses = {
-    cyan: "border-[#00dbe9]/30 bg-[#00dbe9]/10 text-[#7df4ff]",
-    gold: "border-[#ffc08d]/30 bg-[#ffc08d]/10 text-[#ffdcc2]",
-    green: "border-[#00eb88]/30 bg-[#00eb88]/10 text-[#5bffa1]",
-    red: "border-[#ffb4ab]/30 bg-[#ffb4ab]/10 text-[#ffdad6]",
-  }[tone];
-
   return (
-    <div className={`rounded-xl border p-4 ${toneClasses}`}>
-      <div className="flex items-center justify-between">
-        <div className="grid h-10 w-10 place-items-center rounded-lg border border-current/25 bg-black/25">
-          {icon}
-        </div>
-        <span className="h-2 w-2 rounded-full bg-current shadow-[0_0_18px_currentColor]" />
-      </div>
-      <p className="mt-4 font-mono text-xs font-bold uppercase tracking-[0.16em] opacity-80">{label}</p>
-      <p className="mt-2 text-3xl font-black text-white">{value}</p>
+    <Link
+      href={href}
+      className={`flex items-center gap-3 rounded px-4 py-3 transition ${
+        active
+          ? "border-r-2 border-[#ffc08d] bg-[#ffc08d]/10 text-[#ffc08d] shadow-[inset_0_0_12px_rgba(255,183,122,0.18)]"
+          : "text-[#dbc2b0]/60 hover:bg-white/[0.04] hover:text-[#d3fbff]"
+      } ${small ? "py-2 text-xs" : "font-mono text-xs"}`}
+    >
+      {icon}
+      {label}
+    </Link>
+  );
+}
+
+function AnalysisRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded border border-white/10 bg-black/25 px-3 py-2">
+      <span className="font-mono text-[10px] uppercase text-[#dbc2b0]/55">{label}</span>
+      <span className="text-right text-xs font-semibold text-white">{value}</span>
     </div>
   );
 }
 
-function StatusBadge({ status }: { status: ReportStatus }) {
+function SignRow({ label, value }: { label: string; value: string }) {
   return (
-    <span className={`rounded border px-2 py-1 font-mono text-[10px] font-bold uppercase ${statusTone[status]}`}>
-      {statusLabels[status]}
-    </span>
-  );
-}
-
-function MiniRow({ label, value }: { label: string; value?: string | number | null }) {
-  return (
-    <div className="flex items-start justify-between gap-3 border-b border-white/5 pb-2 last:border-b-0 last:pb-0">
-      <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#dbc2b0]/55">
-        {label}
-      </span>
-      <span className="min-w-0 text-right text-sm font-semibold text-white">{value ?? "Not available"}</span>
+    <div className="flex items-center justify-between gap-3">
+      <span className="font-mono text-[10px] uppercase text-[#dbc2b0]/55">{label}</span>
+      <span className="text-right font-mono text-xs text-white">{value}</span>
     </div>
   );
-}
-
-function HashBox({ label, value }: { label: string; value?: string }) {
-  return (
-    <div className="rounded-lg border border-white/10 bg-black/25 p-4">
-      <div className="mb-2 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#dbc2b0]/60">
-        <Hash size={13} />
-        {label}
-      </div>
-      <p className="break-all font-mono text-xs text-[#7df4ff]">{value ?? "Pending"}</p>
-    </div>
-  );
-}
-
-function sortLatestFirst(first: CivicReport, second: CivicReport) {
-  return getReportTime(second) - getReportTime(first);
-}
-
-function getReportTime(report: CivicReport) {
-  return new Date(report.updatedAt ?? report.createdAt ?? 0).getTime();
-}
-
-function shortHash(value?: string) {
-  if (!value) {
-    return "Pending";
-  }
-
-  if (value.length <= 18) {
-    return value;
-  }
-
-  return `${value.slice(0, 10)}...${value.slice(-8)}`;
 }
