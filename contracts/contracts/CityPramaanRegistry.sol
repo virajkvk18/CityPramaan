@@ -2,6 +2,12 @@
 pragma solidity ^0.8.24;
 
 contract CityPramaanRegistry {
+    enum AccountRole {
+        Citizen,
+        WardAdmin,
+        Contractor
+    }
+
     enum Status {
         ReportCreated,
         RepairSubmitted,
@@ -19,7 +25,16 @@ contract CityPramaanRegistry {
         uint256 updatedAt;
     }
 
+    struct ProfileRecord {
+        bytes32 profileHash;
+        AccountRole role;
+        bool wardAdminAllowed;
+        bool contractorAllowed;
+        uint256 updatedAt;
+    }
+
     mapping(string => ProofRecord) public proofs;
+    mapping(address => ProfileRecord) public profiles;
     address public owner;
     mapping(address => bool) public wardAdmins;
     mapping(address => bool) public contractors;
@@ -29,6 +44,7 @@ contract CityPramaanRegistry {
     event StatusUpdated(string indexed publicId, Status status, address indexed actor);
     event WardAdminUpdated(address indexed account, bool allowed);
     event ContractorUpdated(address indexed account, bool allowed);
+    event ProfileUpdated(address indexed account, bytes32 profileHash, AccountRole role);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "owner only");
@@ -56,13 +72,31 @@ contract CityPramaanRegistry {
     function setWardAdmin(address account, bool allowed) external onlyOwner {
         require(account != address(0), "zero address");
         wardAdmins[account] = allowed;
+        profiles[account].wardAdminAllowed = allowed;
+        profiles[account].updatedAt = block.timestamp;
         emit WardAdminUpdated(account, allowed);
     }
 
     function setContractor(address account, bool allowed) external onlyOwner {
         require(account != address(0), "zero address");
         contractors[account] = allowed;
+        profiles[account].contractorAllowed = allowed;
+        profiles[account].updatedAt = block.timestamp;
         emit ContractorUpdated(account, allowed);
+    }
+
+    function updateProfile(bytes32 profileHash, AccountRole role) external {
+        require(profileHash != bytes32(0), "empty profile hash");
+
+        profiles[msg.sender] = ProfileRecord({
+            profileHash: profileHash,
+            role: role,
+            wardAdminAllowed: wardAdmins[msg.sender] || msg.sender == owner,
+            contractorAllowed: contractors[msg.sender] || msg.sender == owner,
+            updatedAt: block.timestamp
+        });
+
+        emit ProfileUpdated(msg.sender, profileHash, role);
     }
 
     function createReport(string calldata publicId, bytes32 reportHash) external {

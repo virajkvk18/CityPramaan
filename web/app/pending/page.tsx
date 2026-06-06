@@ -40,9 +40,15 @@ import {
 } from "@/src/lib/contractor-storage";
 import {
   connectWallet,
+  formatWalletError,
   getWalletSnapshot,
+  type OnChainProofRecord,
   parseWalletSnapshot,
+  readProofRecords,
+  readWalletPermissions,
   registryStatusCodes,
+  setContractorRoleTransaction,
+  setWardAdminRoleTransaction,
   subscribeWallet,
   updateProofStatusTransaction,
 } from "@/src/lib/wallet-storage";
@@ -111,9 +117,14 @@ export default function PendingApprovalPage() {
       localReports
     ).filter((report) => !report.cityKey || report.cityKey === selectedCity.key);
   }, [backendReports, localReports, selectedCity.key]);
-  const reviewReports = allReports
-    .filter((report) => reviewStatuses.includes(report.status))
-    .sort(sortReviewReports);
+  const reviewReports = useMemo(
+    () =>
+      allReports
+        .filter((report) => reviewStatuses.includes(report.status))
+        .sort(sortReviewReports),
+    [allReports]
+  );
+  const reviewReportIdsKey = useMemo(() => reviewReports.map((report) => report.id).join("|"), [reviewReports]);
   const pendingCount = reviewReports.filter((report) => report.status === "REPAIR_SUBMITTED").length;
   const [selectedReportId, setSelectedReportId] = useState(
     reviewReports.find((report) => report.status === "REPAIR_SUBMITTED")?.id ?? reviewReports[0]?.id ?? ""
@@ -127,9 +138,96 @@ export default function PendingApprovalPage() {
   const suggestedContractors = selectedReport ? findSuggestedContractors(selectedReport, contractors) : contractors;
   const [selectedContractorId, setSelectedContractorId] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
+  const [roleWalletAddress, setRoleWalletAddress] = useState("");
+  const [roleMessage, setRoleMessage] = useState("Connect owner wallet to manage contract roles.");
+  const [ownerMode, setOwnerMode] = useState(false);
+  const [chainRecords, setChainRecords] = useState<Record<string, OnChainProofRecord>>({});
   const activeContractor =
     suggestedContractors.find((contractor) => contractor?.contractorId === selectedContractorId) ??
     suggestedContractors[0];
+
+  useEffect(() => {
+    if (!wallet.connected) {
+      window.setTimeout(() => {
+        setOwnerMode(false);
+        setRoleMessage("Connect owner wallet to manage contract roles.");
+      }, 0);
+      return;
+    }
+
+    let active = true;
+
+    readWalletPermissions(wallet.address)
+      .then((permissions) => {
+        if (!active) {
+          return;
+        }
+
+        setOwnerMode(permissions.isOwner);
+        setRoleMessage(
+          permissions.isOwner
+            ? "Owner wallet active. You can grant or revoke on-chain roles."
+            : "Connected wallet is not the contract owner. Role management is read-only."
+        );
+      })
+      .catch((error) => {
+        if (!active) {
+          return;
+        }
+
+        setOwnerMode(false);
+        setRoleMessage(formatWalletError(error));
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [wallet.address, wallet.connected]);
+
+  useEffect(() => {
+    const ids = reviewReports.map((report) => report.id);
+
+    if (!ids.length) {
+      window.setTimeout(() => setChainRecords({}), 0);
+      return;
+    }
+
+    let active = true;
+
+    readProofRecords(ids)
+      .then((records) => {
+        if (active) {
+          setChainRecords(records);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setChainRecords({});
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [reviewReportIdsKey, reviewReports]);
+
+  async function updateRegistryRole(role: "WARD_ADMIN" | "CONTRACTOR", allowed: boolean) {
+    try {
+      if (!wallet.connected) {
+        await connectWallet(wallet.chainKey);
+      }
+
+      setRoleMessage(`Open MetaMask to ${allowed ? "grant" : "revoke"} ${role.replace("_", " ").toLowerCase()} role...`);
+      const txHash =
+        role === "WARD_ADMIN"
+          ? await setWardAdminRoleTransaction(roleWalletAddress, allowed)
+          : await setContractorRoleTransaction(roleWalletAddress, allowed);
+
+      setRoleMessage(`${role.replace("_", " ")} role ${allowed ? "granted" : "revoked"} on-chain. Tx: ${txHash}`);
+    } catch (error) {
+      setRoleMessage(formatWalletError(error));
+    }
+  }
 
   function assignContractor(report: CivicReport, contractor = activeContractor) {
     if (["ADMIN_APPROVED", "UNDER_WARRANTY", "CLOSED"].includes(report.status)) {
@@ -189,9 +287,8 @@ export default function PendingApprovalPage() {
       tx = await updateProofStatusTransaction(report.id, registryStatusCodes.AdminApproved);
     } catch (error) {
       setActionMessage(
-        error instanceof Error
-          ? error.message
-          : "Could not approve on-chain. Check MetaMask, role permissions, testnet gas, and contract config."
+        formatWalletError(error) ||
+          "Could not approve on-chain. Check MetaMask, role permissions, testnet gas, and contract config."
       );
       return;
     }
@@ -359,6 +456,49 @@ export default function PendingApprovalPage() {
             </div>
           </div>
 
+          <section className="mb-6 rounded-lg border border-[#00dbe9]/20 bg-[#00dbe9]/10 p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#7df4ff]">
+                  On-chain role registry
+                </p>
+                <p className="mt-1 text-sm leading-6 text-[#d3fbff]">{roleMessage}</p>
+              </div>
+              <div className="flex flex-1 flex-col gap-3 lg:max-w-3xl lg:flex-row">
+                <input
+                  value={roleWalletAddress}
+                  onChange={(event) => setRoleWalletAddress(event.target.value)}
+                  placeholder="0x wallet address"
+                  className="min-h-11 flex-1 rounded border border-white/10 bg-black/45 px-3 font-mono text-xs text-white outline-none focus:border-[#00dbe9]/60"
+                />
+                <button
+                  type="button"
+                  disabled={!ownerMode}
+                  onClick={() => void updateRegistryRole("WARD_ADMIN", true)}
+                  className="rounded border border-[#00eb88]/35 bg-[#00eb88]/10 px-3 py-2 font-mono text-[10px] font-bold uppercase text-[#8fffc1] disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  Grant admin
+                </button>
+                <button
+                  type="button"
+                  disabled={!ownerMode}
+                  onClick={() => void updateRegistryRole("CONTRACTOR", true)}
+                  className="rounded border border-[#ffc08d]/35 bg-[#ffc08d]/10 px-3 py-2 font-mono text-[10px] font-bold uppercase text-[#ffdcc2] disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  Grant contractor
+                </button>
+                <button
+                  type="button"
+                  disabled={!ownerMode}
+                  onClick={() => void updateRegistryRole("WARD_ADMIN", false)}
+                  className="rounded border border-[#ffb4ab]/30 bg-[#ffb4ab]/10 px-3 py-2 font-mono text-[10px] font-bold uppercase text-[#ffdad6] disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  Revoke admin
+                </button>
+              </div>
+            </div>
+          </section>
+
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
             <section className="cp-cyber-card cp-cyber-card-hover rounded-lg p-5 xl:col-span-4">
               <div className="mb-4 flex items-center justify-between">
@@ -407,6 +547,10 @@ export default function PendingApprovalPage() {
                       </div>
                       <div className="grid grid-cols-2 gap-3 text-sm sm:min-w-80">
                         <Info label={t("status")} value={statusCopy(selectedReport)} />
+                        <Info
+                          label="On-chain status"
+                          value={chainRecords[selectedReport.id]?.exists ? chainRecords[selectedReport.id].statusLabel : "Not anchored"}
+                        />
                         <Info label={t("severity")} value={selectedReport.severity} />
                         <Info label={t("aiConfidence")} value={`${selectedReport.confidence}%`} />
                         <Info label={t("contractor")} value={selectedReport.contractor} />

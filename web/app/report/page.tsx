@@ -61,6 +61,7 @@ import {
   buildExplorerTxUrl,
   connectWallet,
   createReportTransaction,
+  formatWalletError,
   getWalletSnapshot,
   hasEthereumProvider,
   parseWalletSnapshot,
@@ -544,9 +545,8 @@ export default function ReportIssuePage() {
       setCreatedProofHash(proofBundleHash);
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : "Could not create the on-chain report transaction. Check MetaMask, testnet gas, and contract config.";
+        formatWalletError(error) ||
+        "Could not create the on-chain report transaction. Check MetaMask, testnet gas, and contract config.";
 
       setProofError(message);
       setLocationMessage(message);

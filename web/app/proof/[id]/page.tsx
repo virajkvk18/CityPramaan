@@ -35,6 +35,7 @@ import {
 import { fetchBackendReports, mergeReportsById, saveReportEverywhere } from "@/src/lib/report-sync";
 import {
   connectWallet,
+  formatWalletError,
   getContractAddress,
   getPreferredChainKey,
   getWalletSnapshot,
@@ -147,7 +148,7 @@ export default function ProofTimelinePage() {
         }
 
         setChainRecord(null);
-        setChainReadStatus(error instanceof Error ? error.message : "Could not read contract record");
+        setChainReadStatus(formatWalletError(error));
       });
 
     return () => {
@@ -224,9 +225,8 @@ export default function ProofTimelinePage() {
       setChainReadStatus("Synced from contract");
     } catch (error) {
       setActionMessage(
-        error instanceof Error
-          ? error.message
-          : "Could not approve on-chain. Check MetaMask, role permissions, testnet gas, and contract config."
+        formatWalletError(error) ||
+          "Could not approve on-chain. Check MetaMask, role permissions, testnet gas, and contract config."
       );
       return;
     }

@@ -33,6 +33,24 @@ export type OnChainProofRecord = {
   updatedAt: number;
 };
 
+export const accountRoleCodes = {
+  USER: 0,
+  WARD_ADMIN: 1,
+  CONTRACTOR: 2,
+} as const;
+
+export type AccountRoleCode = (typeof accountRoleCodes)[keyof typeof accountRoleCodes];
+
+export type OnChainProfileRecord = {
+  exists: boolean;
+  profileHash: string;
+  role: AccountRoleCode;
+  roleLabel: "Citizen" | "Ward Admin" | "Contractor";
+  wardAdminAllowed: boolean;
+  contractorAllowed: boolean;
+  updatedAt: number;
+};
+
 type EthereumProvider = {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
   on?: (event: string, callback: (...args: unknown[]) => void) => void;
@@ -93,9 +111,16 @@ export const supportedChains: Record<
 
 const cityPramaanRegistryAbi = [
   "function proofs(string publicId) view returns (bytes32 reportHash, bytes32 repairHash, uint8 status, address actor, uint256 updatedAt)",
+  "function profiles(address account) view returns (bytes32 profileHash, uint8 role, bool wardAdminAllowed, bool contractorAllowed, uint256 updatedAt)",
+  "function owner() view returns (address)",
+  "function wardAdmins(address account) view returns (bool)",
+  "function contractors(address account) view returns (bool)",
   "function createReport(string publicId, bytes32 reportHash)",
   "function submitRepair(string publicId, bytes32 repairHash)",
   "function updateStatus(string publicId, uint8 status)",
+  "function updateProfile(bytes32 profileHash, uint8 role)",
+  "function setWardAdmin(address account, bool allowed)",
+  "function setContractor(address account, bool allowed)",
 ];
 
 const zeroAddress = "0x0000000000000000000000000000000000000000";
@@ -239,6 +264,27 @@ export async function updateProofStatusTransaction(publicId: string, status: Reg
   return String(receipt?.hash ?? transaction.hash);
 }
 
+export async function updateProfileTransaction(profileHash: string, role: AccountRoleCode) {
+  const contract = await getWriteRegistryContract();
+  const transaction = await contract.updateProfile(normalizeBytes32(profileHash), role);
+  const receipt = await transaction.wait();
+  return String(receipt?.hash ?? transaction.hash);
+}
+
+export async function setWardAdminRoleTransaction(account: string, allowed: boolean) {
+  const contract = await getWriteRegistryContract();
+  const transaction = await contract.setWardAdmin(normalizeWalletAddress(account), allowed);
+  const receipt = await transaction.wait();
+  return String(receipt?.hash ?? transaction.hash);
+}
+
+export async function setContractorRoleTransaction(account: string, allowed: boolean) {
+  const contract = await getWriteRegistryContract();
+  const transaction = await contract.setContractor(normalizeWalletAddress(account), allowed);
+  const receipt = await transaction.wait();
+  return String(receipt?.hash ?? transaction.hash);
+}
+
 export async function readProofRecord(publicId: string): Promise<OnChainProofRecord> {
   const contract = getReadRegistryContract();
   const record = await contract.proofs(publicId);
@@ -257,6 +303,50 @@ export async function readProofRecord(publicId: string): Promise<OnChainProofRec
     actor,
     updatedAt,
   };
+}
+
+export async function readProfileRecord(account: string): Promise<OnChainProfileRecord> {
+  const contract = getReadRegistryContract();
+  const record = await contract.profiles(normalizeWalletAddress(account));
+  const role = Number(record.role ?? record[1] ?? 0) as AccountRoleCode;
+  const updatedAt = Number(record.updatedAt ?? record[4] ?? 0);
+  const profileHash = String(record.profileHash ?? record[0] ?? emptyBytes32);
+
+  return {
+    exists: updatedAt > 0,
+    profileHash,
+    role,
+    roleLabel: accountRoleLabel(role),
+    wardAdminAllowed: Boolean(record.wardAdminAllowed ?? record[2]),
+    contractorAllowed: Boolean(record.contractorAllowed ?? record[3]),
+    updatedAt,
+  };
+}
+
+export async function readWalletPermissions(account: string) {
+  const contract = getReadRegistryContract();
+  const address = normalizeWalletAddress(account);
+  const [owner, wardAdminAllowed, contractorAllowed, profile] = await Promise.all([
+    contract.owner(),
+    contract.wardAdmins(address),
+    contract.contractors(address),
+    readProfileRecord(address),
+  ]);
+
+  return {
+    isOwner: String(owner).toLowerCase() === address.toLowerCase(),
+    wardAdminAllowed: Boolean(wardAdminAllowed),
+    contractorAllowed: Boolean(contractorAllowed),
+    profile,
+  };
+}
+
+export async function readProofRecords(publicIds: string[]) {
+  const entries = await Promise.all(
+    publicIds.map(async (publicId) => [publicId, await readProofRecord(publicId)] as const)
+  );
+
+  return Object.fromEntries(entries) as Record<string, OnChainProofRecord>;
 }
 
 export function buildExplorerTxUrl(txHash: string, chainKey: SupportedChainKey = getPreferredChainKey()) {
@@ -278,6 +368,42 @@ export function shortWalletAddress(address: string) {
   }
 
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+export function formatWalletError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const lower = message.toLowerCase();
+  const code = typeof error === "object" && error && "code" in error ? Number(error.code) : 0;
+
+  if (code === 4001 || lower.includes("user rejected") || lower.includes("denied")) {
+    return "Transaction was rejected in MetaMask. Please open MetaMask and approve the signature/transaction to continue.";
+  }
+
+  if (lower.includes("insufficient funds")) {
+    return "This wallet has no testnet gas for the selected network. Top up the Tenderly account or use the funded owner wallet.";
+  }
+
+  if (lower.includes("contractor only")) {
+    return "This wallet is not approved as a contractor on-chain. Ask the contract owner to grant contractor role.";
+  }
+
+  if (lower.includes("ward admin only")) {
+    return "This wallet is not approved as a ward admin on-chain. Ask the contract owner to grant ward admin role.";
+  }
+
+  if (lower.includes("owner only")) {
+    return "Only the contract owner wallet can manage on-chain roles.";
+  }
+
+  if (lower.includes("proof exists")) {
+    return "This public report ID already exists on-chain. Create a fresh report ID and try again.";
+  }
+
+  if (lower.includes("missing next_public_citypramaan_contract")) {
+    return "The contract address is missing. Add NEXT_PUBLIC_CITYPRAMAAN_CONTRACT in Vercel and redeploy.";
+  }
+
+  return message || "Blockchain transaction failed. Check MetaMask, network, gas, and contract configuration.";
 }
 
 export function subscribeWallet(callback: () => void) {
@@ -355,6 +481,14 @@ function normalizeBytes32(hash: string) {
   return hash;
 }
 
+function normalizeWalletAddress(address: string) {
+  if (!isWalletAddress(address)) {
+    throw new Error("Enter a valid 0x wallet address.");
+  }
+
+  return address;
+}
+
 function getEthereumProvider() {
   if (typeof window === "undefined") {
     return undefined;
@@ -388,6 +522,18 @@ function isWalletAddress(address: string) {
 
 function registryStatusLabel(status: number): RegistryStatusName {
   return registryStatusLabels[status] ?? "ReportCreated";
+}
+
+function accountRoleLabel(role: number): OnChainProfileRecord["roleLabel"] {
+  if (role === accountRoleCodes.WARD_ADMIN) {
+    return "Ward Admin";
+  }
+
+  if (role === accountRoleCodes.CONTRACTOR) {
+    return "Contractor";
+  }
+
+  return "Citizen";
 }
 
 let listenersAttached = false;

@@ -168,7 +168,7 @@ export function logoutUser() {
 }
 
 export async function updateCurrentProfile(
-  changes: Partial<Pick<UserProfile, "name" | "contactNumber" | "address" | "city" | "ward" | "department" | "contractorLicense" | "contractorIdentityNumber" | "contractorArea" | "contractorSpecialization" | "agencyName" | "verificationStatus" | "availabilityStatus">>
+  changes: Partial<Pick<UserProfile, "name" | "contactNumber" | "walletAddress" | "address" | "city" | "ward" | "department" | "contractorLicense" | "contractorIdentityNumber" | "contractorArea" | "contractorSpecialization" | "agencyName" | "verificationStatus" | "availabilityStatus">>
 ) {
   const sessionId = getAuthSnapshot();
 
@@ -195,6 +195,33 @@ export async function updateCurrentProfile(
     ...updatedBase,
     ...profileProof,
     profileCompletedAt: isProfileComplete(updatedBase) ? new Date().toISOString() : updatedBase.profileCompletedAt,
+  };
+
+  saveUsers(users.map((user) => (user.id === sessionId ? updated : user)));
+  syncContractorProfile(updated);
+  setSession(updated.id);
+  return stripPrivateFields(updated);
+}
+
+export function updateCurrentProfileChainProof(profileChainTxHash: string, walletAddress?: string) {
+  const sessionId = getAuthSnapshot();
+
+  if (!sessionId) {
+    throw new Error("Login required before updating profile proof.");
+  }
+
+  const users = loadUsers();
+  const existing = users.find((user) => user.id === sessionId);
+
+  if (!existing) {
+    throw new Error("Current account could not be found.");
+  }
+
+  const updated: UserProfile = {
+    ...existing,
+    walletAddress: walletAddress ?? existing.walletAddress,
+    profileChainTxHash,
+    updatedAt: new Date().toISOString(),
   };
 
   saveUsers(users.map((user) => (user.id === sessionId ? updated : user)));

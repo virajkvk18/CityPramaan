@@ -45,6 +45,7 @@ import { getContractorsSnapshot, specializationLabels, subscribeContractors } fr
 import {
   buildExplorerTxUrl,
   connectWallet,
+  formatWalletError,
   getWalletSnapshot,
   parseWalletSnapshot,
   submitRepairTransaction,
@@ -295,9 +296,8 @@ export default function ContractorPage() {
       txUrl = buildExplorerTxUrl(tx, connectedWallet.chainKey);
     } catch (error) {
       setActionMessage(
-        error instanceof Error
-          ? error.message
-          : "Could not create the repair proof transaction. Check MetaMask, testnet gas, and contract config."
+        formatWalletError(error) ||
+          "Could not create the repair proof transaction. Check MetaMask, testnet gas, and contract config."
       );
       return;
     }

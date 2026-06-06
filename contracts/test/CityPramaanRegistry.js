@@ -74,4 +74,30 @@ describe("CityPramaanRegistry", function () {
     const record = await registry.proofs(publicId);
     expect(record.status).to.equal(2);
   });
+
+  it("anchors profile hashes and exposes permission flags", async function () {
+    const { registry, owner, contractor, wardAdmin } = await deployRegistry();
+    const contractorProfileHash = ethers.keccak256(ethers.toUtf8Bytes("contractor profile"));
+    const adminProfileHash = ethers.keccak256(ethers.toUtf8Bytes("admin profile"));
+
+    await registry.connect(owner).setContractor(contractor.address, true);
+    await registry.connect(owner).setWardAdmin(wardAdmin.address, true);
+
+    await expect(registry.connect(contractor).updateProfile(contractorProfileHash, 2))
+      .to.emit(registry, "ProfileUpdated")
+      .withArgs(contractor.address, contractorProfileHash, 2);
+
+    await expect(registry.connect(wardAdmin).updateProfile(adminProfileHash, 1))
+      .to.emit(registry, "ProfileUpdated")
+      .withArgs(wardAdmin.address, adminProfileHash, 1);
+
+    const contractorProfile = await registry.profiles(contractor.address);
+    const adminProfile = await registry.profiles(wardAdmin.address);
+
+    expect(contractorProfile.profileHash).to.equal(contractorProfileHash);
+    expect(contractorProfile.contractorAllowed).to.equal(true);
+    expect(contractorProfile.wardAdminAllowed).to.equal(false);
+    expect(adminProfile.profileHash).to.equal(adminProfileHash);
+    expect(adminProfile.wardAdminAllowed).to.equal(true);
+  });
 });
