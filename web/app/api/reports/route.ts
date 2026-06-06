@@ -228,3 +228,57 @@ export async function POST(request: Request) {
     report: fallbackData,
   });
 }
+
+export async function PATCH(request: Request) {
+  const supabase = getSupabaseClient();
+
+  if (!supabase) {
+    return getMissingSupabaseResponse();
+  }
+
+  const body = (await request.json()) as ReportPayload;
+
+  if (!body.id) {
+    return NextResponse.json({ error: "Missing required report field: id" }, { status: 400 });
+  }
+
+  const sanitizedReport = sanitizeReportPayload(body);
+  const { data, error } = await supabase
+    .from("reports")
+    .upsert(sanitizedReport, { onConflict: "id" })
+    .select()
+    .single();
+
+  if (!error) {
+    return NextResponse.json({
+      message: "Report updated in Supabase",
+      report: data,
+    });
+  }
+
+  console.warn("Supabase reports PATCH full payload failed:", error.message);
+
+  const coreReport = pickReportColumns(sanitizedReport, coreReportColumns);
+  const { data: fallbackData, error: fallbackError } = await supabase
+    .from("reports")
+    .upsert(coreReport, { onConflict: "id" })
+    .select()
+    .single();
+
+  if (fallbackError) {
+    console.error("Supabase reports PATCH error:", fallbackError.message);
+    return NextResponse.json(
+      {
+        error: fallbackError.message,
+        originalError: error.message,
+      },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({
+    message: "Report updated in Supabase",
+    warning: "Saved with core report fields because optional Supabase columns are missing.",
+    report: fallbackData,
+  });
+}
