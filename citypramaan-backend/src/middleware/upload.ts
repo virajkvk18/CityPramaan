@@ -1,22 +1,69 @@
-import multer from 'multer';
-import path from 'path';
+﻿import { Request, Response, NextFunction } from 'express';
+import Busboy from 'busboy';
 
-const storage = multer.memoryStorage();
+export interface UploadedFile {
+  buffer: Buffer;
+  originalname: string;
+  mimetype: string;
+  size: number;
+}
 
-const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  const allowedTypes = /jpeg|jpg|png|webp/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
+export const upload = {
+  single: (fieldName: string) => (req: Request, res: Response, next: NextFunction) => {
+    const busboy = Busboy({ headers: req.headers });
+    let fileBuffer: Buffer | null = null;
+    let fileName = '';
+    let mimeType = '';
 
-  if (extname && mimetype) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only images allowed: jpeg, jpg, png, webp'));
+    busboy.on('file', (name, file, info) => {
+      if (name !== fieldName) { file.resume(); return; }
+      fileName = info.filename;
+      mimeType = info.mimeType;
+      const chunks: Buffer[] = [];
+      file.on('data', (chunk) => chunks.push(chunk));
+      file.on('end', () => { fileBuffer = Buffer.concat(chunks); });
+    });
+
+    busboy.on('finish', () => {
+      if (fileBuffer) {
+        (req as any).file = {
+          buffer: fileBuffer,
+          originalname: fileName,
+          mimetype: mimeType,
+          size: fileBuffer.length,
+        };
+      }
+      next();
+    });
+
+    busboy.on('error', (err) => next(err));
+    req.pipe(busboy);
+  },
+
+  fields: (fields: { name: string; maxCount: number }[]) => (req: Request, res: Response, next: NextFunction) => {
+    const busboy = Busboy({ headers: req.headers });
+    const files: { [key: string]: UploadedFile[] } = {};
+
+    busboy.on('file', (name, file, info) => {
+      const chunks: Buffer[] = [];
+      file.on('data', (chunk) => chunks.push(chunk));
+      file.on('end', () => {
+        if (!files[name]) files[name] = [];
+        files[name].push({
+          buffer: Buffer.concat(chunks),
+          originalname: info.filename,
+          mimetype: info.mimeType,
+          size: Buffer.concat(chunks).length,
+        });
+      });
+    });
+
+    busboy.on('finish', () => {
+      (req as any).files = files;
+      next();
+    });
+
+    busboy.on('error', (err) => next(err));
+    req.pipe(busboy);
   }
 };
-
-export const upload = multer({
-  storage,
-  limits: { fileSize: 10 * 1024 * 1024 },
-  fileFilter,
-});

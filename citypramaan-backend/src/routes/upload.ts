@@ -1,5 +1,5 @@
-import { Router, Response } from 'express';
-import { upload } from '../middleware/upload';
+﻿import { Router, Response } from 'express';
+import { upload, UploadedFile } from '../middleware/upload';
 import { uploadImageToIPFS, uploadProofBundle } from '../services/ipfs.service';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 
@@ -7,15 +7,13 @@ const router = Router();
 
 router.post('/issue-image', authMiddleware, upload.single('image'), async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.file) {
+    if (!(req as any).file) {
       res.status(400).json({ error: 'No image uploaded' });
       return;
     }
 
-    const result = await uploadImageToIPFS(
-      req.file.buffer,
-      req.file.originalname
-    );
+    const file = (req as any).file as UploadedFile;
+    const result = await uploadImageToIPFS(file.buffer, file.originalname);
 
     res.json({
       success: true,
@@ -35,7 +33,7 @@ router.post('/proof-bundle', authMiddleware, upload.fields([
   { name: 'after', maxCount: 1 }
 ]), async (req: AuthRequest, res: Response) => {
   try {
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const files = (req as any).files as { [fieldname: string]: UploadedFile[] };
     const { issueId } = req.body;
 
     if (!files?.before || !files?.after) {

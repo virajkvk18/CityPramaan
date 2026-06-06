@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import pinataSDK from '@pinata/sdk';
-import { Readable } from 'stream';
+import FormData from 'form-data';
+import axios from 'axios';
 import crypto from 'crypto';
 
 const pinata = new pinataSDK(
@@ -28,17 +29,29 @@ export async function uploadImageToIPFS(
   fileBuffer: Buffer,
   fileName: string
 ): Promise<IPFSUploadResult> {
-  const stream = Readable.from(fileBuffer);
-  (stream as any).path = fileName;
-
-  const result = await pinata.pinFileToIPFS(stream, {
-    pinataMetadata: { name: fileName },
-    pinataOptions: { cidVersion: 0 }
+  const formData = new FormData();
+  formData.append('file', fileBuffer, {
+    filename: fileName,
+    contentType: 'image/jpeg',
   });
 
+  const response = await axios.post(
+    'https://api.pinata.cloud/pinning/pinFileToIPFS',
+    formData,
+    {
+      headers: {
+        ...formData.getHeaders(),
+        pinata_api_key: process.env.PINATA_API_KEY!,
+        pinata_secret_api_key: process.env.PINATA_SECRET_KEY!,
+      },
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
+    }
+  );
+
   return {
-    cid: result.IpfsHash,
-    url: `https://gateway.pinata.cloud/ipfs/${result.IpfsHash}`
+    cid: response.data.IpfsHash,
+    url: `https://gateway.pinata.cloud/ipfs/${response.data.IpfsHash}`,
   };
 }
 

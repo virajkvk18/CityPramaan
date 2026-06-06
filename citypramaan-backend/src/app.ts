@@ -1,15 +1,15 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import dotenv from 'dotenv';
 import issuesRouter from './routes/issues';
 import warrantyRouter from './routes/warranty';
 import authRouter from './routes/auth';
 import uploadRouter from './routes/upload';
 import { testPinataConnection } from './services/ipfs.service';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -17,7 +17,12 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(helmet());
 app.use(morgan('dev'));
-app.use(express.json());
+
+// Skip express.json() for multipart upload routes so multer can parse them
+app.use((req, res, next) => {
+  if (req.originalUrl.startsWith('/api/upload')) return next();
+  express.json()(req, res, next);
+});
 
 app.get('/health', (req, res) => {
   res.json({ status: 'CityPramaan backend running!' });
