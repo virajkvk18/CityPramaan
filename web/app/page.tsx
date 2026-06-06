@@ -22,7 +22,6 @@ import {
   ShieldCheck,
   Sparkles,
   UserRound,
-  Wallet,
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
@@ -44,14 +43,6 @@ import {
   getLocalReportsSnapshot,
   subscribeLocalReports,
 } from "@/src/lib/report-storage";
-import {
-  connectWallet,
-  disconnectWallet,
-  getWalletSnapshot,
-  parseWalletSnapshot,
-  shortWalletAddress,
-  subscribeWallet,
-} from "@/src/lib/wallet-storage";
 import { useLanguage } from "@/src/lib/use-language";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 import type { TranslationKey } from "@/src/lib/language-context";
@@ -204,7 +195,7 @@ const publicProofTimeline = [
 
 const civicSignalChips = [
   { label: "AI Verification", tone: "cyan" },
-  { label: "Blockchain Proof", tone: "violet" },
+  { label: "Fabric-ready Proof", tone: "violet" },
   { label: "Warranty Memory", tone: "emerald" },
   { label: "Public Timeline", tone: "amber" },
   { label: "Citizen Feedback", tone: "rose" },
@@ -268,7 +259,7 @@ function getRoleNavItems(role: AuthRole, proofHref: string): RoleNavItem[] {
     return [
       { label: "Workspace", icon: Gauge, href: "/ward-admin", active: true },
       { label: "Pending approvals", icon: ScanSearch, href: "/ward-admin", tone: "glass" },
-      { label: "Warranty scanner", icon: Wallet, href: "/warranty", tone: "gold" },
+      { label: "Warranty scanner", icon: ShieldCheck, href: "/warranty", tone: "gold" },
       { label: "Public reports", icon: Blocks, href: proofHref, tone: "cyan" },
       profile,
     ];
@@ -413,16 +404,12 @@ export default function Home() {
     getCitySelectionSourceSnapshot,
     () => "default"
   );
-  const walletSnapshot = useSyncExternalStore(subscribeWallet, getWalletSnapshot, () => "false");
   const authSnapshot = useSyncExternalStore(subscribeAuth, getAuthSnapshot, () => "");
   const selectedCity = getCityByKey(citySnapshot);
   const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const waitingForAutoCity = !cityDisplay.detectedLocation && citySourceSnapshot !== "manual";
   const dashboardCityName = waitingForAutoCity ? "Current City" : cityDisplay.cityName;
   const landingHeroAreaName = "MP Nagar, Bhopal";
-  const wallet = useMemo(() => parseWalletSnapshot(walletSnapshot), [walletSnapshot]);
-  const walletConnected = wallet.connected;
-  const [walletMessage, setWalletMessage] = useState("");
   const currentUser = useMemo(() => getCurrentUser(authSnapshot), [authSnapshot]);
   const profileComplete = currentUser ? isProfileComplete(currentUser) : false;
   const roleDashboard = getRoleDashboard(currentUser?.role);
@@ -541,21 +528,6 @@ export default function Home() {
 
     setShowSafetyIntro(false);
   };
-
-  async function handleWalletClick() {
-    setWalletMessage("");
-
-    if (walletConnected) {
-      disconnectWallet();
-      return;
-    }
-
-    try {
-      await connectWallet(wallet.chainKey);
-    } catch (error) {
-      setWalletMessage(error instanceof Error ? error.message : "Could not connect wallet.");
-    }
-  }
 
   if (!currentUser) {
     return (
@@ -783,24 +755,14 @@ export default function Home() {
               Login
             </Link>
           )}
-          <button
-            onClick={handleWalletClick}
-            className={`relative min-h-9 max-w-[136px] overflow-hidden truncate rounded-sm border px-3 py-2 text-center font-mono text-[10px] font-bold uppercase tracking-[0.08em] transition sm:min-h-0 sm:max-w-none sm:px-5 sm:py-3 sm:text-xs sm:tracking-[0.2em] ${
-              walletConnected
-                ? "border-[#00eb88]/45 bg-[#00eb88]/12 text-[#5bffa1] shadow-[0_0_24px_rgba(0,235,136,0.14)]"
-                : "border-[#ffc08d]/60 bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] text-[#4c2700] shadow-[0_0_26px_rgba(255,153,51,0.2)]"
-            }`}
+          <div
+            className="relative min-h-9 max-w-[150px] overflow-hidden truncate rounded-sm border border-[#00eb88]/45 bg-[#00eb88]/12 px-3 py-2 text-center font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[#5bffa1] shadow-[0_0_24px_rgba(0,235,136,0.14)] sm:min-h-0 sm:max-w-none sm:px-5 sm:py-3 sm:text-xs sm:tracking-[0.2em]"
           >
             <span className="stitch-shimmer" />
-            {walletConnected ? shortWalletAddress(wallet.address) : t("connectWallet")}
-          </button>
+            AI/RAG active
+          </div>
         </div>
       </header>
-      {walletMessage && (
-        <div className="fixed right-3 top-24 z-[60] max-w-sm rounded-md border border-[#ffb4ab]/35 bg-[#120706]/95 px-4 py-3 text-sm text-[#ffcec7] shadow-[0_18px_60px_rgba(0,0,0,0.35)]">
-          {walletMessage}
-        </div>
-      )}
 
       <section className="grid min-h-screen grid-cols-1 pb-24 pt-36 sm:pb-0 sm:pt-20 xl:grid-cols-[320px_1fr_400px]">
         <aside className="hidden border-r border-[#ff9933]/15 bg-[linear-gradient(180deg,rgba(255,153,51,0.08),rgba(0,0,0,0.5)_22%,rgba(0,219,233,0.045))] p-5 shadow-[8px_0_40px_rgba(0,0,0,0.35)] backdrop-blur-xl xl:flex xl:flex-col">
@@ -853,13 +815,11 @@ export default function Home() {
             </p>
           </div>
 
-          {walletConnected && (
-            <div className="mt-5 rounded-md border border-[#00eb88]/30 bg-[linear-gradient(135deg,rgba(0,235,136,0.13),rgba(0,219,233,0.06))] p-5 shadow-[0_0_22px_rgba(0,235,136,0.08)]">
-              <p className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-[#5bffa1]">{t("citizenWallet")}</p>
-              <p className="mt-2 break-all font-mono text-sm text-[#e5e2e3]">{wallet.address}</p>
-              <p className="mt-1 text-xs text-[#dbc2b0]">Ready on {wallet.chainKey.replace("-", " ")} for real proof transactions.</p>
-            </div>
-          )}
+          <div className="mt-5 rounded-md border border-[#00eb88]/30 bg-[linear-gradient(135deg,rgba(0,235,136,0.13),rgba(0,219,233,0.06))] p-5 shadow-[0_0_22px_rgba(0,235,136,0.08)]">
+            <p className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-[#5bffa1]">AI/RAG proof layer</p>
+            <p className="mt-2 text-sm text-[#e5e2e3]">Issue analysis, RAG civic rules, contractor matching, repair audit, and warranty risk agents are active.</p>
+            <p className="mt-1 text-xs text-[#dbc2b0]">Fabric ledger anchoring is ready for teammate integration.</p>
+          </div>
 
           {activeLocalReports.length > 0 && (
             <div className="mt-5 rounded-md border border-[#00dbe9]/30 bg-[linear-gradient(135deg,rgba(0,219,233,0.12),rgba(0,0,0,0.18))] p-5">
@@ -1042,7 +1002,7 @@ export default function Home() {
                 />
                 <TrustSignal
                   icon={<Blocks size={17} />}
-                  label={t("blockchainProof")}
+                  label="Fabric-ready proof"
                   value={t("hashAnchored")}
                   tone="amber"
                 />
@@ -1053,9 +1013,9 @@ export default function Home() {
                   tone="emerald"
                 />
                 <TrustSignal
-                  icon={<Wallet size={17} />}
+                  icon={<Blocks size={17} />}
                   label={t("citizenNode")}
-                  value={walletConnected ? t("walletReady") : t("demoMode")}
+                  value="Fabric pending"
                   tone="violet"
                 />
               </div>
@@ -1616,7 +1576,7 @@ function LandingEvidenceSections({
           </p>
 
           <div className="mt-7 grid gap-3 sm:grid-cols-2">
-            {["Before image", "After image", "AI result", "Location", "Blockchain hash", "Warranty status"].map((item) => (
+            {["Before image", "After image", "AI result", "Location", "Proof hash", "Warranty status"].map((item) => (
               <div key={item} className="rounded-lg border border-white/10 bg-white/[0.045] px-4 py-3 text-sm font-semibold text-[#e5e2e3]">
                 {item}
               </div>

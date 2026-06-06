@@ -9,12 +9,12 @@ type ChainProofCardProps = {
 };
 
 const proof = {
-  network: "Base Sepolia",
-  contract: "0x3fa2...9c11",
-  block: "6,492,118",
-  txHash: "0xf12d...8bb0",
-  ipfsCid: "bafy...repair-proof",
-  status: "Verified on-chain",
+  network: "Fabric pending",
+  contract: "CityPramaanProof chaincode",
+  block: "Pending ledger write",
+  txHash: "fabric-ready-proof",
+  ipfsCid: "proof-bundle-hash",
+  status: "Fabric-ready",
 };
 
 export function ChainProofCard({ compact = false, proofData }: ChainProofCardProps) {
@@ -26,7 +26,7 @@ export function ChainProofCard({ compact = false, proofData }: ChainProofCardPro
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-emerald-200">
           <Blocks size={18} />
-          <p className="font-medium">{t("onChainProofs")}</p>
+          <p className="font-medium">Fabric-ready proofs</p>
         </div>
         <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-200">
           <CheckCircle2 size={13} />
@@ -41,15 +41,14 @@ export function ChainProofCard({ compact = false, proofData }: ChainProofCardPro
       )}
 
       <div className="mt-4 grid gap-2">
-        <ProofRow icon={<Database size={15} />} label={t("chainStatus")} value={displayProof.network} />
-        <ProofRow icon={<Fingerprint size={15} />} label="Contract" value={displayProof.contract} />
-        <ProofRow icon={<Blocks size={15} />} label="Block" value={displayProof.block} />
+        <ProofRow icon={<Database size={15} />} label="Ledger status" value={displayProof.network} />
+        <ProofRow icon={<Fingerprint size={15} />} label="Chaincode" value={displayProof.contract} />
+        <ProofRow icon={<Blocks size={15} />} label="Fabric block" value={displayProof.block} />
         <ProofRow icon={<FileKey2 size={15} />} label="Proof Hash / CID" value={displayProof.ipfsCid} />
       </div>
 
       <div className="mt-3 rounded-lg border border-white/10 bg-zinc-950/60 px-3 py-2">
-        <p className="text-xs text-zinc-500">{t("blockchainTransaction")}</p>
-        {/* FIX: truncate instead of break-all to prevent overflow */}
+        <p className="text-xs text-zinc-500">Fabric-ready transaction reference</p>
         <p className="mt-1 truncate text-xs font-medium text-emerald-300" title={displayProof.txHash}>
           {displayProof.txHash}
         </p>

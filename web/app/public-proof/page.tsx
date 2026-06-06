@@ -188,7 +188,7 @@ export default function PublicProofPage() {
               </h1>
               <p className="mt-4 max-w-3xl text-sm leading-6 text-[#dbc2b0] sm:text-base">
                 Anyone can view issue history, location, repair proof, warranty status, contractor
-                identity, and blockchain hashes for their city without login. Reporter identity stays anonymous.
+                identity, and proof hashes for their city without login. Reporter identity stays anonymous.
               </p>
             </div>
             <div className="cp-public-report-hero-actions flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -317,7 +317,7 @@ export default function PublicProofPage() {
                       <MiniRow label="Severity" value={latestReport.severity} />
                       <MiniRow label="Contractor" value={formatPublicContractor(latestReport)} />
                       <MiniRow label="Proof Hash" value={shortHash(latestReport.proofBundleHash)} />
-                      <MiniRow label="Tx Hash" value={shortHash(latestReport.txHash)} />
+                      <MiniRow label="Proof Ref" value={shortHash(latestReport.txHash)} />
                     </div>
                     <div className="mt-5 flex gap-3">
                       <Link

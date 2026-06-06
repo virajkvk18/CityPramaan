@@ -16,7 +16,6 @@ import {
   ScanSearch,
   Settings,
   ShieldCheck,
-  Wallet,
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
@@ -39,20 +38,6 @@ import {
   subscribeContractors,
 } from "@/src/lib/contractor-storage";
 import { requestContractorMatch, type AiContractorMatchResult } from "@/src/lib/ai-agents-client";
-import {
-  connectWallet,
-  formatWalletError,
-  getWalletSnapshot,
-  type OnChainProofRecord,
-  parseWalletSnapshot,
-  readProofRecords,
-  readWalletPermissions,
-  registryStatusCodes,
-  setContractorRoleTransaction,
-  setWardAdminRoleTransaction,
-  subscribeWallet,
-  updateProofStatusTransaction,
-} from "@/src/lib/wallet-storage";
 import { useLanguage } from "@/src/lib/use-language";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 
@@ -85,7 +70,6 @@ export default function PendingApprovalPage() {
     getContractorsSnapshot,
     () => "[]"
   );
-  const walletSnapshot = useSyncExternalStore(subscribeWallet, getWalletSnapshot, () => "");
   const selectedCity = getCityByKey(citySnapshot);
   const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const [backendReports, setBackendReports] = useState<CivicReport[]>([]);
@@ -110,7 +94,6 @@ export default function PendingApprovalPage() {
     () => JSON.parse(contractorsSnapshot) as ContractorProfile[],
     [contractorsSnapshot]
   );
-  const wallet = parseWalletSnapshot(walletSnapshot);
   const allReports = useMemo(() => {
     return mergeReportsById(
       getReportsForCity(selectedCity.key),
@@ -125,7 +108,6 @@ export default function PendingApprovalPage() {
         .sort(sortReviewReports),
     [allReports]
   );
-  const reviewReportIdsKey = useMemo(() => reviewReports.map((report) => report.id).join("|"), [reviewReports]);
   const pendingCount = reviewReports.filter((report) => report.status === "REPAIR_SUBMITTED").length;
   const [selectedReportId, setSelectedReportId] = useState(
     reviewReports.find((report) => report.status === "REPAIR_SUBMITTED")?.id ?? reviewReports[0]?.id ?? ""
@@ -142,10 +124,6 @@ export default function PendingApprovalPage() {
   );
   const [selectedContractorId, setSelectedContractorId] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
-  const [roleWalletAddress, setRoleWalletAddress] = useState("");
-  const [roleMessage, setRoleMessage] = useState("Connect owner wallet to manage contract roles.");
-  const [ownerMode, setOwnerMode] = useState(false);
-  const [chainRecords, setChainRecords] = useState<Record<string, OnChainProofRecord>>({});
   const [aiContractorMatch, setAiContractorMatch] = useState<AiContractorMatchResult | null>(null);
   const activeContractor =
     suggestedContractors.find((contractor) => contractor?.contractorId === selectedContractorId) ??
@@ -178,89 +156,6 @@ export default function PendingApprovalPage() {
       active = false;
     };
   }, [selectedReport, suggestedContractors]);
-
-  useEffect(() => {
-    if (!wallet.connected) {
-      window.setTimeout(() => {
-        setOwnerMode(false);
-        setRoleMessage("Connect owner wallet to manage contract roles.");
-      }, 0);
-      return;
-    }
-
-    let active = true;
-
-    readWalletPermissions(wallet.address)
-      .then((permissions) => {
-        if (!active) {
-          return;
-        }
-
-        setOwnerMode(permissions.isOwner);
-        setRoleMessage(
-          permissions.isOwner
-            ? "Owner wallet active. You can grant or revoke on-chain roles."
-            : "Connected wallet is not the contract owner. Role management is read-only."
-        );
-      })
-      .catch((error) => {
-        if (!active) {
-          return;
-        }
-
-        setOwnerMode(false);
-        setRoleMessage(formatWalletError(error));
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [wallet.address, wallet.connected]);
-
-  useEffect(() => {
-    const ids = reviewReports.map((report) => report.id);
-
-    if (!ids.length) {
-      window.setTimeout(() => setChainRecords({}), 0);
-      return;
-    }
-
-    let active = true;
-
-    readProofRecords(ids)
-      .then((records) => {
-        if (active) {
-          setChainRecords(records);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setChainRecords({});
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [reviewReportIdsKey, reviewReports]);
-
-  async function updateRegistryRole(role: "WARD_ADMIN" | "CONTRACTOR", allowed: boolean) {
-    try {
-      if (!wallet.connected) {
-        await connectWallet(wallet.chainKey);
-      }
-
-      setRoleMessage(`Open MetaMask to ${allowed ? "grant" : "revoke"} ${role.replace("_", " ").toLowerCase()} role...`);
-      const txHash =
-        role === "WARD_ADMIN"
-          ? await setWardAdminRoleTransaction(roleWalletAddress, allowed)
-          : await setContractorRoleTransaction(roleWalletAddress, allowed);
-
-      setRoleMessage(`${role.replace("_", " ")} role ${allowed ? "granted" : "revoked"} on-chain. Tx: ${txHash}`);
-    } catch (error) {
-      setRoleMessage(formatWalletError(error));
-    }
-  }
 
   function assignContractor(report: CivicReport, contractor = activeContractor) {
     if (["ADMIN_APPROVED", "UNDER_WARRANTY", "CLOSED"].includes(report.status)) {
@@ -310,21 +205,7 @@ export default function PendingApprovalPage() {
       return;
     }
 
-    let tx = "";
-
-    try {
-      setActionMessage("Open MetaMask and sign updateStatus(publicId, AdminApproved)...");
-      if (!wallet.connected) {
-        await connectWallet(wallet.chainKey);
-      }
-      tx = await updateProofStatusTransaction(report.id, registryStatusCodes.AdminApproved);
-    } catch (error) {
-      setActionMessage(
-        formatWalletError(error) ||
-          "Could not approve on-chain. Check MetaMask, role permissions, testnet gas, and contract config."
-      );
-      return;
-    }
+    const tx = report.proofBundleHash ?? report.repairEvidenceHash ?? report.evidenceHash ?? report.txHash;
 
     const now = new Date();
     const isPowerOutage = report.issueCategory === "POWER_OUTAGE";
@@ -362,7 +243,7 @@ export default function PendingApprovalPage() {
     );
 
     void saveReportEverywhere(updated);
-    setActionMessage(`${report.id} approved by Ward Admin. Citizen must confirm work done before closure and warranty activation.`);
+    setActionMessage(`${report.id} approved by Ward Admin. Fabric anchoring is ready for teammate integration.`);
   }
 
   function rejectRepairProof(report: CivicReport) {
@@ -443,7 +324,7 @@ export default function PendingApprovalPage() {
         <nav className="mt-8 flex flex-1 flex-col gap-1">
           <NavItem href="/" icon={<LayoutDashboard size={18} />} label={t("commandCenter")} />
           <NavItem href="/ward-admin" icon={<ScanSearch size={18} />} label="Ward Admin Queue" active />
-          <NavItem href="/warranty" icon={<Wallet size={18} />} label={t("warrantyScanner")} />
+          <NavItem href="/warranty" icon={<CalendarClock size={18} />} label={t("warrantyScanner")} />
           <NavItem href="/reports" icon={<BadgeCheck size={18} />} label={t("publicProof")} />
         </nav>
       </aside>
@@ -490,46 +371,12 @@ export default function PendingApprovalPage() {
           </div>
 
           <section className="mb-6 rounded-lg border border-[#00dbe9]/20 bg-[#00dbe9]/10 p-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#7df4ff]">
-                  On-chain role registry
-                </p>
-                <p className="mt-1 text-sm leading-6 text-[#d3fbff]">{roleMessage}</p>
-              </div>
-              <div className="flex flex-1 flex-col gap-3 lg:max-w-3xl lg:flex-row">
-                <input
-                  value={roleWalletAddress}
-                  onChange={(event) => setRoleWalletAddress(event.target.value)}
-                  placeholder="0x wallet address"
-                  className="min-h-11 flex-1 rounded border border-white/10 bg-black/45 px-3 font-mono text-xs text-white outline-none focus:border-[#00dbe9]/60"
-                />
-                <button
-                  type="button"
-                  disabled={!ownerMode}
-                  onClick={() => void updateRegistryRole("WARD_ADMIN", true)}
-                  className="rounded border border-[#00eb88]/35 bg-[#00eb88]/10 px-3 py-2 font-mono text-[10px] font-bold uppercase text-[#8fffc1] disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  Grant admin
-                </button>
-                <button
-                  type="button"
-                  disabled={!ownerMode}
-                  onClick={() => void updateRegistryRole("CONTRACTOR", true)}
-                  className="rounded border border-[#ffc08d]/35 bg-[#ffc08d]/10 px-3 py-2 font-mono text-[10px] font-bold uppercase text-[#ffdcc2] disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  Grant contractor
-                </button>
-                <button
-                  type="button"
-                  disabled={!ownerMode}
-                  onClick={() => void updateRegistryRole("WARD_ADMIN", false)}
-                  className="rounded border border-[#ffb4ab]/30 bg-[#ffb4ab]/10 px-3 py-2 font-mono text-[10px] font-bold uppercase text-[#ffdad6] disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  Revoke admin
-                </button>
-              </div>
-            </div>
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#7df4ff]">
+              AI/RAG review layer
+            </p>
+            <p className="mt-1 text-sm leading-6 text-[#d3fbff]">
+              The previous EVM proof flow has been removed. Ward Admin actions now produce Fabric-ready hashes and timeline events for teammate Fabric integration.
+            </p>
           </section>
 
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
@@ -581,8 +428,8 @@ export default function PendingApprovalPage() {
                       <div className="grid grid-cols-2 gap-3 text-sm sm:min-w-80">
                         <Info label={t("status")} value={statusCopy(selectedReport)} />
                         <Info
-                          label="On-chain status"
-                          value={chainRecords[selectedReport.id]?.exists ? chainRecords[selectedReport.id].statusLabel : "Not anchored"}
+                          label="Fabric status"
+                          value={selectedReport.proofBundleHash ? "Proof bundle ready" : "Pending proof bundle"}
                         />
                         <Info label={t("severity")} value={selectedReport.severity} />
                         <Info label={t("aiConfidence")} value={`${selectedReport.confidence}%`} />

@@ -33,20 +33,6 @@ import {
   subscribeLocalReports,
 } from "@/src/lib/report-storage";
 import { fetchBackendReports, mergeReportsById, saveReportEverywhere } from "@/src/lib/report-sync";
-import {
-  connectWallet,
-  formatWalletError,
-  getContractAddress,
-  getPreferredChainKey,
-  getWalletSnapshot,
-  parseWalletSnapshot,
-  readProofRecord,
-  registryStatusCodes,
-  shortWalletAddress,
-  subscribeWallet,
-  type OnChainProofRecord,
-  updateProofStatusTransaction,
-} from "@/src/lib/wallet-storage";
 import { useLanguage } from "@/src/lib/use-language";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 
@@ -76,12 +62,10 @@ export default function ProofTimelinePage() {
     getLocalReportsSnapshot,
     () => "[]"
   );
-  const walletSnapshot = useSyncExternalStore(subscribeWallet, getWalletSnapshot, () => "");
   const localReports = useMemo(
     () => JSON.parse(localReportsSnapshot) as CivicReport[],
     [localReportsSnapshot]
   );
-  const wallet = parseWalletSnapshot(walletSnapshot);
   const [backendReports, setBackendReports] = useState<CivicReport[]>([]);
   useEffect(() => {
     let active = true;
@@ -127,34 +111,6 @@ export default function ProofTimelinePage() {
   const primaryTransactionHash = report.repairTxHash ?? report.txHash;
   const [feedbackText, setFeedbackText] = useState("");
   const [actionMessage, setActionMessage] = useState("");
-  const [chainRecord, setChainRecord] = useState<OnChainProofRecord | null>(null);
-  const [chainReadStatus, setChainReadStatus] = useState("Reading contract record...");
-
-  useEffect(() => {
-    let active = true;
-
-    readProofRecord(report.id)
-      .then((record) => {
-        if (!active) {
-          return;
-        }
-
-        setChainRecord(record);
-        setChainReadStatus(record.exists ? "Synced from contract" : "No on-chain record found for this public ID");
-      })
-      .catch((error) => {
-        if (!active) {
-          return;
-        }
-
-        setChainRecord(null);
-        setChainReadStatus(formatWalletError(error));
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [report.id]);
 
   function getLatestReport() {
     try {
@@ -213,23 +169,12 @@ export default function ProofTimelinePage() {
       return;
     }
 
-    let tx = "";
-
-    try {
-      setActionMessage("Open MetaMask and sign updateStatus(publicId, AdminApproved)...");
-      if (!wallet.connected) {
-        await connectWallet(wallet.chainKey);
-      }
-      tx = await updateProofStatusTransaction(latestReport.id, registryStatusCodes.AdminApproved);
-      setChainRecord(await readProofRecord(latestReport.id));
-      setChainReadStatus("Synced from contract");
-    } catch (error) {
-      setActionMessage(
-        formatWalletError(error) ||
-          "Could not approve on-chain. Check MetaMask, role permissions, testnet gas, and contract config."
-      );
-      return;
-    }
+    const tx =
+      latestReport.proofBundleHash ??
+      latestReport.repairEvidenceHash ??
+      latestReport.repairTxHash ??
+      latestReport.evidenceHash ??
+      latestReport.txHash;
 
     const now = new Date();
     const warrantyDays = 90;
@@ -459,7 +404,7 @@ export default function ProofTimelinePage() {
                         </div>
 
                         <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
-                          <span className="text-xs text-zinc-500">{t("blockchainTransaction")}</span>
+                          <span className="text-xs text-zinc-500">Fabric-ready proof hash</span>
                           <span className="truncate text-xs text-emerald-300">
                             {event.tx ?? report.repairTxHash ?? report.evidenceHash ?? report.txHash}
                           </span>
@@ -497,15 +442,15 @@ export default function ProofTimelinePage() {
         <aside className="space-y-5">
           <ChainProofCard
             proofData={{
-              network: getPreferredChainKey().replace("-", " "),
-              contract: getContractAddress() || "Contract env missing",
-              block: chainRecord?.updatedAt ? new Date(chainRecord.updatedAt * 1000).toLocaleString() : "Pending",
+              network: "Hyperledger Fabric pending",
+              contract: "Fabric chaincode to be integrated by teammate",
+              block: "Pending Fabric anchoring",
               txHash: primaryTransactionHash,
-              ipfsCid: chainRecord?.reportHash ?? evidenceProofHash,
+              ipfsCid: evidenceProofHash,
             }}
           />
 
-          <OnChainRegistryCard record={chainRecord} status={chainReadStatus} />
+          <FabricReadyCard report={report} evidenceProofHash={evidenceProofHash} />
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
             <div className="flex items-center gap-2">
@@ -1008,36 +953,31 @@ function MiniState({
   );
 }
 
-function OnChainRegistryCard({
-  record,
-  status,
+function FabricReadyCard({
+  report,
+  evidenceProofHash,
 }: {
-  record: OnChainProofRecord | null;
-  status: string;
+  report: CivicReport;
+  evidenceProofHash: string;
 }) {
   return (
     <div className="rounded-2xl border border-[#00dbe9]/20 bg-[#00dbe9]/10 p-5">
       <div className="flex items-center gap-2 text-[#7df4ff]">
         <Blocks size={18} />
-        <p className="font-medium">On-chain registry readback</p>
+        <p className="font-medium">Fabric-ready proof package</p>
       </div>
-      <p className="mt-3 text-sm leading-6 text-zinc-300">{status}</p>
+      <p className="mt-3 text-sm leading-6 text-zinc-300">
+        The previous EVM proof calls have been removed. This page now keeps the
+        report hash, repair hash, AI audit, and timeline ready for Hyperledger Fabric
+        chaincode integration.
+      </p>
 
       <div className="mt-4 space-y-3">
-        <Score label="Registry status" value={record?.exists ? record.statusLabel : "Not found"} />
-        <Score
-          label="Last actor"
-          value={record?.exists ? shortWalletAddress(record.actor) : "Pending"}
-        />
-        <Score
-          label="Updated at"
-          value={record?.updatedAt ? new Date(record.updatedAt * 1000).toLocaleString() : "Pending"}
-        />
-        <Score label="Report hash" value={record?.exists ? record.reportHash : "Pending"} />
-        <Score
-          label="Repair hash"
-          value={record?.repairHash && record.repairHash !== "0x0000000000000000000000000000000000000000000000000000000000000000" ? record.repairHash : "Pending"}
-        />
+        <Score label="Ledger status" value="Fabric integration pending" />
+        <Score label="Report ID" value={report.id} />
+        <Score label="Report hash" value={evidenceProofHash} />
+        <Score label="Proof bundle" value={report.proofBundleHash ?? "Generated after proof action"} />
+        <Score label="Repair hash" value={report.repairEvidenceHash ?? "Pending contractor proof"} />
       </div>
     </div>
   );
@@ -1084,7 +1024,7 @@ function ProofSnapshotCard({
       <div className="grid gap-3 md:grid-cols-2">
         <ProofSnapshotItem icon={<MapPin size={15} />} label="Location" value={report.location} />
         <ProofSnapshotItem icon={<MapPin size={15} />} label="Coordinates" value={coordinates} />
-        <ProofSnapshotItem icon={<Fingerprint size={15} />} label="Blockchain evidence hash" value={evidenceProofHash} />
+        <ProofSnapshotItem icon={<Fingerprint size={15} />} label="Evidence hash" value={evidenceProofHash} />
         <ProofSnapshotItem
           icon={<Blocks size={15} />}
           label="Proof bundle hash"

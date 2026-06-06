@@ -43,15 +43,6 @@ import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 import { getAuthSnapshot, getCurrentUser, roleLabels, subscribeAuth } from "@/src/lib/auth-storage";
 import { getContractorsSnapshot, specializationLabels, subscribeContractors } from "@/src/lib/contractor-storage";
 import { requestRepairAudit, type AiRepairAuditResult } from "@/src/lib/ai-agents-client";
-import {
-  buildExplorerTxUrl,
-  connectWallet,
-  formatWalletError,
-  getWalletSnapshot,
-  parseWalletSnapshot,
-  submitRepairTransaction,
-  subscribeWallet,
-} from "@/src/lib/wallet-storage";
 
 const contractorVisibleStatuses: CivicReport["status"][] = [
   "OPEN",
@@ -77,14 +68,12 @@ export default function ContractorPage() {
     getLocalReportsSnapshot,
     () => "[]"
   );
-  const walletSnapshot = useSyncExternalStore(subscribeWallet, getWalletSnapshot, () => "");
   const authSnapshot = useSyncExternalStore(subscribeAuth, getAuthSnapshot, () => "");
   const contractorsSnapshot = useSyncExternalStore(
     subscribeContractors,
     getContractorsSnapshot,
     () => "[]"
   );
-  const wallet = parseWalletSnapshot(walletSnapshot);
   const currentUser = useMemo(() => getCurrentUser(authSnapshot), [authSnapshot]);
   const contractors = useMemo(
     () => JSON.parse(contractorsSnapshot) as ContractorProfile[],
@@ -297,7 +286,6 @@ export default function ContractorPage() {
     let repairEvidenceHash = "";
     let proofBundleHash = "";
     let tx = "";
-    let txUrl = "";
 
     try {
       repairEvidenceHash = await sha256Hex(repairImageDataUrl);
@@ -309,13 +297,12 @@ export default function ContractorPage() {
         report.status,
         now.toISOString(),
       ]);
-      const connectedWallet = wallet.connected ? wallet : await connectWallet(wallet.chainKey);
-      tx = await submitRepairTransaction(report.id, repairEvidenceHash);
-      txUrl = buildExplorerTxUrl(tx, connectedWallet.chainKey);
+      tx = proofBundleHash;
     } catch (error) {
       setActionMessage(
-        formatWalletError(error) ||
-          "Could not create the repair proof transaction. Check MetaMask, testnet gas, and contract config."
+        error instanceof Error
+          ? error.message
+          : "Could not create the repair proof bundle. Please try again."
       );
       return;
     }
@@ -386,8 +373,8 @@ export default function ContractorPage() {
 
     void saveReportEverywhere(updated);
     setSubmittedId(report.id);
-    setSubmittedTxUrl(txUrl);
-    setActionMessage(`${t("repairProof")} submitted on-chain. Status is now ${t("repairSubmitted")} / ${t("pending")}. Issuer must approve it from ${t("publicProof")}.`);
+    setSubmittedTxUrl("");
+    setActionMessage(`${t("repairProof")} submitted with AI/RAG audit. Fabric anchoring is ready for teammate integration.`);
   }
 
   function chooseCity(cityKey: CityKey) {
@@ -428,9 +415,9 @@ export default function ContractorPage() {
           </button>
           <ThemeToggle />
           <LanguageSelector compact />
-          <button className="hidden rounded border border-[#ffc08d]/50 bg-[#ffc08d]/10 px-4 py-2 font-mono text-xs text-[#ffc08d] transition hover:bg-[#ffc08d]/20 sm:block">
-            {t("connectWallet")}
-          </button>
+          <span className="hidden rounded border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-4 py-2 font-mono text-xs text-[#00dbe9] sm:block">
+            AI audit active
+          </span>
         </div>
       </header>
 

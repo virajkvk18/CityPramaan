@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { FormEvent, useEffect, useState, useSyncExternalStore } from "react";
-import { ArrowLeft, BadgeCheck, Building2, Fingerprint, Home, LogOut, MapPin, Phone, Save, ShieldCheck, User, Wallet, Wrench } from "lucide-react";
+import { FormEvent, useEffect, useState } from "react";
+import { ArrowLeft, BadgeCheck, Building2, Fingerprint, Home, LogOut, MapPin, Phone, Save, ShieldCheck, User, Wrench } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import {
@@ -14,20 +14,7 @@ import {
   type PublicUserProfile,
   roleLabels,
   updateCurrentProfile,
-  updateCurrentProfileChainProof,
 } from "@/src/lib/auth-storage";
-import {
-  accountRoleCodes,
-  connectWallet,
-  formatWalletError,
-  getWalletSnapshot,
-  parseWalletSnapshot,
-  readProfileRecord,
-  readWalletPermissions,
-  subscribeWallet,
-  type OnChainProfileRecord,
-  updateProfileTransaction,
-} from "@/src/lib/wallet-storage";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -81,8 +68,6 @@ export default function ProfilePage() {
 
 function ProfileEditor({ initialProfile, onLogout }: { initialProfile: PublicUserProfile; onLogout: () => void }) {
   const [profile, setProfile] = useState(initialProfile);
-  const walletSnapshot = useSyncExternalStore(subscribeWallet, getWalletSnapshot, () => "");
-  const wallet = parseWalletSnapshot(walletSnapshot);
   const [name, setName] = useState(() => initialProfile.name ?? "");
   const [contactNumber, setContactNumber] = useState(() => initialProfile.contactNumber ?? "");
   const [address, setAddress] = useState(() => initialProfile.address ?? "");
@@ -100,50 +85,6 @@ function ProfileEditor({ initialProfile, onLogout }: { initialProfile: PublicUse
   const [agencyName, setAgencyName] = useState(() => initialProfile.agencyName ?? "");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
-  const [anchoring, setAnchoring] = useState(false);
-  const [chainProfile, setChainProfile] = useState<OnChainProfileRecord | null>(null);
-  const [permissionMessage, setPermissionMessage] = useState("Connect wallet to read on-chain profile permissions.");
-
-  useEffect(() => {
-    const account = wallet.connected ? wallet.address : profile.walletAddress;
-
-    if (!/^0x[0-9a-fA-F]{40}$/.test(account)) {
-      window.setTimeout(() => {
-        setChainProfile(null);
-        setPermissionMessage("Connect a real MetaMask wallet to anchor this profile on-chain.");
-      }, 0);
-      return;
-    }
-
-    let active = true;
-
-    readWalletPermissions(account)
-      .then((permissions) => {
-        if (!active) {
-          return;
-        }
-
-        setChainProfile(permissions.profile);
-        setPermissionMessage(
-          permissions.isOwner
-            ? "Owner wallet connected. You can manage registry roles."
-            : `Ward admin: ${permissions.wardAdminAllowed ? "approved" : "not approved"} | Contractor: ${permissions.contractorAllowed ? "approved" : "not approved"}`
-        );
-      })
-      .catch((error) => {
-        if (!active) {
-          return;
-        }
-
-        setChainProfile(null);
-        void error;
-        setPermissionMessage("On-chain permission read is temporarily unavailable. Profile can still be saved locally.");
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [profile.walletAddress, wallet.address, wallet.connected]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -154,7 +95,7 @@ function ProfileEditor({ initialProfile, onLogout }: { initialProfile: PublicUse
       const updated = await updateCurrentProfile({
         name,
         contactNumber,
-        walletAddress: wallet.connected ? wallet.address : profile.walletAddress,
+        walletAddress: profile.walletAddress,
         address,
         city,
         ward,
@@ -166,51 +107,11 @@ function ProfileEditor({ initialProfile, onLogout }: { initialProfile: PublicUse
         agencyName,
       });
       setProfile(updated);
-      setMessage("Profile saved locally. Use Anchor on blockchain when Tenderly/MetaMask is available.");
+      setMessage("Profile saved. Profile hash is ready for teammate Fabric integration.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not save profile.");
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function anchorProfileOnChain() {
-    setMessage("");
-    setAnchoring(true);
-
-    try {
-      const connectedWallet = wallet.connected ? wallet : await connectWallet(wallet.chainKey);
-      const savedProfile = await updateCurrentProfile({
-        name,
-        contactNumber,
-        walletAddress: connectedWallet.address,
-        address,
-        city,
-        ward,
-        department,
-        contractorLicense,
-        contractorIdentityNumber,
-        contractorArea,
-        contractorSpecialization,
-        agencyName,
-      });
-      const txHash = await updateProfileTransaction(
-        savedProfile.profileHash ?? "",
-        savedProfile.role === "WARD_ADMIN"
-          ? accountRoleCodes.WARD_ADMIN
-          : savedProfile.role === "CONTRACTOR"
-            ? accountRoleCodes.CONTRACTOR
-            : accountRoleCodes.USER
-      );
-      const savedWithTx = updateCurrentProfileChainProof(txHash, connectedWallet.address);
-
-      setProfile(savedWithTx);
-      setChainProfile(await readProfileRecord(connectedWallet.address));
-      setMessage("Profile anchored on-chain with a real MetaMask transaction.");
-    } catch (error) {
-      setMessage(`Profile is still saved locally. Blockchain anchor failed: ${formatWalletError(error)}`);
-    } finally {
-      setAnchoring(false);
     }
   }
 
@@ -266,15 +167,13 @@ function ProfileEditor({ initialProfile, onLogout }: { initialProfile: PublicUse
 
             <div className="mt-5 grid gap-3">
               <ProofRow icon={<BadgeCheck size={16} />} label="Status" value={complete ? "Complete" : "Incomplete"} tone={complete ? "text-[#8fffc1]" : "text-[#ffc08d]"} />
-              <ProofRow icon={<Wallet size={16} />} label="Profile wallet" value={profile.walletAddress} />
               <ProofRow icon={<Fingerprint size={16} />} label="Profile hash" value={profile.profileHash ?? "Pending"} />
-              <ProofRow icon={<ShieldCheck size={16} />} label="Chain profile tx" value={profile.profileChainTxHash ?? "Pending"} />
-              <ProofRow icon={<ShieldCheck size={16} />} label="On-chain role" value={chainProfile?.exists ? chainProfile.roleLabel : "Not anchored"} />
-              <ProofRow icon={<BadgeCheck size={16} />} label="Registry permission" value={permissionMessage} />
+              <ProofRow icon={<ShieldCheck size={16} />} label="Fabric status" value={profile.profileHash ? "Ready for Fabric" : "Pending"} />
+              <ProofRow icon={<BadgeCheck size={16} />} label="Role" value={roleLabels[profile.role]} />
             </div>
 
             <p className="mt-5 rounded-md border border-[#00eb88]/20 bg-[#00eb88]/8 p-4 text-sm leading-6 text-[#c8ffe1]">
-              The profile proof stores only a hash on-chain. Your private address and identity details stay in app storage/database, while the registry proves when the current wallet anchored the latest profile hash.
+              The profile proof stores only a hash for future Fabric anchoring. Private address and identity details stay in app storage/database.
             </p>
           </div>
         </aside>
@@ -352,15 +251,6 @@ function ProfileEditor({ initialProfile, onLogout }: { initialProfile: PublicUse
             >
               <Save size={16} />
               {saving ? "Saving..." : "Save profile"}
-            </button>
-            <button
-              type="button"
-              onClick={() => void anchorProfileOnChain()}
-              disabled={anchoring}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-5 py-4 font-mono text-xs font-black uppercase tracking-[0.18em] text-[#7df4ff] transition hover:bg-[#00dbe9]/15 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
-            >
-              <ShieldCheck size={16} />
-              {anchoring ? "Anchoring..." : "Anchor on blockchain"}
             </button>
           </div>
         </form>

@@ -26,9 +26,7 @@ import {
   Sparkles,
   Trash2,
   UploadCloud,
-  Wallet,
   Wrench,
-  X,
   Zap,
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
@@ -55,17 +53,6 @@ import { saveReportEverywhere } from "@/src/lib/report-sync";
 import { requestInfrastructureAnalysis } from "@/src/lib/ai-analysis-client";
 import { getCurrentUser } from "@/src/lib/auth-storage";
 import { createProofBundleHash, deriveTransactionHash, sha256Hex } from "@/src/lib/proof-hashing";
-import {
-  buildExplorerTxUrl,
-  createDemoProofTransactionHash,
-  createReportTransaction,
-  formatWalletError,
-  getWalletSnapshot,
-  hasEthereumProvider,
-  parseWalletSnapshot,
-  shortWalletAddress,
-  subscribeWallet,
-} from "@/src/lib/wallet-storage";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 
 const issuePresets = [
@@ -169,22 +156,14 @@ async function reverseGeocodeArea(latitude: number, longitude: number) {
 
 export default function ReportIssuePage() {
   const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => DEFAULT_CITY_KEY);
-  const walletSnapshot = useSyncExternalStore(subscribeWallet, getWalletSnapshot, () => "");
   const languageSnapshot = useSyncExternalStore(
     subscribeLanguage,
     getLanguageSnapshot,
     () => "en"
   );
   const selectedCity = getCityByKey(citySnapshot);
-  const wallet = parseWalletSnapshot(walletSnapshot);
   const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const tr = (key: Parameters<typeof translate>[1]) => translate(languageSnapshot, key);
-  const [ethereumAvailable, setEthereumAvailable] = useState(false);
-  const walletLabel = wallet.connected
-    ? shortWalletAddress(wallet.address)
-    : ethereumAvailable
-      ? "Connect MetaMask to sign"
-      : "Install MetaMask to sign";
   const [imageName, setImageName] = useState("");
   const [imageDataUrl, setImageDataUrl] = useState("");
   const [imageLoading, setImageLoading] = useState(false);
@@ -201,13 +180,10 @@ export default function ReportIssuePage() {
   );
   const [verified, setVerified] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [signing, setSigning] = useState(false);
   const [proofCreating, setProofCreating] = useState(false);
   const [proofError, setProofError] = useState("");
   const [createdTxHash, setCreatedTxHash] = useState("");
-  const [createdTxUrl, setCreatedTxUrl] = useState("");
   const [createdProofHash, setCreatedProofHash] = useState("");
-  const [proofMode, setProofMode] = useState<"real" | "demo">("real");
   const [aiProcessing, setAiProcessing] = useState(false);
   const [aiResult, setAiResult] = useState<InfrastructureAnalysis | null>(null);
   const googleMapsUrl = buildGoogleMapsUrl(latitude, longitude);
@@ -219,14 +195,6 @@ export default function ReportIssuePage() {
     manual: "Manual coordinates",
     maps: "Google Maps link",
   }[locationSource];
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setEthereumAvailable(hasEthereumProvider());
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, []);
 
   async function runAiVerification() {
     setVerified(false);
@@ -263,7 +231,6 @@ export default function ReportIssuePage() {
     setSubmitted(false);
     setProofError("");
     setCreatedTxHash("");
-    setCreatedTxUrl("");
     setCreatedProofHash("");
 
     try {
@@ -292,7 +259,6 @@ export default function ReportIssuePage() {
     setSubmitted(false);
     setProofError("");
     setCreatedTxHash("");
-    setCreatedTxUrl("");
     setCreatedProofHash("");
   }
 
@@ -314,7 +280,6 @@ export default function ReportIssuePage() {
     setSubmitted(false);
     setProofError("");
     setCreatedTxHash("");
-    setCreatedTxUrl("");
     setCreatedProofHash("");
 
     const detectedArea = await reverseGeocodeArea(nextLatitude, nextLongitude);
@@ -405,7 +370,6 @@ export default function ReportIssuePage() {
     setSubmitted(false);
     setProofError("");
     setCreatedTxHash("");
-    setCreatedTxUrl("");
     setCreatedProofHash("");
   }
 
@@ -456,26 +420,7 @@ export default function ReportIssuePage() {
         savedLocation,
         now,
       ]);
-      let txHash = "";
-      let txUrl = "";
-      let mode: "real" | "demo" = "real";
-      let fallbackMessage = "";
-
-      if (wallet.connected && hasEthereumProvider()) {
-        try {
-          txHash = await createReportTransaction(reportId, proofBundleHash);
-          txUrl = buildExplorerTxUrl(txHash, wallet.chainKey);
-        } catch (transactionError) {
-          mode = "demo";
-          txHash = await createDemoProofTransactionHash(`report:${reportId}:${proofBundleHash}`);
-          txUrl = "";
-          fallbackMessage = `Tenderly/MetaMask transaction failed, so a demo proof was saved instead. ${formatWalletError(transactionError)}`;
-        }
-      } else {
-        mode = "demo";
-        txHash = await createDemoProofTransactionHash(`report:${reportId}:${proofBundleHash}`);
-        fallbackMessage = "Demo proof saved locally. Connect MetaMask to create a real blockchain transaction.";
-      }
+      const txHash = await deriveTransactionHash(`fabric-pending:${reportId}:${proofBundleHash}`);
 
       const aiTxHash = await deriveTransactionHash(`${reportId}:${result.proofTag}:aiVerification`);
 
@@ -560,18 +505,14 @@ export default function ReportIssuePage() {
       setSelectedCityKey(reportCity.key);
       setVerified(true);
       setSubmitted(true);
-      setSigning(false);
       setCreatedTxHash(txHash);
-      setCreatedTxUrl(txUrl);
       setCreatedProofHash(proofBundleHash);
-      setProofMode(mode);
-      if (fallbackMessage) {
-        setProofError(fallbackMessage);
-      }
+      setProofError("AI/RAG proof created. Fabric anchoring is ready for teammate integration.");
     } catch (error) {
       const message =
-        formatWalletError(error) ||
-        "Could not create the on-chain report transaction. Check MetaMask, testnet gas, and contract config.";
+        error instanceof Error
+          ? error.message
+          : "Could not create the AI/RAG proof bundle. Please try again.";
 
       setProofError(message);
       setLocationMessage(message);
@@ -601,7 +542,6 @@ export default function ReportIssuePage() {
     setProofCreating(false);
     setProofError("");
     setCreatedTxHash("");
-    setCreatedTxUrl("");
     setCreatedProofHash("");
   }
 
@@ -637,15 +577,15 @@ export default function ReportIssuePage() {
           </button>
           <LanguageSelector compact />
           <ThemeToggle />
-          <button className="rounded border border-[#ffc08d]/50 bg-[#ffc08d]/10 px-4 py-2 font-mono text-xs text-[#ffc08d] transition hover:bg-[#ffc08d]/20">
-            {tr("connectWallet")}
-          </button>
+          <span className="rounded border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-4 py-2 font-mono text-xs text-[#00dbe9]">
+            AI/RAG active
+          </span>
         </div>
       </header>
 
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-[#ff9933]/15 bg-[linear-gradient(180deg,rgba(255,153,51,0.08),rgba(0,0,0,0.5)_22%,rgba(0,219,233,0.045))] px-4 pb-5 pt-20 shadow-[5px_0_24px_rgba(0,0,0,0.45)] backdrop-blur-2xl md:flex">
         <div className="mt-2 border-b border-white/10 px-2 pb-5">
-          <BrandLogo size="sm" subtitle={tr("blockchainProof")} />
+          <BrandLogo size="sm" subtitle="AI proof flow" />
         </div>
 
         <nav className="mt-5 flex flex-1 flex-col gap-1">
@@ -1113,7 +1053,7 @@ export default function ReportIssuePage() {
                   </div>
                   <div>
                     <p className="break-all font-mono text-sm text-white">
-                      {wallet.connected ? wallet.address : walletLabel}
+                      {getCurrentUser()?.email ?? "citizen-session"}
                     </p>
                     <p className="font-mono text-xs text-[#dbc2b0]/60">
                       Node ID: {selectedCity.key.toUpperCase()}-9942
@@ -1148,7 +1088,7 @@ export default function ReportIssuePage() {
                     }
 
                     setProofError("");
-                    setSigning(true);
+                    void createProof();
                   }}
                   disabled={aiProcessing || submitted || proofCreating}
                   className="royal-blue-glow flex w-full items-center justify-center gap-2 rounded border border-[#2A2D35] bg-[#1A1C23] px-4 py-4 font-mono text-xs font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-40"
@@ -1181,7 +1121,7 @@ export default function ReportIssuePage() {
                     <p className="font-semibold">{tr("newProofCreated")}</p>
                   </div>
                   <p className="mt-3 text-sm text-[#dbc2b0]">
-                    {tr("latestCitizenReport")} {tr("viewOnCommandCenter")}. {tr("blockchainTransaction")}.
+                  {tr("latestCitizenReport")} {tr("viewOnCommandCenter")}. Fabric anchoring is ready for teammate integration.
                   </p>
                   {aiResult && (
                     <p className="mt-2 text-sm text-[#dbc2b0]">
@@ -1191,24 +1131,12 @@ export default function ReportIssuePage() {
                   <div className="mt-3 space-y-2 rounded bg-black/45 p-3 font-mono text-xs">
                     <div className="flex items-center justify-between gap-3">
                       <span className="uppercase text-[#dbc2b0]/55">Proof mode</span>
-                      <span className={proofMode === "real" ? "text-[#00eb88]" : "text-[#ffc08d]"}>
-                        {proofMode === "real" ? "Real blockchain" : "Demo/local proof"}
-                      </span>
+                      <span className="text-[#ffc08d]">AI/RAG + Fabric pending</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="uppercase text-[#dbc2b0]/55">Tx hash</span>
+                      <span className="uppercase text-[#dbc2b0]/55">Fabric-ready hash</span>
                       <span className="truncate text-[#00eb88]">{createdTxHash || "Created"}</span>
                     </div>
-                    {createdTxUrl && (
-                      <a
-                        href={createdTxUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block truncate text-[#7df4ff] underline-offset-4 hover:underline"
-                      >
-                        Open transaction in explorer
-                      </a>
-                    )}
                     <div className="flex items-center justify-between gap-3">
                       <span className="uppercase text-[#dbc2b0]/55">Proof bundle</span>
                       <span className="truncate text-[#7df4ff]">{createdProofHash || "Stored"}</span>
@@ -1227,89 +1155,6 @@ export default function ReportIssuePage() {
         </div>
       </section>
 
-      {signing && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-[#050505]/82 p-4 backdrop-blur-xl">
-          <div className="cp-cyber-card pointer-events-auto relative z-[1000] w-full max-w-md rounded-lg border-[#00dbe9]/40 p-7 shadow-[0_0_34px_rgba(0,219,233,0.16)]">
-            <div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4">
-              <h3 className="flex items-center gap-2 font-mono text-xs uppercase text-[#00dbe9]">
-                <ShieldCheck size={16} />
-                {tr("signAndCreate")}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setSigning(false)}
-                className="grid h-8 w-8 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0] transition hover:text-[#ffb4ab]"
-                aria-label="Close signing request"
-              >
-                <X size={15} />
-              </button>
-            </div>
-
-            <div className="mb-6 grid place-items-center py-4 text-center">
-              <div className="mb-4 grid h-16 w-16 animate-spin place-items-center rounded-full border-2 border-dashed border-[#00dbe9] text-[#00dbe9]">
-                <Fingerprint size={24} />
-              </div>
-              <div className="mb-4 h-1 w-full overflow-hidden rounded bg-[#201f20]">
-                <div className="shimmer-bg h-full w-full" />
-              </div>
-              <p className="font-mono text-sm text-white">{tr("readyToSign")}</p>
-              <p className="font-mono text-sm text-[#ffc08d]">{walletLabel}</p>
-            </div>
-
-            <div className="mb-5 space-y-2 rounded border border-white/5 bg-black/40 p-4">
-              <SignRow
-                label="Contract"
-                value="CityPramaanRegistry"
-              />
-              <SignRow label="Method" value="createReport(publicId, reportHash)" />
-              <SignRow label="Issue" value={aiResult?.issueType ?? "Infrastructure issue"} />
-              <SignRow label="Proof Tag" value={aiResult?.proofTag ?? "CIVIC_ASSET_PROOF"} />
-              <SignRow
-                label="Network"
-                value={wallet.chainKey.replace("-", " ")}
-              />
-              <SignRow
-                label="Gas"
-                value="Uses real testnet gas from your wallet"
-              />
-            </div>
-
-            <div className="rounded border border-[#00eb88]/20 bg-[#00eb88]/10 p-4">
-              <div className="flex items-center gap-2 text-[#00eb88]">
-                <Wallet size={16} />
-                <p className="font-semibold">{tr("blockchainProof")}</p>
-              </div>
-              <p className="mt-2 text-sm text-[#dbc2b0]">
-                A public report record will be created for {location} after you sign the on-chain transaction.
-              </p>
-            </div>
-
-            <div className="mt-5 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setSigning(false)}
-                className="flex-1 rounded border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => void createProof()}
-                disabled={imageLoading || proofCreating}
-                className="relative z-10 flex-1 rounded bg-[#ffc08d] px-4 py-2 text-sm font-semibold text-[#4c2700] shadow-[0_0_22px_rgba(255,153,51,0.22)] transition hover:bg-[#ffdcc2] disabled:cursor-wait disabled:opacity-70"
-              >
-                {imageLoading ? "Preparing..." : proofCreating ? `${tr("signAndCreate")}...` : tr("signAndCreate")}
-              </button>
-            </div>
-
-            {proofError && (
-              <p className="mt-3 rounded border border-[#ffb4ab]/25 bg-[#ffb4ab]/10 px-3 py-2 text-sm text-[#ffdad6]">
-                {proofError}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
     </main>
   );
 }
@@ -1351,11 +1196,3 @@ function AnalysisRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function SignRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="font-mono text-[10px] uppercase text-[#dbc2b0]/55">{label}</span>
-      <span className="text-right font-mono text-xs text-white">{value}</span>
-    </div>
-  );
-}
