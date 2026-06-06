@@ -37,6 +37,8 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${inter.variable} ${anton.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      data-theme="bright"
+      style={{ colorScheme: "light" }}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>

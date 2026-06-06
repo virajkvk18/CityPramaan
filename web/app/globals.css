@@ -3550,3 +3550,183 @@ textarea::placeholder {
     border-radius: 0.85rem !important;
   }
 }
+
+/* Final readability pass: bright theme only, high contrast text */
+html,
+body {
+  color-scheme: light !important;
+  font-family: var(--font-cp-sans), Inter, Arial, Helvetica, sans-serif !important;
+}
+
+html[data-theme="bright"],
+html:not([data-theme]),
+html[data-theme="dark"] {
+  --background: #f6f8fb;
+  --foreground: var(--gov-text);
+  color-scheme: light !important;
+}
+
+.cp-page-shell,
+.cp-page-shell *,
+.cp-theme-locked-dark,
+.cp-theme-locked-dark * {
+  text-shadow: none !important;
+}
+
+.cp-page-shell h1,
+.cp-page-shell h2,
+.cp-page-shell h3,
+.cp-page-shell h4,
+.cp-page-shell h5,
+.cp-page-shell h6,
+.cp-theme-locked-dark h1,
+.cp-theme-locked-dark h2,
+.cp-theme-locked-dark h3,
+.cp-theme-locked-dark h4,
+.cp-theme-locked-dark h5,
+.cp-theme-locked-dark h6 {
+  color: var(--gov-navy) !important;
+  font-family: var(--font-cp-sans), Inter, Arial, Helvetica, sans-serif !important;
+  letter-spacing: -0.018em !important;
+}
+
+.cp-page-shell p,
+.cp-page-shell li,
+.cp-page-shell label,
+.cp-page-shell small,
+.cp-page-shell dd,
+.cp-page-shell dt,
+.cp-page-shell td,
+.cp-page-shell th,
+.cp-page-shell figcaption,
+.cp-theme-locked-dark p,
+.cp-theme-locked-dark li,
+.cp-theme-locked-dark label,
+.cp-theme-locked-dark small,
+.cp-theme-locked-dark dd,
+.cp-theme-locked-dark dt,
+.cp-theme-locked-dark td,
+.cp-theme-locked-dark th,
+.cp-theme-locked-dark figcaption {
+  color: var(--gov-muted) !important;
+  font-family: var(--font-cp-sans), Inter, Arial, Helvetica, sans-serif !important;
+  line-height: 1.58 !important;
+}
+
+.cp-page-shell .font-mono,
+.cp-theme-locked-dark .font-mono {
+  font-family: var(--font-cp-sans), Inter, Arial, Helvetica, sans-serif !important;
+  letter-spacing: 0.035em !important;
+}
+
+.cp-page-shell [class*="text-white/"],
+.cp-page-shell [class*="text-zinc-"],
+.cp-page-shell [class*="text-neutral-"],
+.cp-page-shell [class*="text-stone-"],
+.cp-page-shell [class*="text-[#e5e2e3]/"],
+.cp-page-shell [class*="text-[#dbc2b0]/"],
+.cp-page-shell [class*="text-[#a38d7c]/"],
+.cp-theme-locked-dark [class*="text-white/"],
+.cp-theme-locked-dark [class*="text-zinc-"],
+.cp-theme-locked-dark [class*="text-neutral-"],
+.cp-theme-locked-dark [class*="text-stone-"],
+.cp-theme-locked-dark [class*="text-[#e5e2e3]/"],
+.cp-theme-locked-dark [class*="text-[#dbc2b0]/"],
+.cp-theme-locked-dark [class*="text-[#a38d7c]/"] {
+  color: var(--gov-muted) !important;
+  opacity: 1 !important;
+}
+
+.cp-page-shell [class*="font-black"],
+.cp-page-shell [class*="font-bold"],
+.cp-theme-locked-dark [class*="font-black"],
+.cp-theme-locked-dark [class*="font-bold"] {
+  color: var(--gov-navy) !important;
+}
+
+.cp-page-shell a,
+.cp-theme-locked-dark a {
+  color: var(--gov-navy) !important;
+}
+
+.cp-page-shell a:hover,
+.cp-theme-locked-dark a:hover {
+  color: var(--gov-blue) !important;
+}
+
+.cp-page-shell button,
+.cp-page-shell input,
+.cp-page-shell textarea,
+.cp-page-shell select,
+.cp-theme-locked-dark button,
+.cp-theme-locked-dark input,
+.cp-theme-locked-dark textarea,
+.cp-theme-locked-dark select {
+  font-family: var(--font-cp-sans), Inter, Arial, Helvetica, sans-serif !important;
+}
+
+.cp-landing-primary-cta,
+.cp-command-link,
+.cp-page-shell button[type="submit"],
+.cp-page-shell .btn-primary-shimmer,
+.cp-page-shell [class*="bg-[#ffc08d]"],
+.cp-page-shell [class*="bg-[linear-gradient"] {
+  font-weight: 800 !important;
+}
+
+.cp-landing-primary-cta,
+.cp-command-link,
+.cp-page-shell button[type="submit"],
+.cp-page-shell .btn-primary-shimmer {
+  color: #ffffff !important;
+}
+
+.cp-page-shell [class*="bg-[#ffc08d]"],
+.cp-page-shell [class*="bg-[#ff9933]"],
+.cp-page-shell [class*="bg-[#ffdcc2]"] {
+  background: var(--gov-saffron) !important;
+  border-color: #d26b00 !important;
+  color: #231300 !important;
+}
+
+.cp-page-shell [class*="bg-[#00eb88]"],
+.cp-page-shell [class*="bg-emerald"],
+.cp-theme-locked-dark [class*="bg-[#00eb88]"],
+.cp-theme-locked-dark [class*="bg-emerald"] {
+  background: var(--gov-green-soft) !important;
+  border-color: rgba(31, 138, 59, 0.35) !important;
+  color: #0d5f28 !important;
+}
+
+.cp-page-shell [class*="bg-[#00dbe9]"],
+.cp-page-shell [class*="bg-cyan"],
+.cp-theme-locked-dark [class*="bg-[#00dbe9]"],
+.cp-theme-locked-dark [class*="bg-cyan"] {
+  background: #edf4ff !important;
+  border-color: rgba(29, 78, 216, 0.28) !important;
+  color: var(--gov-blue) !important;
+}
+
+.cp-page-shell [class*="bg-[#ffb4ab]"],
+.cp-page-shell [class*="bg-red"],
+.cp-theme-locked-dark [class*="bg-[#ffb4ab]"],
+.cp-theme-locked-dark [class*="bg-red"] {
+  background: var(--gov-red-soft) !important;
+  border-color: rgba(186, 26, 26, 0.32) !important;
+  color: var(--gov-red) !important;
+}
+
+.cp-page-shell .cp-logo-mark + div span:first-child,
+.cp-theme-locked-dark .cp-logo-mark + div span:first-child {
+  color: var(--gov-navy) !important;
+}
+
+.cp-page-shell .cp-brand-text,
+.cp-theme-locked-dark .cp-brand-text {
+  color: #0f8b4c !important;
+}
+
+.cp-page-shell .theme-toggle,
+.cp-theme-locked-dark .theme-toggle {
+  display: none !important;
+}

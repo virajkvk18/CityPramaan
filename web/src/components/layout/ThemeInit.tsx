@@ -5,14 +5,12 @@ import { useEffect } from "react";
 export function ThemeInit() {
   useEffect(() => {
     try {
-      const savedTheme = window.localStorage.getItem("citypramaan-theme");
-      const theme = savedTheme === "bright" ? "bright" : "dark";
-
-      document.documentElement.dataset.theme = theme;
-      document.documentElement.style.colorScheme = theme === "bright" ? "light" : "dark";
+      window.localStorage.setItem("citypramaan-theme", "bright");
+      document.documentElement.dataset.theme = "bright";
+      document.documentElement.style.colorScheme = "light";
     } catch {
-      document.documentElement.dataset.theme = "dark";
-      document.documentElement.style.colorScheme = "dark";
+      document.documentElement.dataset.theme = "bright";
+      document.documentElement.style.colorScheme = "light";
     }
   }, []);
 
