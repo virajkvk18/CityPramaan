@@ -3927,3 +3927,338 @@ body .cp-theme-locked-dark .cp-final-cta-glow .cp-landing-cta-link:nth-child(2) 
 body .cp-theme-locked-dark .cp-impact-bar {
   box-shadow: none !important;
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CITYPRAMAAN UI FIX PATCH — Professional government portal polish
+   Fixes: neon text on white, badge contrast, button text, header nav,
+          sidebar links, status chips, missing color token overrides
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── 1. Missing neon text tokens — map to legible gov colors ─── */
+
+/* #b8f9ff (bright cyan) → gov blue */
+.cp-page-shell [class*="text-[#b8f9ff]"],
+.cp-theme-locked-dark [class*="text-[#b8f9ff]"] {
+  color: var(--gov-blue) !important;
+}
+
+/* #8fffc1 (bright mint) → gov green */
+.cp-page-shell [class*="text-[#8fffc1]"],
+.cp-theme-locked-dark [class*="text-[#8fffc1]"] {
+  color: var(--gov-green) !important;
+}
+
+/* #ffdad6 (bright rose) → gov red */
+.cp-page-shell [class*="text-[#ffdad6]"],
+.cp-theme-locked-dark [class*="text-[#ffdad6]"] {
+  color: var(--gov-red) !important;
+}
+
+/* #f0abfc (bright fuchsia) → dark purple */
+.cp-page-shell [class*="text-[#f0abfc]"],
+.cp-theme-locked-dark [class*="text-[#f0abfc]"] {
+  color: #6b21a8 !important;
+}
+
+/* #d3fbff (very bright cyan) → gov blue */
+.cp-page-shell [class*="text-[#d3fbff]"],
+.cp-theme-locked-dark [class*="text-[#d3fbff]"] {
+  color: var(--gov-blue) !important;
+}
+
+/* #00eefc (neon cyan) → gov blue */
+.cp-page-shell [class*="text-[#00eefc]"],
+.cp-theme-locked-dark [class*="text-[#00eefc]"] {
+  color: var(--gov-blue) !important;
+}
+
+/* #ffcec7 (soft rose) → gov red */
+.cp-page-shell [class*="text-[#ffcec7]"],
+.cp-theme-locked-dark [class*="text-[#ffcec7]"] {
+  color: var(--gov-red) !important;
+}
+
+/* ─── 2. Badge / status chip backgrounds — fuchsia/violet/rose ─── */
+
+/* fuchsia/d946ef chips (CITIZEN_DISPUTED, REPEAT_FAILURE) */
+.cp-page-shell [class*="bg-[#d946ef]"],
+.cp-theme-locked-dark [class*="bg-[#d946ef]"] {
+  background-color: #f3e8ff !important;
+  border-color: rgba(107, 33, 168, 0.3) !important;
+}
+
+/* rose/ffb4ab chips */
+.cp-page-shell [class*="bg-[#ffb4ab]"],
+.cp-theme-locked-dark [class*="bg-[#ffb4ab]"] {
+  background-color: var(--gov-red-soft) !important;
+  border-color: rgba(186, 26, 26, 0.25) !important;
+}
+
+/* ─── 3. Auth page tab: inactive tab (dark) text — was barely visible ─── */
+
+/* "Login" / "Sign up" inactive tabs: text-[#dbc2b0] → legible muted */
+.cp-page-shell form [class*="text-[#dbc2b0]"],
+.cp-page-shell form [class*="hover:text-white"] {
+  color: var(--gov-muted) !important;
+}
+
+/* Active tab on bg-[#ffc08d] — keep dark text, it's correct */
+.cp-page-shell form .bg-\[#ffc08d\] {
+  color: #231300 !important;
+}
+
+/* Active tab on bg-[#00dbe9] — keep dark text */
+.cp-page-shell form .bg-\[#00dbe9\] {
+  color: #002c33 !important;
+}
+
+/* ─── 4. Header/nav link text improvements ─── */
+
+/* Header nav items (the dark bg header) — ensure white text has enough contrast */
+.cp-page-shell > header [class*="text-[#ffdcc2]"] {
+  color: var(--gov-navy) !important;
+}
+
+/* Sidebar nav: active item text */
+.cp-page-shell aside [class*="text-[#ffc08d]"] {
+  color: #8b3600 !important;
+}
+
+/* Sidebar nav: inactive link text */
+.cp-page-shell aside [class*="text-[#a38d7c]"] {
+  color: var(--gov-muted) !important;
+}
+
+/* ─── 5. Dashboard canvas / main content text fixes ─── */
+
+/* Small uppercase labels (font-mono tracking) in cyan */
+.cp-page-shell [class*="text-[#00dbe9]"],
+.cp-theme-locked-dark [class*="text-[#00dbe9]"] {
+  color: var(--gov-blue) !important;
+}
+
+/* Green success labels */
+.cp-page-shell [class*="text-[#00eb88]"],
+.cp-theme-locked-dark [class*="text-[#00eb88]"] {
+  color: var(--gov-green) !important;
+}
+
+/* Orange/saffron labels */
+.cp-page-shell [class*="text-[#ffc08d]"],
+.cp-page-shell [class*="text-[#ff9933]"],
+.cp-theme-locked-dark [class*="text-[#ffc08d]"],
+.cp-theme-locked-dark [class*="text-[#ff9933]"] {
+  color: #8b3600 !important;
+}
+
+/* ─── 6. Connected wallet button — gradient on light bg is garish ─── */
+
+/* "Connect Wallet" button gradient saffron → use proper saffron fill */
+.cp-page-shell
+  button[class*="bg-[linear-gradient(135deg,#ffdcc2,#ff9933)"],
+.cp-theme-locked-dark
+  button[class*="bg-[linear-gradient(135deg,#ffdcc2,#ff9933)"] {
+  background: var(--gov-saffron) !important;
+  color: #231300 !important;
+}
+
+/* ─── 7. Sidebar metric boxes (wallet, report) ─── */
+
+/* Wallet address box */
+.cp-page-shell aside [class*="border-[#00eb88]"],
+.cp-theme-locked-dark aside [class*="border-[#00eb88]"] {
+  border-color: rgba(31, 138, 59, 0.35) !important;
+  background: var(--gov-green-soft) !important;
+}
+
+/* Latest report box */
+.cp-page-shell aside [class*="border-[#00dbe9]"],
+.cp-theme-locked-dark aside [class*="border-[#00dbe9]"] {
+  border-color: rgba(29, 78, 216, 0.22) !important;
+  background: #edf4ff !important;
+}
+
+/* ─── 8. Role dashboard card inside main (border-[#ffc08d]) ─── */
+
+.cp-page-shell [class*="border-[#ffc08d]"],
+.cp-theme-locked-dark [class*="border-[#ffc08d]"] {
+  border-color: rgba(254, 152, 50, 0.45) !important;
+}
+
+.cp-page-shell [class*="border-[#00eb88]"],
+.cp-theme-locked-dark [class*="border-[#00eb88]"] {
+  border-color: rgba(31, 138, 59, 0.35) !important;
+}
+
+/* ─── 9. Error/warning inline message boxes ─── */
+
+/* border-[#ffb4ab] warning boxes in report page */
+.cp-page-shell [class*="border-[#ffb4ab]"][class*="bg-[#ffb4ab]"],
+.cp-theme-locked-dark [class*="border-[#ffb4ab]"][class*="bg-[#ffb4ab]"] {
+  background: var(--gov-red-soft) !important;
+  border-color: rgba(186, 26, 26, 0.25) !important;
+}
+
+/* ─── 10. Auth page role-select card labels ─── */
+
+/* The small detail text under role name */
+.cp-page-shell [class*="text-[#a38d7c]"] {
+  color: var(--gov-muted) !important;
+}
+
+/* ─── 11. Profile / proof page "#00dbe9" message boxes ─── */
+
+.cp-page-shell [class*="border-[#00dbe9]"][class*="bg-[#00dbe9]"],
+.cp-theme-locked-dark [class*="border-[#00dbe9]"][class*="bg-[#00dbe9]"] {
+  background: #edf4ff !important;
+  border-color: rgba(29, 78, 216, 0.22) !important;
+}
+
+/* ─── 12. Header fix — remove neon glow on the nav bar ─── */
+
+.cp-page-shell > header,
+.cp-theme-locked-dark > header {
+  box-shadow: 0 1px 0 var(--gov-border), 0 2px 10px rgba(0, 0, 60, 0.07) !important;
+  border-bottom: 1px solid var(--gov-border) !important;
+  background: rgba(255, 255, 255, 0.97) !important;
+}
+
+/* All header links / buttons: readable text */
+.cp-page-shell > header a,
+.cp-page-shell > header button,
+.cp-theme-locked-dark header a,
+.cp-theme-locked-dark header button {
+  color: var(--gov-navy) !important;
+}
+
+.cp-page-shell > header a:hover,
+.cp-page-shell > header button:hover,
+.cp-theme-locked-dark header a:hover,
+.cp-theme-locked-dark header button:hover {
+  color: var(--gov-blue) !important;
+}
+
+/* ─── 13. Auth card background — was very dark ─── */
+
+.cp-page-shell form[class*="bg-[#061015]"],
+.cp-page-shell [class*="bg-[#061015]"] {
+  background: #ffffff !important;
+  border-color: var(--gov-border) !important;
+}
+
+/* ─── 14. "About" back-link chip and other dark-bg chips in auth ─── */
+
+.cp-page-shell [class*="border-white/10"][class*="bg-white/[0.03]"],
+.cp-theme-locked-dark [class*="border-white/10"][class*="bg-white/[0.03]"] {
+  background: var(--gov-surface-soft) !important;
+  border-color: var(--gov-border) !important;
+  color: var(--gov-navy) !important;
+}
+
+/* ─── 15. Font-mono labels throughout — keep readable ─── */
+
+.cp-page-shell .font-mono,
+.cp-theme-locked-dark .font-mono {
+  color: inherit;
+}
+
+/* ─── 16. Contractor/citizen role nav card — active state ─── */
+
+/* Active nav items in the sidebar */
+.cp-page-shell aside a[class*="border-[#ffc08d]"],
+.cp-theme-locked-dark aside a[class*="border-[#ffc08d]"] {
+  background: var(--gov-saffron-soft) !important;
+  border-color: rgba(254, 152, 50, 0.5) !important;
+  color: #8b3600 !important;
+}
+
+/* ─── 17. Wallet connected pill (green) ─── */
+
+.cp-page-shell button[class*="border-[#00eb88]"][class*="bg-[#00eb88]"],
+.cp-theme-locked-dark button[class*="border-[#00eb88]"][class*="bg-[#00eb88]"] {
+  background: var(--gov-green-soft) !important;
+  border-color: rgba(31, 138, 59, 0.35) !important;
+  color: var(--gov-green) !important;
+}
+
+/* ─── 18. "Login" badge in header (green pill) ─── */
+
+.cp-page-shell a[class*="border-[#00eb88]"],
+.cp-theme-locked-dark a[class*="border-[#00eb88]"] {
+  background: var(--gov-green-soft) !important;
+  border-color: rgba(31, 138, 59, 0.35) !important;
+  color: var(--gov-green) !important;
+}
+
+/* ─── 19. Profile link in header (cyan pill) ─── */
+
+.cp-page-shell a[class*="border-[#00dbe9]"],
+.cp-theme-locked-dark a[class*="border-[#00dbe9]"] {
+  background: #edf4ff !important;
+  border-color: rgba(29, 78, 216, 0.3) !important;
+  color: var(--gov-blue) !important;
+}
+
+/* ─── 20. Footer / bottom trust band override ─── */
+
+.cp-trust-band,
+.cp-live-strip {
+  background: #ffffff !important;
+  border-color: var(--gov-border) !important;
+}
+
+/* ─── 21. Text-shimmer animation: stop on bright theme ─── */
+
+.text-shimmer {
+  background: none !important;
+  color: var(--gov-navy) !important;
+  -webkit-text-fill-color: var(--gov-navy) !important;
+  animation: none !important;
+}
+
+/* ─── 22. Gradient-bg buttons that use #ffdcc2 → #ff9933 ─── */
+
+[class*="bg-[linear-gradient(135deg,#ffdcc2,#ff9933)"] {
+  background: var(--gov-saffron) !important;
+  color: #231300 !important;
+}
+
+/* ─── 23. Logout / secondary nav button in header ─── */
+
+.cp-page-shell > header button[class*="hover:border-[#ffb4ab]"] {
+  background: var(--gov-surface-soft) !important;
+  border-color: var(--gov-border) !important;
+  color: var(--gov-navy) !important;
+}
+
+.cp-page-shell > header button[class*="hover:border-[#ffb4ab]"]:hover {
+  border-color: rgba(186, 26, 26, 0.35) !important;
+  color: var(--gov-red) !important;
+}
+
+/* ─── 24. "About" link in nav ─── */
+
+.cp-page-shell > header a[class*="hover:text-[#7df4ff]"] {
+  color: var(--gov-navy) !important;
+}
+
+.cp-page-shell > header a[class*="hover:text-[#7df4ff]"]:hover {
+  color: var(--gov-blue) !important;
+}
+
+/* ─── 25. Role dashboard "Not just reporting" info box ─── */
+
+.cp-page-shell aside [class*="border-[#00dbe9]/30"] {
+  background: #edf4ff !important;
+  border-color: rgba(29, 78, 216, 0.2) !important;
+}
+
+/* ─── 26. Dark-bg error toast / alert (top-right) ─── */
+
+.cp-page-shell [class*="bg-[#120706]"],
+.cp-theme-locked-dark [class*="bg-[#120706]"] {
+  background: #fff0ee !important;
+  border-color: rgba(186, 26, 26, 0.3) !important;
+  color: var(--gov-red) !important;
+}
