@@ -100,6 +100,7 @@ function ProfileEditor({ initialProfile, onLogout }: { initialProfile: PublicUse
   const [agencyName, setAgencyName] = useState(() => initialProfile.agencyName ?? "");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [anchoring, setAnchoring] = useState(false);
   const [chainProfile, setChainProfile] = useState<OnChainProfileRecord | null>(null);
   const [permissionMessage, setPermissionMessage] = useState("Connect wallet to read on-chain profile permissions.");
 
@@ -135,7 +136,8 @@ function ProfileEditor({ initialProfile, onLogout }: { initialProfile: PublicUse
         }
 
         setChainProfile(null);
-        setPermissionMessage(formatWalletError(error));
+        void error;
+        setPermissionMessage("On-chain permission read is temporarily unavailable. Profile can still be saved locally.");
       });
 
     return () => {
@@ -149,8 +151,36 @@ function ProfileEditor({ initialProfile, onLogout }: { initialProfile: PublicUse
     setSaving(true);
 
     try {
-      const connectedWallet = wallet.connected ? wallet : await connectWallet(wallet.chainKey);
       const updated = await updateCurrentProfile({
+        name,
+        contactNumber,
+        walletAddress: wallet.connected ? wallet.address : profile.walletAddress,
+        address,
+        city,
+        ward,
+        department,
+        contractorLicense,
+        contractorIdentityNumber,
+        contractorArea,
+        contractorSpecialization,
+        agencyName,
+      });
+      setProfile(updated);
+      setMessage("Profile saved locally. Use Anchor on blockchain when Tenderly/MetaMask is available.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not save profile.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function anchorProfileOnChain() {
+    setMessage("");
+    setAnchoring(true);
+
+    try {
+      const connectedWallet = wallet.connected ? wallet : await connectWallet(wallet.chainKey);
+      const savedProfile = await updateCurrentProfile({
         name,
         contactNumber,
         walletAddress: connectedWallet.address,
@@ -165,10 +195,10 @@ function ProfileEditor({ initialProfile, onLogout }: { initialProfile: PublicUse
         agencyName,
       });
       const txHash = await updateProfileTransaction(
-        updated.profileHash ?? "",
-        updated.role === "WARD_ADMIN"
+        savedProfile.profileHash ?? "",
+        savedProfile.role === "WARD_ADMIN"
           ? accountRoleCodes.WARD_ADMIN
-          : updated.role === "CONTRACTOR"
+          : savedProfile.role === "CONTRACTOR"
             ? accountRoleCodes.CONTRACTOR
             : accountRoleCodes.USER
       );
@@ -176,11 +206,11 @@ function ProfileEditor({ initialProfile, onLogout }: { initialProfile: PublicUse
 
       setProfile(savedWithTx);
       setChainProfile(await readProfileRecord(connectedWallet.address));
-      setMessage("Profile saved and anchored on-chain with a real MetaMask transaction.");
+      setMessage("Profile anchored on-chain with a real MetaMask transaction.");
     } catch (error) {
-      setMessage(formatWalletError(error));
+      setMessage(`Profile is still saved locally. Blockchain anchor failed: ${formatWalletError(error)}`);
     } finally {
-      setSaving(false);
+      setAnchoring(false);
     }
   }
 
@@ -314,14 +344,25 @@ function ProfileEditor({ initialProfile, onLogout }: { initialProfile: PublicUse
 
           {message && <p className="mt-4 rounded-md border border-[#00dbe9]/25 bg-[#00dbe9]/10 px-4 py-3 text-sm text-[#b8f9ff]">{message}</p>}
 
-          <button
-            type="submit"
-            disabled={saving}
-            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-md bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] px-5 py-4 font-mono text-xs font-black uppercase tracking-[0.18em] text-[#4c2700] shadow-[0_0_26px_rgba(255,153,51,0.18)] transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
-          >
-            <Save size={16} />
-            {saving ? "Signing..." : "Save & anchor profile proof"}
-          </button>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] px-5 py-4 font-mono text-xs font-black uppercase tracking-[0.18em] text-[#4c2700] shadow-[0_0_26px_rgba(255,153,51,0.18)] transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
+            >
+              <Save size={16} />
+              {saving ? "Saving..." : "Save profile"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void anchorProfileOnChain()}
+              disabled={anchoring}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-5 py-4 font-mono text-xs font-black uppercase tracking-[0.18em] text-[#7df4ff] transition hover:bg-[#00dbe9]/15 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
+            >
+              <ShieldCheck size={16} />
+              {anchoring ? "Anchoring..." : "Anchor on blockchain"}
+            </button>
+          </div>
         </form>
       </section>
     </main>
