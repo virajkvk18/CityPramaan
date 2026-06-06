@@ -11,3 +11,6 @@ web/.env.local
 contracts/.env
 
 .env
+citypramaan-backend/.env
+citypramaan-backend/data/
+citypramaan-backend/dist/
