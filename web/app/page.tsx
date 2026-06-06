@@ -562,118 +562,123 @@ export default function Home() {
         <section className="cp-official-hero relative overflow-hidden border-b border-[#c6c5d5] bg-[linear-gradient(135deg,#ffffff_0%,#f7f9fc_54%,#eef3ff_100%)]">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(254,152,50,0.16),transparent_28%),radial-gradient(circle_at_82%_18%,rgba(29,78,216,0.12),transparent_30%),radial-gradient(circle_at_20px_20px,rgba(0,0,60,0.045)_1px,transparent_1.5px)] bg-[size:auto,auto,40px_40px]" />
           <div className="relative z-10 mx-auto flex min-h-[100svh] max-w-7xl flex-col px-4 pb-8 pt-4 sm:px-6 lg:px-10">
-            <header className="cp-official-nav flex flex-col gap-3 rounded-2xl border border-[#c6c5d5] bg-white/95 px-3 py-3 shadow-[0_10px_30px_rgba(0,0,60,0.1)] sm:px-4">
+            <header className="cp-official-nav flex flex-col gap-3 rounded-2xl border border-[#d9e2f2] bg-white/96 px-4 py-4 shadow-[0_14px_42px_rgba(15,23,42,0.08)] sm:px-6">
               <div className="flex w-full items-center justify-between gap-2">
                 <Link href="/" className="flex min-w-0 flex-1 items-center gap-3">
                   <BrandLogo className="min-w-0" size="sm" />
                 </Link>
 
-                <nav className="hidden items-center gap-5 text-[12px] font-extrabold uppercase tracking-[0.08em] text-[#00003c] lg:flex xl:gap-7">
-                  <Link href="/story" className="transition hover:text-[#1d4ed8]">
-                    Story
+                <nav className="hidden items-center gap-5 text-[13px] font-extrabold text-[#00003c] lg:flex xl:gap-8">
+                  <Link href="/" className="transition hover:text-[#1d4ed8]">
+                    Dashboard
                   </Link>
                   <Link href="/auth" className="transition hover:text-[#1d4ed8]">
-                    Warranty
+                    Report an Issue
                   </Link>
                   <Link href="/public-proof" className="transition hover:text-[#1d4ed8]">
-                    Public Proof
+                    Track Complaint
                   </Link>
                   <Link href="/auth" className="transition hover:text-[#1d4ed8]">
-                    Report
+                    Contractors
+                  </Link>
+                  <Link href="/story" className="transition hover:text-[#1d4ed8]">
+                    Resources
+                  </Link>
+                  <Link href="/about" className="transition hover:text-[#1d4ed8]">
+                    About
                   </Link>
                 </nav>
 
                 <div className="flex shrink-0 items-center gap-2">
                   <Link
-                    href="/about"
-                    className="hidden min-h-10 items-center justify-center rounded-lg border border-[#c6c5d5] bg-white px-4 py-2 text-sm font-bold text-[#00003c] transition hover:border-[#1d4ed8] hover:text-[#1d4ed8] sm:inline-flex"
-                  >
-                    About
-                  </Link>
-                  <Link
                     href="/auth"
-                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-[#00003c] px-4 py-2 text-sm font-extrabold !text-white shadow-[0_8px_18px_rgba(0,0,60,0.18)] transition hover:bg-[#111b63]"
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#00003c] px-5 py-3 text-sm font-extrabold !text-white shadow-[0_12px_24px_rgba(0,0,60,0.18)] transition hover:bg-[#111b63]"
                   >
                     <LogIn size={14} />
-                    Sign In
+                    Admin Login
                   </Link>
                 </div>
               </div>
 
               <nav className="cp-mobile-landing-nav grid w-full grid-cols-2 gap-2 pt-1 min-[520px]:grid-cols-5 lg:hidden">
-                <Link href="/story" className="landing-nav-chip">
-                  Story
-                </Link>
-                <Link href="/about" className="landing-nav-chip">
-                  About
-                </Link>
-                <Link href="/auth" className="landing-nav-chip">
-                  Warranty
-                </Link>
-                <Link href="/public-proof" className="landing-nav-chip">
-                  Public Proof
+                <Link href="/" className="landing-nav-chip">
+                  Dashboard
                 </Link>
                 <Link href="/auth" className="landing-nav-chip">
                   Report
                 </Link>
+                <Link href="/auth" className="landing-nav-chip">
+                  Contractors
+                </Link>
+                <Link href="/public-proof" className="landing-nav-chip">
+                  Track
+                </Link>
+                <Link href="/about" className="landing-nav-chip">
+                  About
+                </Link>
               </nav>
             </header>
 
-            <section className="grid flex-1 items-center gap-8 py-8 sm:py-12 lg:grid-cols-[minmax(0,1.02fr)_minmax(360px,0.98fr)] lg:py-16">
-              <div className="max-w-4xl">
+            <section className="grid flex-1 items-center gap-8 py-8 sm:py-12 lg:grid-cols-[minmax(430px,0.86fr)_minmax(520px,1.14fr)] lg:py-14">
+              <div className="max-w-2xl">
                 <div>
-                  <p className="mb-4 inline-flex rounded-full border border-[#1d4ed8]/20 bg-[#edf4ff] px-4 py-2 text-xs font-extrabold uppercase tracking-[0.12em] text-[#1d4ed8]">
-                    Public Infrastructure Accountability Portal
+                  <p className="mb-4 inline-flex rounded-full border border-[#1d4ed8]/25 bg-[#edf4ff] px-4 py-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#00003c]">
+                    CityPramaan
                   </p>
                   <AnimatedHeading
                     text={`Proof of repair\nfor accountable cities.`}
-                    className="cp-landing-title mb-5 text-[2.55rem] font-black leading-[0.98] text-[#00003c] min-[390px]:text-[3rem] sm:text-[4rem] md:text-[4.7rem] lg:text-[5.1rem] xl:text-[5.7rem]"
+                    className="cp-landing-title mb-5 text-[3rem] font-black leading-[0.92] text-[#00003c] min-[390px]:text-[3.45rem] sm:text-[4.6rem] md:text-[5.2rem] lg:text-[5.35rem] xl:text-[6rem]"
                   />
                   <FadeIn delay={800} duration={1000}>
-                    <p className="cp-landing-subtitle mb-6 max-w-3xl rounded-2xl border border-[#c6c5d5] bg-white px-5 py-4 text-base font-semibold leading-8 text-[#263548] shadow-[0_12px_30px_rgba(0,0,60,0.08)] sm:text-lg">
+                    <p className="cp-landing-subtitle mb-6 max-w-xl rounded-xl border border-[#c6c5d5] bg-white px-5 py-4 text-base font-semibold leading-7 text-[#263548] shadow-[0_12px_30px_rgba(0,0,60,0.08)]">
                       A simple civic service portal to report public infrastructure issues, track
                       complaint progress, verify contractor repairs, and keep public proof open for every city.
                     </p>
                   </FadeIn>
                   <FadeIn delay={1200} duration={1000}>
-                    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                    <div className="grid max-w-xl grid-cols-1 gap-3 sm:grid-cols-3">
                       <Link
                         href="/auth"
-                        className="cp-landing-primary-cta inline-flex min-h-12 items-center justify-center rounded-xl bg-[#00003c] px-6 py-3 text-center text-sm font-extrabold !text-white shadow-[0_10px_24px_rgba(0,0,60,0.18)] transition hover:bg-[#111b63] sm:px-8"
+                        className="cp-landing-primary-cta inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[#00003c] px-5 py-3 text-center text-sm font-extrabold !text-white shadow-[0_10px_24px_rgba(0,0,60,0.18)] transition hover:bg-[#111b63]"
                       >
+                        <UserRound size={16} />
                         Report an Issue
                       </Link>
                       <Link
                         href="/public-proof"
-                        className="cp-landing-secondary-cta inline-flex min-h-12 items-center justify-center rounded-xl border border-[#1d4ed8]/30 bg-[#edf4ff] px-6 py-3 text-center text-sm font-extrabold text-[#1d4ed8] transition hover:bg-[#dbeafe] sm:px-8"
+                        className="cp-landing-secondary-cta inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-[#c6c5d5] bg-white px-5 py-3 text-center text-sm font-extrabold text-[#00003c] transition hover:border-[#1d4ed8] hover:bg-[#edf4ff]"
                       >
+                        <ScanSearch size={16} />
                         Track Complaint
                       </Link>
                       <Link
                         href="/auth"
-                        className="cp-landing-tertiary-cta inline-flex min-h-12 items-center justify-center rounded-xl border border-[#fe9832] bg-[#fe9832] px-6 py-3 text-center text-sm font-extrabold !text-[#231300] transition hover:bg-[#e8880a] sm:px-8"
+                        className="cp-landing-secondary-cta inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-[#c6c5d5] bg-white px-5 py-3 text-center text-sm font-extrabold text-[#00003c] transition hover:border-[#1d4ed8] hover:bg-[#edf4ff]"
                       >
+                        <ShieldCheck size={16} />
                         Admin Login
                       </Link>
                       <Link
                         href="/auth"
-                        className="cp-landing-tertiary-cta inline-flex min-h-12 items-center justify-center rounded-xl border border-[#1f8a3b]/28 bg-[#eaf7ee] px-6 py-3 text-center text-sm font-extrabold text-[#0d5f28] transition hover:bg-[#d9f0df] sm:px-8"
+                        className="cp-landing-secondary-cta inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-[#c6c5d5] bg-white px-5 py-3 text-center text-sm font-extrabold text-[#00003c] transition hover:border-[#1d4ed8] hover:bg-[#edf4ff] sm:col-span-1"
                       >
+                        <Building2 size={16} />
                         Contractor Panel
                       </Link>
                     </div>
                   </FadeIn>
 
-                  <div className="mt-7 grid gap-3 sm:grid-cols-3">
+                  <div className="mt-7 grid max-w-xl gap-3 sm:grid-cols-3">
                     <HeroTrustChip tone="blue" label="Open Public Proof" />
                     <HeroTrustChip tone="green" label="Contractor Visible" />
                     <HeroTrustChip tone="saffron" label="Warranty Memory" />
                   </div>
                 </div>
+              </div>
 
               <FadeIn delay={1100} duration={1000}>
-                <div className="cp-hero-visual-panel relative overflow-hidden rounded-3xl border border-[#c6c5d5] bg-white p-3 shadow-[0_24px_70px_rgba(0,0,60,0.16)]">
-                  <div className="relative min-h-[420px] overflow-hidden rounded-2xl bg-[#00003c] sm:min-h-[520px]">
+                <div className="cp-hero-visual-panel relative overflow-hidden rounded-3xl border border-[#d8deeb] bg-white p-3 shadow-[0_28px_80px_rgba(15,23,42,0.16)]">
+                  <div className="relative min-h-[390px] overflow-hidden rounded-2xl bg-[#00003c] sm:min-h-[470px]">
                     <video
                       className="absolute inset-0 h-full w-full object-cover opacity-70"
                       autoPlay
@@ -686,9 +691,10 @@ export default function Home() {
                       <source src={CITY_HERO_MOBILE_VIDEO_URL} type="video/mp4" media="(max-width: 639px)" />
                       <source src={CITY_HERO_VIDEO_URL} type="video/mp4" media="(min-width: 640px)" />
                     </video>
-                    <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,60,0.1),rgba(0,0,60,0.7))]" />
-                    <div className="absolute left-4 right-4 top-4 rounded-2xl border border-white/20 bg-white/92 p-4 shadow-[0_16px_36px_rgba(0,0,0,0.16)] backdrop-blur sm:left-6 sm:right-auto sm:w-[310px]">
-                      <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[#1d4ed8]">
+                    <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.92),rgba(255,255,255,0.76)_34%,rgba(255,255,255,0.08)_72%),linear-gradient(180deg,rgba(0,0,60,0),rgba(0,0,60,0.22))]" />
+                    <div className="absolute left-4 right-4 top-4 rounded-xl border border-[#d8deeb] bg-white/90 p-4 shadow-[0_16px_36px_rgba(0,0,0,0.12)] backdrop-blur sm:left-6 sm:right-auto sm:w-[335px]">
+                      <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.12em] text-[#344154]">
+                        <span className="h-2.5 w-2.5 rounded-full bg-[#2edc76]" />
                         Live civic node
                       </p>
                       <h2 className="mt-2 text-3xl font-black text-[#00003c]">{dashboardCityName}</h2>
@@ -696,7 +702,7 @@ export default function Home() {
                         Reports stay visible until repair proof, issuer approval, and warranty status are recorded.
                       </p>
                     </div>
-                    <div className="absolute bottom-4 left-4 right-4 rounded-2xl border border-white/20 bg-white/95 p-4 shadow-[0_18px_40px_rgba(0,0,0,0.18)] backdrop-blur sm:bottom-6 sm:left-6 sm:right-6">
+                    <div className="absolute bottom-4 left-4 right-4 rounded-2xl border border-[#d8deeb] bg-white/96 p-4 shadow-[0_18px_40px_rgba(0,0,0,0.16)] backdrop-blur sm:bottom-6 sm:left-6 sm:right-6">
                       <p className="text-xl font-black text-[#00003c]">Report. Repair. Verify.</p>
                       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
                         <PublicMetric label="Active" value={`${activeDashboardReports.length}`} />
@@ -707,7 +713,13 @@ export default function Home() {
                   </div>
                 </div>
               </FadeIn>
-              </div>
+            </section>
+
+            <section className="mb-5 grid gap-4 rounded-2xl border border-[#d8deeb] bg-[#edf6ff]/78 p-4 shadow-[0_16px_48px_rgba(15,23,42,0.08)] sm:grid-cols-2 lg:grid-cols-4">
+              <LandingFeature icon={<FileImage size={22} />} title="Report Issues" detail="Submit infrastructure issues with photos, location, and details in minutes." />
+              <LandingFeature icon={<Clock3 size={22} />} title="Track Progress" detail="Follow complaint status from submission to verification in real time." />
+              <LandingFeature icon={<BadgeCheck size={22} />} title="Verify Repairs" detail="Contractors upload proof. Public can verify and approvals are recorded." />
+              <LandingFeature icon={<ShieldCheck size={22} />} title="Warranty Memory" detail="Warranty periods are tracked and visible for long-term accountability." />
             </section>
           </div>
         </section>
@@ -2026,6 +2038,20 @@ function PublicMetric({ label, value, wide = false }: { label: string; value: st
       }`}>
         {value}
       </p>
+    </div>
+  );
+}
+
+function LandingFeature({ icon, title, detail }: { icon: React.ReactNode; title: string; detail: string }) {
+  return (
+    <div className="grid grid-cols-[48px_1fr] gap-4 rounded-xl border border-transparent p-3">
+      <div className="grid h-12 w-12 place-items-center rounded-full border border-[#b7d1ff] bg-[#e9f2ff] text-[#1d4ed8]">
+        {icon}
+      </div>
+      <div>
+        <h3 className="text-base font-black text-[#00003c]">{title}</h3>
+        <p className="mt-2 text-sm font-semibold leading-6 text-[#344154]">{detail}</p>
+      </div>
     </div>
   );
 }
