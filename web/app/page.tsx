@@ -1542,7 +1542,7 @@ function LandingEvidenceSections({
               Proof tag
             </p>
             <p className="mt-2 break-all font-mono text-xs text-white/80">
-              0xdemo5e0f60e963a17775744bc8be859c1dc21e500e30e43f93495ab01671fffe
+              0x5e0f60e963a17775744bc8be859c1dc21e500e30e43f93495ab01671fffe8f
             </p>
           </div>
         </div>

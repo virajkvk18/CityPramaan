@@ -33,6 +33,19 @@ import {
   subscribeLocalReports,
 } from "@/src/lib/report-storage";
 import { fetchBackendReports, mergeReportsById, saveReportEverywhere } from "@/src/lib/report-sync";
+import {
+  connectWallet,
+  getContractAddress,
+  getPreferredChainKey,
+  getWalletSnapshot,
+  parseWalletSnapshot,
+  readProofRecord,
+  registryStatusCodes,
+  shortWalletAddress,
+  subscribeWallet,
+  type OnChainProofRecord,
+  updateProofStatusTransaction,
+} from "@/src/lib/wallet-storage";
 import { useLanguage } from "@/src/lib/use-language";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 
@@ -62,10 +75,12 @@ export default function ProofTimelinePage() {
     getLocalReportsSnapshot,
     () => "[]"
   );
+  const walletSnapshot = useSyncExternalStore(subscribeWallet, getWalletSnapshot, () => "");
   const localReports = useMemo(
     () => JSON.parse(localReportsSnapshot) as CivicReport[],
     [localReportsSnapshot]
   );
+  const wallet = parseWalletSnapshot(walletSnapshot);
   const [backendReports, setBackendReports] = useState<CivicReport[]>([]);
   useEffect(() => {
     let active = true;
@@ -111,6 +126,34 @@ export default function ProofTimelinePage() {
   const primaryTransactionHash = report.repairTxHash ?? report.txHash;
   const [feedbackText, setFeedbackText] = useState("");
   const [actionMessage, setActionMessage] = useState("");
+  const [chainRecord, setChainRecord] = useState<OnChainProofRecord | null>(null);
+  const [chainReadStatus, setChainReadStatus] = useState("Reading contract record...");
+
+  useEffect(() => {
+    let active = true;
+
+    readProofRecord(report.id)
+      .then((record) => {
+        if (!active) {
+          return;
+        }
+
+        setChainRecord(record);
+        setChainReadStatus(record.exists ? "Synced from contract" : "No on-chain record found for this public ID");
+      })
+      .catch((error) => {
+        if (!active) {
+          return;
+        }
+
+        setChainRecord(null);
+        setChainReadStatus(error instanceof Error ? error.message : "Could not read contract record");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [report.id]);
 
   function getLatestReport() {
     try {
@@ -156,7 +199,7 @@ export default function ProofTimelinePage() {
     setActionMessage("Feedback added. The issue owner can review it before closing the case.");
   }
 
-  function approveRepairAndActivateWarranty() {
+  async function approveRepairAndActivateWarranty() {
     const latestReport = getLatestReport();
 
     if (latestReport.status !== "REPAIR_SUBMITTED") {
@@ -166,6 +209,25 @@ export default function ProofTimelinePage() {
 
     if (!latestReport.repairImageDataUrl && !latestReport.repairImageName) {
       setActionMessage("Contractor repair proof is required before warranty activation.");
+      return;
+    }
+
+    let tx = "";
+
+    try {
+      setActionMessage("Open MetaMask and sign updateStatus(publicId, AdminApproved)...");
+      if (!wallet.connected) {
+        await connectWallet(wallet.chainKey);
+      }
+      tx = await updateProofStatusTransaction(latestReport.id, registryStatusCodes.AdminApproved);
+      setChainRecord(await readProofRecord(latestReport.id));
+      setChainReadStatus("Synced from contract");
+    } catch (error) {
+      setActionMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not approve on-chain. Check MetaMask, role permissions, testnet gas, and contract config."
+      );
       return;
     }
 
@@ -187,7 +249,7 @@ export default function ProofTimelinePage() {
         label: "Repair approved by report issuer",
         detail: "Ward Admin approved contractor proof. Citizen confirmation is required before closure and warranty activation.",
         time: now.toLocaleString(),
-        tx: `0xb928...${latestReport.id.replace("CP-", "")}ce`,
+        tx,
       }
     );
 
@@ -435,10 +497,15 @@ export default function ProofTimelinePage() {
         <aside className="space-y-5">
           <ChainProofCard
             proofData={{
+              network: getPreferredChainKey().replace("-", " "),
+              contract: getContractAddress() || "Contract env missing",
+              block: chainRecord?.updatedAt ? new Date(chainRecord.updatedAt * 1000).toLocaleString() : "Pending",
               txHash: primaryTransactionHash,
-              ipfsCid: evidenceProofHash,
+              ipfsCid: chainRecord?.reportHash ?? evidenceProofHash,
             }}
           />
+
+          <OnChainRegistryCard record={chainRecord} status={chainReadStatus} />
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
             <div className="flex items-center gap-2">
@@ -591,7 +658,7 @@ export default function ProofTimelinePage() {
             <div className="mt-3 grid gap-3">
               {report.status === "REPAIR_SUBMITTED" && (
                 <button
-                  onClick={approveRepairAndActivateWarranty}
+                  onClick={() => void approveRepairAndActivateWarranty()}
                   className="rounded-lg border border-[#ffc08d]/45 bg-[#ffc08d]/12 px-4 py-3 text-sm font-semibold text-[#ffdcc2] transition hover:bg-[#ffc08d]/18"
                 >
                   Approve Repair & Activate Warranty
@@ -937,6 +1004,41 @@ function MiniState({
     <div className="flex items-center justify-between rounded-lg border border-white/10 bg-zinc-950/60 px-3 py-2">
       <span className="text-sm text-zinc-300">{label}</span>
       <span className={done ? "text-emerald-300" : "text-orange-300"}>{done ? synced : pending}</span>
+    </div>
+  );
+}
+
+function OnChainRegistryCard({
+  record,
+  status,
+}: {
+  record: OnChainProofRecord | null;
+  status: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-[#00dbe9]/20 bg-[#00dbe9]/10 p-5">
+      <div className="flex items-center gap-2 text-[#7df4ff]">
+        <Blocks size={18} />
+        <p className="font-medium">On-chain registry readback</p>
+      </div>
+      <p className="mt-3 text-sm leading-6 text-zinc-300">{status}</p>
+
+      <div className="mt-4 space-y-3">
+        <Score label="Registry status" value={record?.exists ? record.statusLabel : "Not found"} />
+        <Score
+          label="Last actor"
+          value={record?.exists ? shortWalletAddress(record.actor) : "Pending"}
+        />
+        <Score
+          label="Updated at"
+          value={record?.updatedAt ? new Date(record.updatedAt * 1000).toLocaleString() : "Pending"}
+        />
+        <Score label="Report hash" value={record?.exists ? record.reportHash : "Pending"} />
+        <Score
+          label="Repair hash"
+          value={record?.repairHash && record.repairHash !== "0x0000000000000000000000000000000000000000000000000000000000000000" ? record.repairHash : "Pending"}
+        />
+      </div>
     </div>
   );
 }

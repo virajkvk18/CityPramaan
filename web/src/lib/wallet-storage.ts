@@ -1,6 +1,6 @@
 "use client";
 
-import { BrowserProvider, Contract, getBytes } from "ethers";
+import { BrowserProvider, Contract, JsonRpcProvider, getBytes } from "ethers";
 
 export type SupportedChainKey = "polygon-amoy" | "base-sepolia" | "hardhat-local" | "custom-private";
 
@@ -9,7 +9,28 @@ export type WalletSnapshot = {
   address: string;
   chainId: number | null;
   chainKey: SupportedChainKey;
-  demo?: boolean;
+};
+
+export const registryStatusCodes = {
+  ReportCreated: 0,
+  RepairSubmitted: 1,
+  AdminApproved: 2,
+  WarrantyActivated: 3,
+  RepeatFailure: 4,
+  Closed: 5,
+} as const;
+
+export type RegistryStatusName = keyof typeof registryStatusCodes;
+export type RegistryStatusCode = (typeof registryStatusCodes)[RegistryStatusName];
+
+export type OnChainProofRecord = {
+  exists: boolean;
+  reportHash: string;
+  repairHash: string;
+  status: RegistryStatusCode;
+  statusLabel: RegistryStatusName;
+  actor: string;
+  updatedAt: number;
 };
 
 type EthereumProvider = {
@@ -71,10 +92,15 @@ export const supportedChains: Record<
 };
 
 const cityPramaanRegistryAbi = [
+  "function proofs(string publicId) view returns (bytes32 reportHash, bytes32 repairHash, uint8 status, address actor, uint256 updatedAt)",
   "function createReport(string publicId, bytes32 reportHash)",
   "function submitRepair(string publicId, bytes32 repairHash)",
   "function updateStatus(string publicId, uint8 status)",
 ];
+
+const zeroAddress = "0x0000000000000000000000000000000000000000";
+const emptyBytes32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
+const registryStatusLabels = Object.keys(registryStatusCodes) as RegistryStatusName[];
 
 export function getPreferredChainKey(): SupportedChainKey {
   const configured = process.env.NEXT_PUBLIC_CITYPRAMAAN_CHAIN as SupportedChainKey | undefined;
@@ -102,11 +128,10 @@ export function parseWalletSnapshot(snapshot: string): WalletSnapshot {
         : getPreferredChainKey();
 
     return {
-      connected: Boolean(parsed.connected && parsed.address),
-      address: parsed.address ?? "",
+      connected: Boolean(parsed.connected && isWalletAddress(parsed.address ?? "")),
+      address: isWalletAddress(parsed.address ?? "") ? parsed.address ?? "" : "",
       chainId: typeof parsed.chainId === "number" ? parsed.chainId : null,
       chainKey,
-      demo: Boolean(parsed.demo),
     };
   } catch {
     return {
@@ -114,7 +139,6 @@ export function parseWalletSnapshot(snapshot: string): WalletSnapshot {
       address: "",
       chainId: null,
       chainKey: getPreferredChainKey(),
-      demo: false,
     };
   }
 }
@@ -123,16 +147,7 @@ export async function connectWallet(chainKey: SupportedChainKey = getPreferredCh
   const ethereum = getEthereumProvider();
 
   if (!ethereum) {
-    const snapshot = {
-      connected: true,
-      address: "LOCAL-PROOF-NODE",
-      chainId: null,
-      chainKey,
-      demo: true,
-    };
-
-    saveWalletSnapshot(snapshot);
-    return snapshot;
+    throw new Error("MetaMask was not detected. Install MetaMask, refresh the page, and connect your wallet.");
   }
 
   const accounts = (await ethereum.request({ method: "eth_requestAccounts" })) as string[];
@@ -204,39 +219,48 @@ export async function switchToSupportedChain(chainKey: SupportedChainKey) {
 }
 
 export async function createReportTransaction(publicId: string, reportHash: string) {
-  if (shouldUseDemoProofTransaction()) {
-    return createDemoProofTransactionHash(`report:${publicId}:${reportHash}`);
-  }
-
-  try {
-    const contract = await getRegistryContract();
-    const transaction = await contract.createReport(publicId, normalizeBytes32(reportHash));
-    const receipt = await transaction.wait();
-    return String(receipt?.hash ?? transaction.hash);
-  } catch (error) {
-    console.warn("CityPramaan report transaction fell back to demo proof mode:", error);
-    return createDemoProofTransactionHash(`report:${publicId}:${reportHash}`);
-  }
+  const contract = await getWriteRegistryContract();
+  const transaction = await contract.createReport(publicId, normalizeBytes32(reportHash));
+  const receipt = await transaction.wait();
+  return String(receipt?.hash ?? transaction.hash);
 }
 
 export async function submitRepairTransaction(publicId: string, repairHash: string) {
-  if (shouldUseDemoProofTransaction()) {
-    return createDemoProofTransactionHash(`repair:${publicId}:${repairHash}`);
-  }
+  const contract = await getWriteRegistryContract();
+  const transaction = await contract.submitRepair(publicId, normalizeBytes32(repairHash));
+  const receipt = await transaction.wait();
+  return String(receipt?.hash ?? transaction.hash);
+}
 
-  try {
-    const contract = await getRegistryContract();
-    const transaction = await contract.submitRepair(publicId, normalizeBytes32(repairHash));
-    const receipt = await transaction.wait();
-    return String(receipt?.hash ?? transaction.hash);
-  } catch (error) {
-    console.warn("CityPramaan repair transaction fell back to demo proof mode:", error);
-    return createDemoProofTransactionHash(`repair:${publicId}:${repairHash}`);
-  }
+export async function updateProofStatusTransaction(publicId: string, status: RegistryStatusCode) {
+  const contract = await getWriteRegistryContract();
+  const transaction = await contract.updateStatus(publicId, status);
+  const receipt = await transaction.wait();
+  return String(receipt?.hash ?? transaction.hash);
+}
+
+export async function readProofRecord(publicId: string): Promise<OnChainProofRecord> {
+  const contract = getReadRegistryContract();
+  const record = await contract.proofs(publicId);
+  const status = Number(record.status ?? record[2]) as RegistryStatusCode;
+  const updatedAt = Number(record.updatedAt ?? record[4] ?? 0);
+  const reportHash = String(record.reportHash ?? record[0] ?? emptyBytes32);
+  const repairHash = String(record.repairHash ?? record[1] ?? emptyBytes32);
+  const actor = String(record.actor ?? record[3] ?? zeroAddress);
+
+  return {
+    exists: updatedAt > 0,
+    reportHash,
+    repairHash,
+    status,
+    statusLabel: registryStatusLabel(status),
+    actor,
+    updatedAt,
+  };
 }
 
 export function buildExplorerTxUrl(txHash: string, chainKey: SupportedChainKey = getPreferredChainKey()) {
-  if (isDemoProofTransaction(txHash)) {
+  if (!txHash || !txHash.startsWith("0x")) {
     return "";
   }
 
@@ -249,10 +273,6 @@ export function buildExplorerTxUrl(txHash: string, chainKey: SupportedChainKey =
 }
 
 export function shortWalletAddress(address: string) {
-  if (address === "LOCAL-PROOF-NODE" || address === "DEMO-PROOF-NODE") {
-    return "Local Proof";
-  }
-
   if (!address) {
     return "";
   }
@@ -281,7 +301,7 @@ export function subscribeWallet(callback: () => void) {
   };
 }
 
-async function getRegistryContract() {
+async function getWriteRegistryContract() {
   const address = getContractAddress();
 
   if (!address) {
@@ -293,6 +313,23 @@ async function getRegistryContract() {
   const provider = new BrowserProvider(requireEthereumProvider());
   const signer = await provider.getSigner();
   return new Contract(address, cityPramaanRegistryAbi, signer);
+}
+
+function getReadRegistryContract() {
+  const address = getContractAddress();
+
+  if (!address) {
+    throw new Error("Missing NEXT_PUBLIC_CITYPRAMAAN_CONTRACT. Deploy the registry contract and add its address to Vercel.");
+  }
+
+  const chain = supportedChains[getPreferredChainKey()];
+  const rpcUrl = chain.rpcUrls[0];
+
+  if (!rpcUrl) {
+    throw new Error("Missing NEXT_PUBLIC_CITYPRAMAAN_RPC_URL. Add your Tenderly RPC URL to Vercel.");
+  }
+
+  return new Contract(address, cityPramaanRegistryAbi, new JsonRpcProvider(rpcUrl, chain.chainId));
 }
 
 function saveWalletSnapshot(snapshot: WalletSnapshot) {
@@ -330,30 +367,6 @@ export function hasEthereumProvider() {
   return Boolean(getEthereumProvider());
 }
 
-export function isDemoProofTransaction(txHash: string) {
-  return txHash.startsWith("0xdemo");
-}
-
-function shouldUseDemoProofTransaction() {
-  const wallet = parseWalletSnapshot(getWalletSnapshot());
-
-  return Boolean(wallet.demo || !getEthereumProvider() || !getContractAddress());
-}
-
-async function createDemoProofTransactionHash(seed: string) {
-  const encoder = new TextEncoder();
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    encoder.encode(`${seed}:${Date.now()}:${Math.random()}`)
-  );
-  const suffix = Array.from(new Uint8Array(digest))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("")
-    .slice(0, 60);
-
-  return `0xdemo${suffix}`;
-}
-
 function requireEthereumProvider() {
   const ethereum = getEthereumProvider();
 
@@ -367,6 +380,14 @@ function requireEthereumProvider() {
 function getCustomChainId() {
   const value = Number(process.env.NEXT_PUBLIC_CITYPRAMAAN_CHAIN_ID);
   return Number.isFinite(value) && value > 0 ? value : 9991;
+}
+
+function isWalletAddress(address: string) {
+  return /^0x[0-9a-fA-F]{40}$/.test(address);
+}
+
+function registryStatusLabel(status: number): RegistryStatusName {
+  return registryStatusLabels[status] ?? "ReportCreated";
 }
 
 let listenersAttached = false;

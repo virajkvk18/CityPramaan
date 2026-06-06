@@ -5,6 +5,7 @@ contract CityPramaanRegistry {
     enum Status {
         ReportCreated,
         RepairSubmitted,
+        AdminApproved,
         WarrantyActivated,
         RepeatFailure,
         Closed
@@ -19,12 +20,54 @@ contract CityPramaanRegistry {
     }
 
     mapping(string => ProofRecord) public proofs;
+    address public owner;
+    mapping(address => bool) public wardAdmins;
+    mapping(address => bool) public contractors;
 
     event ReportCreated(string indexed publicId, bytes32 reportHash, address indexed actor);
     event RepairSubmitted(string indexed publicId, bytes32 repairHash, address indexed actor);
     event StatusUpdated(string indexed publicId, Status status, address indexed actor);
+    event WardAdminUpdated(address indexed account, bool allowed);
+    event ContractorUpdated(address indexed account, bool allowed);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "owner only");
+        _;
+    }
+
+    modifier onlyWardAdmin() {
+        require(msg.sender == owner || wardAdmins[msg.sender], "ward admin only");
+        _;
+    }
+
+    modifier onlyContractor() {
+        require(msg.sender == owner || contractors[msg.sender], "contractor only");
+        _;
+    }
+
+    constructor() {
+        owner = msg.sender;
+        wardAdmins[msg.sender] = true;
+        contractors[msg.sender] = true;
+        emit WardAdminUpdated(msg.sender, true);
+        emit ContractorUpdated(msg.sender, true);
+    }
+
+    function setWardAdmin(address account, bool allowed) external onlyOwner {
+        require(account != address(0), "zero address");
+        wardAdmins[account] = allowed;
+        emit WardAdminUpdated(account, allowed);
+    }
+
+    function setContractor(address account, bool allowed) external onlyOwner {
+        require(account != address(0), "zero address");
+        contractors[account] = allowed;
+        emit ContractorUpdated(account, allowed);
+    }
 
     function createReport(string calldata publicId, bytes32 reportHash) external {
+        require(bytes(publicId).length > 0, "empty public id");
+        require(reportHash != bytes32(0), "empty report hash");
         require(proofs[publicId].updatedAt == 0, "proof exists");
 
         proofs[publicId] = ProofRecord({
@@ -38,8 +81,9 @@ contract CityPramaanRegistry {
         emit ReportCreated(publicId, reportHash, msg.sender);
     }
 
-    function submitRepair(string calldata publicId, bytes32 repairHash) external {
+    function submitRepair(string calldata publicId, bytes32 repairHash) external onlyContractor {
         require(proofs[publicId].updatedAt != 0, "missing report");
+        require(repairHash != bytes32(0), "empty repair hash");
 
         proofs[publicId].repairHash = repairHash;
         proofs[publicId].status = Status.RepairSubmitted;
@@ -49,8 +93,9 @@ contract CityPramaanRegistry {
         emit RepairSubmitted(publicId, repairHash, msg.sender);
     }
 
-    function updateStatus(string calldata publicId, Status status) external {
+    function updateStatus(string calldata publicId, Status status) external onlyWardAdmin {
         require(proofs[publicId].updatedAt != 0, "missing report");
+        require(status != Status.ReportCreated, "invalid status");
 
         proofs[publicId].status = status;
         proofs[publicId].actor = msg.sender;

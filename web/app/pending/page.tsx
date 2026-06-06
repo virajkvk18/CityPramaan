@@ -38,6 +38,14 @@ import {
   specializationLabels,
   subscribeContractors,
 } from "@/src/lib/contractor-storage";
+import {
+  connectWallet,
+  getWalletSnapshot,
+  parseWalletSnapshot,
+  registryStatusCodes,
+  subscribeWallet,
+  updateProofStatusTransaction,
+} from "@/src/lib/wallet-storage";
 import { useLanguage } from "@/src/lib/use-language";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 
@@ -70,6 +78,7 @@ export default function PendingApprovalPage() {
     getContractorsSnapshot,
     () => "[]"
   );
+  const walletSnapshot = useSyncExternalStore(subscribeWallet, getWalletSnapshot, () => "");
   const selectedCity = getCityByKey(citySnapshot);
   const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const [backendReports, setBackendReports] = useState<CivicReport[]>([]);
@@ -94,6 +103,7 @@ export default function PendingApprovalPage() {
     () => JSON.parse(contractorsSnapshot) as ContractorProfile[],
     [contractorsSnapshot]
   );
+  const wallet = parseWalletSnapshot(walletSnapshot);
   const allReports = useMemo(() => {
     return mergeReportsById(
       getReportsForCity(selectedCity.key),
@@ -158,7 +168,7 @@ export default function PendingApprovalPage() {
     setActionMessage(`${report.id} assigned to ${contractor.name}. It will now appear in Contractor dashboard.`);
   }
 
-  function approveRepairAndActivateWarranty(report: CivicReport) {
+  async function approveRepairAndActivateWarranty(report: CivicReport) {
     if (report.status !== "REPAIR_SUBMITTED") {
       setActionMessage("Only contractor proofs with Repair Submitted status can be approved.");
       return;
@@ -166,6 +176,23 @@ export default function PendingApprovalPage() {
 
     if (!report.repairImageDataUrl && !report.repairImageName) {
       setActionMessage("Contractor repair proof is required before warranty activation.");
+      return;
+    }
+
+    let tx = "";
+
+    try {
+      setActionMessage("Open MetaMask and sign updateStatus(publicId, AdminApproved)...");
+      if (!wallet.connected) {
+        await connectWallet(wallet.chainKey);
+      }
+      tx = await updateProofStatusTransaction(report.id, registryStatusCodes.AdminApproved);
+    } catch (error) {
+      setActionMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not approve on-chain. Check MetaMask, role permissions, testnet gas, and contract config."
+      );
       return;
     }
 
@@ -200,7 +227,7 @@ export default function PendingApprovalPage() {
           ? "Ward Admin approved utility proof. Citizen confirmation is required before closure and warranty activation."
           : "Ward Admin approved contractor repair proof. Citizen confirmation is required before closure and warranty activation.",
         time: now.toLocaleString(),
-        tx: `0xb928...${report.id.replace("CP-", "")}ce`,
+        tx,
       }
     );
 
@@ -493,7 +520,7 @@ export default function PendingApprovalPage() {
 
                     <div className="mt-5 flex flex-col gap-3 sm:flex-row">
                       <button
-                        onClick={() => approveRepairAndActivateWarranty(selectedReport)}
+                        onClick={() => void approveRepairAndActivateWarranty(selectedReport)}
                         disabled={selectedReport.status !== "REPAIR_SUBMITTED" || !hasRepairProof}
                         className="btn-primary-shimmer flex flex-1 items-center justify-center gap-2 rounded bg-[#ffc08d] px-4 py-3 font-mono text-xs font-semibold text-[#4c2700] transition disabled:cursor-not-allowed disabled:opacity-45"
                       >
