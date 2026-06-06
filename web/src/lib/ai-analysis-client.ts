@@ -26,6 +26,9 @@ export async function requestInfrastructureAnalysis(
   const fallback = {
     ...analyzeInfrastructureIssue(input),
     modelVersion: "CityPramaan Ruleset v0.4 (offline fallback)",
+    aiMode: "ruleset-fallback" as const,
+    aiProvider: "local",
+    aiFallbackReason: "Browser could not reach the AI analysis API.",
   };
 
   try {
@@ -38,7 +41,10 @@ export async function requestInfrastructureAnalysis(
     });
 
     if (!response.ok) {
-      return fallback;
+      return {
+        ...fallback,
+        aiFallbackReason: `AI analysis API returned ${response.status}.`,
+      };
     }
 
     const payload = (await response.json()) as AnalyzeIssueResponse;
@@ -47,7 +53,12 @@ export async function requestInfrastructureAnalysis(
       return fallback;
     }
 
-    return payload.analysis;
+    return {
+      ...payload.analysis,
+      aiMode: payload.analysis.aiMode ?? payload.mode ?? "real-ai",
+      aiProvider: payload.analysis.aiProvider ?? payload.provider ?? "configured AI",
+      aiFallbackReason: payload.analysis.aiFallbackReason ?? payload.fallbackReason,
+    };
   } catch (error) {
     console.warn("CityPramaan real AI analysis unavailable:", error);
     return fallback;

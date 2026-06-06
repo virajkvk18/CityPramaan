@@ -56,6 +56,9 @@ export async function POST(request: Request) {
       analysis: {
         ...fallback,
         modelVersion: `${fallback.modelVersion} + RAG (no API key fallback)`,
+        aiMode: "ruleset-fallback",
+        aiProvider: "local",
+        aiFallbackReason: "No CITYPRAMAAN_GROQ_API_KEY or CITYPRAMAAN_XAI_API_KEY configured.",
       },
     });
   }
@@ -75,7 +78,11 @@ export async function POST(request: Request) {
       mode: "real-ai",
       provider: provider.provider,
       retrievedRules,
-      analysis,
+      analysis: {
+        ...analysis,
+        aiMode: "real-ai",
+        aiProvider: provider.label,
+      },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "AI provider request failed.";
@@ -88,6 +95,9 @@ export async function POST(request: Request) {
       analysis: {
         ...fallback,
         modelVersion: `${fallback.modelVersion} + RAG (AI fallback: ${provider.label})`,
+        aiMode: "ruleset-fallback",
+        aiProvider: provider.label,
+        aiFallbackReason: message,
       },
     });
   }
@@ -236,9 +246,11 @@ Rules:
 - publicSummary must mention the issue, location, and public proof tracking.
 - slaHours and warrantyRequired must follow retrieved civic rules when relevant.
 - If image evidence is unclear, say so in evidenceSignals and reduce imageEvidenceScore.
+- If the image looks like a dashboard, document, random screenshot, selfie, indoor object, or anything unrelated to civic infrastructure, return GENERAL_INFRASTRUCTURE, issueType "Unclear / Non-civic Evidence", confidence below 55, imageEvidenceScore below 45, and humanReviewRequired true.
+- Do not copy the baseline local ruleset if the image contradicts the text.
 - Prefer practical Indian municipal actions.
 
-Baseline local ruleset result for reference:
+Baseline local ruleset result for fallback reference only, not as truth:
 ${JSON.stringify(fallback)}
 `.trim();
 }

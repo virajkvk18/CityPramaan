@@ -207,9 +207,7 @@ export default function ReportIssuePage() {
   const [locationDetecting, setLocationDetecting] = useState(true);
   const [locationSource, setLocationSource] = useState<"default" | "browser" | "manual" | "maps">("default");
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
-  const [description, setDescription] = useState(
-    "Large pothole appeared again near the same repaired road segment."
-  );
+  const [description, setDescription] = useState("");
   const [verified, setVerified] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [proofCreating, setProofCreating] = useState(false);
@@ -217,7 +215,6 @@ export default function ReportIssuePage() {
   const [createdTxHash, setCreatedTxHash] = useState("");
   const [createdProofHash, setCreatedProofHash] = useState("");
   const [createdFabricProof, setCreatedFabricProof] = useState<FabricProofMetadata | undefined>();
-  const [proofMode, setProofMode] = useState<"real" | "demo">("real");
   const [aiProcessing, setAiProcessing] = useState(false);
   const [aiResult, setAiResult] = useState<InfrastructureAnalysis | null>(null);
   const googleMapsUrl = buildGoogleMapsUrl(latitude, longitude);
@@ -582,7 +579,7 @@ export default function ReportIssuePage() {
     setImageName("");
     setImageDataUrl("");
     setImageLoading(false);
-    setDescription(`Large pothole appeared again near the repaired road segment at ${city.primaryArea}.`);
+    setDescription("");
     setVerified(false);
     setAiResult(null);
     setSubmitted(false);
@@ -1046,6 +1043,8 @@ export default function ReportIssuePage() {
                         label="Human Review"
                         value={aiResult.humanReviewRequired ? "Required" : "Not required"}
                       />
+                      <AnalysisRow label="AI Mode" value={aiResult.aiMode ?? "real-ai"} />
+                      <AnalysisRow label="Provider" value={aiResult.aiProvider ?? "configured AI"} />
                       <AnalysisRow label="Model" value={aiResult.modelVersion} />
                     </div>
                     <div className="mt-4 rounded border border-white/10 bg-black/25 p-3">
@@ -1054,6 +1053,11 @@ export default function ReportIssuePage() {
                       <p className="mt-2 text-xs leading-5 text-[#dbc2b0]/75">
                         Impact: {aiResult.estimatedImpact}
                       </p>
+                      {aiResult.aiFallbackReason && (
+                        <p className="mt-2 rounded border border-[#ffc08d]/30 bg-[#ffc08d]/10 p-2 text-xs leading-5 text-[#ffdcc2]">
+                          Fallback reason: {aiResult.aiFallbackReason}
+                        </p>
+                      )}
                     </div>
                     <div className="mt-4 grid gap-2">
                       {aiResult.evidenceSignals.slice(0, 3).map((signal) => (

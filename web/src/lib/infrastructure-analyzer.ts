@@ -27,6 +27,9 @@ export type InfrastructureAnalysis = {
   modelVersion: string;
   humanReviewRequired: boolean;
   confidenceBand: "LOW" | "MEDIUM" | "HIGH";
+  aiMode?: "real-ai" | "ruleset-fallback";
+  aiProvider?: string;
+  aiFallbackReason?: string;
 };
 
 type AnalyzeInput = {
@@ -183,6 +186,44 @@ export function analyzeInfrastructureIssue({
   cityName,
 }: AnalyzeInput): InfrastructureAnalysis {
   const searchable = `${description} ${imageName}`.toLowerCase();
+  const hasCivicKeyword = Object.entries(issueProfiles).some(([key, profile]) => {
+    if (key === "GENERAL_INFRASTRUCTURE") {
+      return false;
+    }
+
+    return profile.keywords.some((keyword) => searchable.includes(keyword));
+  });
+
+  if (!hasCivicKeyword) {
+    return {
+      category: "GENERAL_INFRASTRUCTURE",
+      issueType: imageName ? "Unclear / Non-civic Evidence" : "General Civic Infrastructure Issue",
+      assetType: "Evidence needs review",
+      severity: "Low",
+      confidence: imageName ? 48 : 42,
+      slaHours: 48,
+      warrantyRequired: false,
+      duplicateRisk: "Unknown until civic issue evidence is confirmed",
+      publicSummary: `Submitted evidence near ${location}, ${cityName} needs human review because no clear civic infrastructure signal was found.`,
+      recommendedAction:
+        "Ask the citizen to add a clear civic issue description/photo, or send to ward admin for manual evidence review.",
+      proofTag: "EVIDENCE_REVIEW_REQUIRED",
+      evidenceSignals: [
+        imageName ? "Image attached but civic issue is not confirmed by local rules" : "No visual evidence attached",
+        "No strong road, drain, power, streetlight, garbage, water, or accessibility keyword found",
+        "Human review required before contractor assignment",
+      ],
+      aiPriorityScore: 38,
+      imageEvidenceScore: imageName ? 35 : 20,
+      estimatedImpact: "Unknown civic impact until evidence is verified",
+      modelVersion: "CityPramaan Ruleset v0.5",
+      humanReviewRequired: true,
+      confidenceBand: "LOW",
+      aiMode: "ruleset-fallback",
+      aiProvider: "local",
+    };
+  }
+
   const category =
     (Object.entries(issueProfiles).find(([key, profile]) => {
       if (key === "GENERAL_INFRASTRUCTURE") {
