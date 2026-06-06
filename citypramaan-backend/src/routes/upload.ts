@@ -13,13 +13,14 @@ router.post('/issue-image', authMiddleware, upload.single('image'), async (req: 
     }
 
     const file = (req as any).file as UploadedFile;
-    const result = await uploadImageToIPFS(file.buffer, file.originalname);
+    const result = await uploadImageToIPFS(file.buffer, file.originalname, file.mimetype);
 
     res.json({
       success: true,
       cid: result.cid,
       url: result.url,
-      message: 'Image permanently stored on IPFS'
+      storage: result.storage,
+      message: result.storage === 'pinata' ? 'Image stored on IPFS' : 'Image stored locally'
     });
 
   } catch (error) {
@@ -57,7 +58,10 @@ router.post('/proof-bundle', authMiddleware, upload.fields([
       cid: result.cid,
       url: result.url,
       proofHash: result.proofHash,
-      message: 'Proof bundle stored on IPFS — ready for blockchain'
+      storage: result.storage,
+      message: result.storage === 'pinata'
+        ? 'Proof bundle stored on IPFS - ready for blockchain'
+        : 'Proof bundle stored locally - ready for blockchain'
     });
 
   } catch (error) {
