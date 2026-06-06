@@ -1,6 +1,6 @@
 import { resolve4 } from 'dns/promises';
 import nodemailer from 'nodemailer';
-import { env, hasResendConfig, hasSmtpConfig } from '../config/env';
+import { env, hasBrevoConfig, hasResendConfig, hasSmtpConfig } from '../config/env';
 import { HttpError } from '../utils/http-error';
 
 export interface VerificationEmailInput {
@@ -11,12 +11,16 @@ export interface VerificationEmailInput {
 }
 
 export interface EmailDeliveryResult {
-  delivery: 'resend' | 'smtp' | 'console';
+  delivery: 'brevo' | 'resend' | 'smtp' | 'console';
   devCodeExposed: boolean;
   messageId?: string;
 }
 
 export async function sendVerificationEmail(input: VerificationEmailInput): Promise<EmailDeliveryResult> {
+  if (hasBrevoConfig()) {
+    return sendViaBrevo(input);
+  }
+
   if (hasResendConfig()) {
     return sendViaResend(input);
   }
@@ -42,6 +46,52 @@ export async function sendVerificationEmail(input: VerificationEmailInput): Prom
     delivery: 'console',
     devCodeExposed: env.exposeDevVerificationCode,
   };
+}
+
+async function sendViaBrevo(input: VerificationEmailInput): Promise<EmailDeliveryResult> {
+  const content = buildVerificationEmailContent(input);
+  const recipient: { email: string; name?: string } = { email: input.email };
+  if (input.name) recipient.name = input.name;
+
+  try {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'api-key': env.brevoApiKey,
+      },
+      body: JSON.stringify({
+        sender: {
+          name: env.brevoFromName,
+          email: env.brevoFromEmail,
+        },
+        to: [recipient],
+        subject: content.subject,
+        textContent: content.text,
+        htmlContent: content.html,
+      }),
+    });
+
+    const responseBody = await parseJsonOrText(response);
+
+    if (!response.ok) {
+      throw new Error(`Brevo API error ${response.status}: ${JSON.stringify(responseBody)}`);
+    }
+
+    return {
+      delivery: 'brevo',
+      devCodeExposed: false,
+      messageId: getMessageId(responseBody),
+    };
+  } catch (error) {
+    console.error('Verification email delivery failed:', error);
+    throw new HttpError(
+      503,
+      'Could not send verification email. Check email provider settings in Render.',
+      'EMAIL_DELIVERY_FAILED'
+    );
+  }
 }
 
 async function sendViaSmtp(input: VerificationEmailInput): Promise<EmailDeliveryResult> {
@@ -101,16 +151,7 @@ async function sendViaResend(input: VerificationEmailInput): Promise<EmailDelive
       }),
     });
 
-    const responseText = await response.text();
-    let responseBody: unknown = undefined;
-
-    if (responseText) {
-      try {
-        responseBody = JSON.parse(responseText);
-      } catch {
-        responseBody = responseText;
-      }
-    }
+    const responseBody = await parseJsonOrText(response);
 
     if (!response.ok) {
       throw new Error(`Resend API error ${response.status}: ${JSON.stringify(responseBody)}`);
@@ -119,7 +160,7 @@ async function sendViaResend(input: VerificationEmailInput): Promise<EmailDelive
     return {
       delivery: 'resend',
       devCodeExposed: false,
-      messageId: getResendMessageId(responseBody),
+      messageId: getMessageId(responseBody),
     };
   } catch (error) {
     console.error('Verification email delivery failed:', error);
@@ -175,13 +216,29 @@ function buildVerificationEmailContent(input: VerificationEmailInput): {
   };
 }
 
-function getResendMessageId(responseBody: unknown): string | undefined {
-  if (!responseBody || typeof responseBody !== 'object' || !('id' in responseBody)) {
+async function parseJsonOrText(response: Response): Promise<unknown> {
+  const responseText = await response.text();
+
+  if (!responseText) {
     return undefined;
   }
 
-  const id = (responseBody as { id?: unknown }).id;
-  return typeof id === 'string' ? id : undefined;
+  try {
+    return JSON.parse(responseText);
+  } catch {
+    return responseText;
+  }
+}
+
+function getMessageId(responseBody: unknown): string | undefined {
+  if (!responseBody || typeof responseBody !== 'object') {
+    return undefined;
+  }
+
+  const body = responseBody as { id?: unknown; messageId?: unknown };
+  if (typeof body.id === 'string') return body.id;
+  if (typeof body.messageId === 'string') return body.messageId;
+  return undefined;
 }
 
 function escapeHtml(value: string): string {

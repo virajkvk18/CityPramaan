@@ -19,6 +19,7 @@ import {
   hashToken,
 } from './token.service';
 import {
+  assertEmailDomainAcceptsMail,
   codesMatch,
   hashVerificationCode,
   issueEmailVerification,
@@ -44,7 +45,7 @@ export interface RegistrationResult {
   user: PublicUser;
   emailVerificationRequired: true;
   verificationExpiresAt: string;
-  delivery: 'smtp' | 'console';
+  delivery: 'brevo' | 'resend' | 'smtp' | 'console';
   devVerificationCode?: string;
 }
 
@@ -75,6 +76,8 @@ export interface LoginInput {
 
 export async function registerUser(input: RegisterInput): Promise<RegistrationResult> {
   const email = normalizeEmailStrict(input.email);
+  await assertEmailDomainAcceptsMail(email);
+
   const password = input.password || '';
   const role = normalizeRole(input.role);
 
