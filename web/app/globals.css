@@ -4047,12 +4047,12 @@ body .cp-theme-locked-dark .cp-impact-bar {
 }
 
 /* Active tab on bg-[#ffc08d] — keep dark text, it's correct */
-.cp-page-shell form .bg-\[#ffc08d\] {
+.cp-page-shell form [class*="bg-[#ffc08d]"] {
   color: #231300 !important;
 }
 
 /* Active tab on bg-[#00dbe9] — keep dark text */
-.cp-page-shell form .bg-\[#00dbe9\] {
+.cp-page-shell form [class*="bg-[#00dbe9]"] {
   color: #002c33 !important;
 }
 
