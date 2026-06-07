@@ -5,6 +5,7 @@ langchain-groq
 langchain-chroma
 langchain-huggingface
 langchain-community
+langchain-text-splitters       ← add this
 langgraph
 chromadb
 python-dotenv
