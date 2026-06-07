@@ -1,4 +1,6 @@
 import { DEFAULT_CITY_KEY, formatCityLocation, getCityByKey, type CityKey } from "./city-context";
+import type { FabricProofMetadata } from "./fabric-proof-service";
+import type { ImageForensicsResult } from "./image-forensics-types";
 
 export type ReportStatus =
   | "OPEN"
@@ -89,6 +91,10 @@ export type CivicReport = {
   warrantyPeriodDays?: number;
   evidenceHash?: string;
   proofBundleHash?: string;
+  fabricProof?: FabricProofMetadata;
+  fabricProofs?: FabricProofMetadata[];
+  issueImageForensics?: ImageForensicsResult;
+  repairImageForensics?: ImageForensicsResult;
   repairEvidenceHash?: string;
   repairTxHash?: string;
   aiPriorityScore?: number;

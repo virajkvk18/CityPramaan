@@ -27,7 +27,7 @@ import {
   getLocalReportsSnapshot,
   subscribeLocalReports,
 } from "@/src/lib/report-storage";
-import { fetchBackendReports, mergeReportsById, saveReportEverywhere } from "@/src/lib/report-sync";
+import { mergeReportsById, saveReportEverywhere, watchBackendReports } from "@/src/lib/report-sync";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 
 const statusCopy: Record<CivicReport["status"], string> = {
@@ -79,17 +79,7 @@ export default function CitizenDashboardPage() {
     [localReportsSnapshot]
   );
   useEffect(() => {
-    let active = true;
-
-    fetchBackendReports(selectedCity.key).then((reports) => {
-      if (active) {
-        setBackendReports(reports);
-      }
-    });
-
-    return () => {
-      active = false;
-    };
+    return watchBackendReports(selectedCity.key, setBackendReports);
   }, [selectedCity.key]);
   const citizenReports = useMemo(() => {
     const reports = mergeReportsById(

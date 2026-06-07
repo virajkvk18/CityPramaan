@@ -19,6 +19,7 @@ import {
   hashToken,
 } from './token.service';
 import {
+  assertEmailDomainAcceptsMail,
   codesMatch,
   hashVerificationCode,
   issueEmailVerification,
@@ -44,7 +45,7 @@ export interface RegistrationResult {
   user: PublicUser;
   emailVerificationRequired: true;
   verificationExpiresAt: string;
-  delivery: 'smtp' | 'console';
+  delivery: 'brevo' | 'resend' | 'smtp' | 'console';
   devVerificationCode?: string;
 }
 
@@ -75,6 +76,8 @@ export interface LoginInput {
 
 export async function registerUser(input: RegisterInput): Promise<RegistrationResult> {
   const email = normalizeEmailStrict(input.email);
+  await assertEmailDomainAcceptsMail(email);
+
   const password = input.password || '';
   const role = normalizeRole(input.role);
 
@@ -127,7 +130,18 @@ export async function registerUser(input: RegisterInput): Promise<RegistrationRe
     return user;
   });
 
-  const verification = await issueEmailVerification(user);
+  let verification;
+
+  try {
+    verification = await issueEmailVerification(user);
+  } catch (error) {
+    store.update((db) => {
+      db.users = db.users.filter((item) => item.id !== user.id);
+      db.emailVerifications = db.emailVerifications.filter((item) => item.userId !== user.id);
+      db.contractors = db.contractors.filter((item) => item.userId !== user.id);
+    });
+    throw error;
+  }
 
   return {
     user: toPublicUser(user),

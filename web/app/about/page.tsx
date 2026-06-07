@@ -15,7 +15,6 @@ import {
   ShieldCheck,
   Sparkles,
   UploadCloud,
-  WalletCards,
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
@@ -41,7 +40,7 @@ const simpleFlow = [
     step: "03",
     title: "A proof record is created",
     detail:
-      "The report gets a public proof ID, evidence hash, timeline entry, and verifiable blockchain-style record so the issue cannot silently disappear.",
+      "The report gets a public proof ID, evidence hash, timeline entry, and Fabric-ready proof package so the issue cannot silently disappear.",
     icon: Blocks,
   },
   {
@@ -69,9 +68,9 @@ const simpleFlow = [
 
 const simpleTech = [
   {
-    title: "Blockchain",
+    title: "Fabric-ready Ledger",
     simple:
-      "Think of blockchain like a public notebook where every important update is written with permanent ink.",
+      "Think of the ledger like a shared civic notebook where important updates can later be written by Hyperledger Fabric.",
     example:
       "If a pothole report is created today, nobody can later pretend it was never reported because the proof entry stays in the public record.",
     icon: Blocks,
@@ -93,12 +92,12 @@ const simpleTech = [
     icon: Sparkles,
   },
   {
-    title: "Wallet / Web3 Identity",
+    title: "AI + RAG Agents",
     simple:
-      "A wallet works like a secure digital identity. It signs actions so the system knows who created or approved an update.",
+      "RAG means the AI answers using CityPramaan civic rules instead of guessing from a general prompt.",
     example:
-      "A citizen signs the report, and a contractor signs the repair proof. This creates accountability for both sides.",
-    icon: WalletCards,
+      "A drainage complaint can be matched with sewage rules, SLA expectations, severity policy, and contractor assignment logic.",
+    icon: BrainCircuit,
   },
   {
     title: "Warranty Scanner",
@@ -184,8 +183,8 @@ export default function AboutPage() {
             <p className="mt-5 max-w-4xl text-base leading-7 text-zinc-300">
               CityPramaan is a civic-tech web app that connects citizens, contractors, and public
               viewers in one transparent repair workflow. A citizen reports an infrastructure issue,
-              AI helps understand it, blockchain-style proof records make the issue traceable, and
-              the contractor repair proof becomes visible to everyone.
+              AI/RAG agents explain what should happen, proof hashes make the issue traceable, and
+              contractor repair proof becomes visible to everyone.
             </p>
 
             <div className="mt-8 grid gap-3 md:grid-cols-3">
@@ -339,8 +338,8 @@ export default function AboutPage() {
                 From complaint tracking to proof-of-resolution
               </h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
-                In the full version, this can connect to real smart contracts, IPFS storage, wallet
-                login, verified contractor identities, real AI image models, and city dashboards.
+                In the full version, this can connect to Hyperledger Fabric chaincode, object
+                storage, verified contractor identities, stronger AI image models, and city dashboards.
                 CityPramaan brings together the core story: report, verify, repair, warranty, and
                 public proof.
               </p>

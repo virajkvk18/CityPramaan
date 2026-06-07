@@ -42,7 +42,11 @@ export async function uploadImageToIPFS(
   }
 
   const formData = new FormData();
-  formData.append('file', new Blob([fileBuffer], { type: contentType }), sanitizeFileName(fileName));
+  const fileArrayBuffer = fileBuffer.buffer.slice(
+    fileBuffer.byteOffset,
+    fileBuffer.byteOffset + fileBuffer.byteLength
+  ) as ArrayBuffer;
+  formData.append('file', new Blob([fileArrayBuffer], { type: contentType }), sanitizeFileName(fileName));
 
   const response = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
     method: 'POST',

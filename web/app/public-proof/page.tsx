@@ -18,6 +18,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
+import { FabricProofCard } from "@/src/components/proof/FabricProofCard";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { LocationDetectButton } from "@/src/components/layout/LocationDetectButton";
 import { NotificationBell } from "@/src/components/layout/NotificationBell";
@@ -26,7 +27,7 @@ import { DEFAULT_CITY_KEY, demoCities, getCityByKey, type CityKey } from "@/src/
 import { getCitySnapshot, subscribeCity } from "@/src/lib/city-storage";
 import { getReportsForCity, type CivicReport, type ReportStatus } from "@/src/lib/mock-data";
 import { getLocalReportsSnapshot, subscribeLocalReports } from "@/src/lib/report-storage";
-import { fetchBackendReports, mergeReportsById } from "@/src/lib/report-sync";
+import { mergeReportsById, watchBackendReports } from "@/src/lib/report-sync";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 
 const statusLabels: Record<ReportStatus, string> = {
@@ -95,22 +96,10 @@ export default function PublicProofPage() {
   );
 
   useEffect(() => {
-    let active = true;
-
-    async function loadReports() {
-      const reports = await fetchBackendReports();
-
-      if (active) {
-        setBackendReports(reports);
-        setLoading(false);
-      }
-    }
-
-    void loadReports();
-
-    return () => {
-      active = false;
-    };
+    return watchBackendReports(undefined, (reports) => {
+      setBackendReports(reports);
+      setLoading(false);
+    });
   }, []);
 
   const allReports = useMemo(() => {
@@ -188,7 +177,7 @@ export default function PublicProofPage() {
               </h1>
               <p className="mt-4 max-w-3xl text-sm leading-6 text-[#dbc2b0] sm:text-base">
                 Anyone can view issue history, location, repair proof, warranty status, contractor
-                identity, and blockchain hashes for their city without login. Reporter identity stays anonymous.
+                identity, and proof hashes for their city without login. Reporter identity stays anonymous.
               </p>
             </div>
             <div className="cp-public-report-hero-actions flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -317,7 +306,7 @@ export default function PublicProofPage() {
                       <MiniRow label="Severity" value={latestReport.severity} />
                       <MiniRow label="Contractor" value={formatPublicContractor(latestReport)} />
                       <MiniRow label="Proof Hash" value={shortHash(latestReport.proofBundleHash)} />
-                      <MiniRow label="Tx Hash" value={shortHash(latestReport.txHash)} />
+                      <MiniRow label="Proof Ref" value={shortHash(latestReport.txHash)} />
                     </div>
                     <div className="mt-5 flex gap-3">
                       <Link
@@ -388,6 +377,12 @@ function ReportCard({ report }: { report: CivicReport }) {
         <HashBox label="Evidence Hash" value={report.evidenceHash} />
         <HashBox label="Proof Bundle" value={report.proofBundleHash} />
       </div>
+
+      {report.fabricProof && (
+        <div className="mt-5">
+          <FabricProofCard proof={report.fabricProof} />
+        </div>
+      )}
 
       <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
         <div className="rounded-lg border border-white/10 bg-black/25 p-4">

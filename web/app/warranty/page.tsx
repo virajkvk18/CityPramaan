@@ -30,10 +30,11 @@ import { DEFAULT_CITY_KEY, demoCities, getCityByKey, type CityKey } from "@/src/
 import { getCitySnapshot, setSelectedCityKey, subscribeCity } from "@/src/lib/city-storage";
 import { getReportsForCity, type CivicReport } from "@/src/lib/mock-data";
 import { getLocalReportsSnapshot, subscribeLocalReports } from "@/src/lib/report-storage";
-import { fetchBackendReports, mergeReportsById } from "@/src/lib/report-sync";
+import { mergeReportsById, watchBackendReports } from "@/src/lib/report-sync";
 import { translate } from "@/src/lib/language-context";
 import { getLanguageSnapshot, subscribeLanguage } from "@/src/lib/language-storage";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
+import { requestWarrantyRisk, type AiAgentAudit, type AiWarrantyRiskResult } from "@/src/lib/ai-agents-client";
 
 export default function WarrantyScannerPage() {
   const linkedIssueId = useSyncExternalStore(
@@ -61,17 +62,7 @@ export default function WarrantyScannerPage() {
     [localReportsSnapshot]
   );
   useEffect(() => {
-    let active = true;
-
-    fetchBackendReports(selectedCity.key).then((reports) => {
-      if (active) {
-        setBackendReports(reports);
-      }
-    });
-
-    return () => {
-      active = false;
-    };
+    return watchBackendReports(selectedCity.key, setBackendReports);
   }, [selectedCity.key]);
   const allReports = useMemo(() => {
     return mergeReportsById(
@@ -101,14 +92,36 @@ export default function WarrantyScannerPage() {
     .sort(sortWarrantyReports);
   const [selectedReportId, setSelectedReportId] = useState("");
   const [scanning, setScanning] = useState(false);
+  const [warrantyRisk, setWarrantyRisk] = useState<AiWarrantyRiskResult | null>(null);
+  const [scanMessage, setScanMessage] = useState("Warranty Risk Agent is ready.");
   const selectedReport =
     warrantyReports.find((report) => report.id === selectedReportId) ??
     warrantyReports.find((report) => report.id === linkedIssueId) ??
     warrantyReports[0];
 
-  function scanForFailure() {
+  async function scanForFailure() {
+    if (!selectedReport) {
+      setScanMessage("Select a case before scanning warranty risk.");
+      return;
+    }
+
     setScanning(true);
-    window.setTimeout(() => setScanning(false), 900);
+    setScanMessage("Running Warranty Risk Agent with civic RAG rules...");
+
+    try {
+      const risk = await requestWarrantyRisk({
+        report: selectedReport,
+        cityReports: allReports,
+      });
+
+      setWarrantyRisk(risk);
+      setScanMessage("Warranty Risk Agent completed.");
+    } catch (error) {
+      console.warn("Warranty Risk Agent unavailable:", error);
+      setScanMessage("Warranty Risk Agent fell back to local civic rules.");
+    } finally {
+      setScanning(false);
+    }
   }
 
   return (
@@ -221,7 +234,11 @@ export default function WarrantyScannerPage() {
                   {warrantyReports.map((report) => (
                     <button
                       key={report.id}
-                      onClick={() => setSelectedReportId(report.id)}
+                      onClick={() => {
+                        setSelectedReportId(report.id);
+                        setWarrantyRisk(null);
+                        setScanMessage("Warranty Risk Agent is ready.");
+                      }}
                       className={`w-full rounded border p-4 text-left transition ${
                         selectedReport?.id === report.id
                           ? "border-[#ffc08d]/60 bg-[#ffc08d]/10"
@@ -317,12 +334,55 @@ export default function WarrantyScannerPage() {
                       </div>
                     )}
 
-                    {scanning && (
-                      <div className="cp-fade-in mt-5 rounded border border-[#00dbe9]/20 bg-[#00dbe9]/10 p-4 text-sm text-[#dbc2b0]">
-                        {tr("repeatFailureScan")} / {tr("warranty")}
+                  {scanning && (
+                    <div className="cp-fade-in mt-5 rounded border border-[#00dbe9]/20 bg-[#00dbe9]/10 p-4 text-sm text-[#dbc2b0]">
+                      {tr("repeatFailureScan")} / {tr("warranty")}
+                    </div>
+                  )}
+
+                  <div className={`mt-5 rounded border p-4 ${warrantyRiskPanelTone(warrantyRisk?.riskLevel)}`}>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="font-mono text-xs font-bold uppercase tracking-[0.16em]">
+                          Warranty Risk Agent
+                        </p>
+                        <p className="mt-1 text-sm">{scanMessage}</p>
                       </div>
-                    )}
-                  </section>
+                      <span className="rounded border border-white/15 bg-black/25 px-3 py-1 font-mono text-xs font-bold">
+                        {warrantyRisk?.riskLevel ?? "READY"}
+                      </span>
+                    </div>
+                    <div className="mt-4 grid gap-3 md:grid-cols-3">
+                      <Info
+                        label="Repeat probability"
+                        value={
+                          typeof warrantyRisk?.repeatProbability === "number"
+                            ? `${warrantyRisk.repeatProbability}/100`
+                            : "Run scan"
+                        }
+                      />
+                      <Info
+                        label="Warranty breach"
+                        value={warrantyRisk?.warrantyBreachLikely ? "Likely" : "Not flagged"}
+                      />
+                      <Info
+                        label="Matched reports"
+                        value={
+                          warrantyRisk?.matchedReportIds.length
+                            ? warrantyRisk.matchedReportIds.join(", ")
+                            : "None"
+                        }
+                      />
+                    </div>
+                    <p className="mt-4 text-sm leading-6">
+                      {warrantyRisk?.reason ?? "The agent checks same-location/category history, warranty status, and civic repeat-failure policy."}
+                    </p>
+                    <p className="mt-3 rounded border border-white/10 bg-black/25 p-3 text-sm leading-6">
+                      {warrantyRisk?.recommendedAction ?? "Run scan to generate warranty action."}
+                    </p>
+                    {warrantyRisk?.aiAudit && <AgentAuditPanel audit={warrantyRisk.aiAudit} />}
+                  </div>
+                </section>
 
                   <IssueProgressPanel report={selectedReport} />
 
@@ -741,6 +801,50 @@ function Info({ label, value }: { label: string; value: string }) {
     <div className="rounded border border-white/10 bg-black/35 p-3">
       <p className="font-mono text-[10px] uppercase text-[#dbc2b0]/60">{label}</p>
       <p className="mt-1 truncate font-mono text-sm font-semibold text-white">{value}</p>
+    </div>
+  );
+}
+
+function warrantyRiskPanelTone(level?: AiWarrantyRiskResult["riskLevel"]) {
+  switch (level) {
+    case "CRITICAL":
+    case "HIGH":
+      return "border-[#ffb4ab]/35 bg-[#ffb4ab]/10 text-[#ffdad6]";
+    case "MEDIUM":
+      return "border-[#ffc08d]/35 bg-[#ffc08d]/10 text-[#ffdcc2]";
+    case "LOW":
+      return "border-[#00eb88]/30 bg-[#00eb88]/10 text-[#d3ffe7]";
+    default:
+      return "border-[#00dbe9]/20 bg-[#00dbe9]/10 text-[#d3fbff]";
+  }
+}
+
+function AgentAuditPanel({ audit }: { audit: AiAgentAudit }) {
+  return (
+    <div className="mt-4 rounded border border-white/10 bg-black/25 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em]">
+          Explainability audit
+        </p>
+        <span className="rounded border border-white/10 bg-black/35 px-2 py-1 font-mono text-[10px] uppercase">
+          {audit.mode} | {audit.providerLabel}
+        </span>
+      </div>
+      {audit.fallbackReason && <p className="mt-2 text-xs leading-5 text-[#ffc08d]">{audit.fallbackReason}</p>}
+      <div className="mt-3 grid gap-2 md:grid-cols-2">
+        {audit.retrievedRules.slice(0, 4).map((rule) => (
+          <div key={rule.id} className="rounded border border-white/10 bg-black/25 p-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-white">{rule.title}</p>
+              <span className="font-mono text-[10px] text-[#00eb88]">{rule.matchScore}</span>
+            </div>
+            <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#dbc2b0]/75">{rule.ruleText}</p>
+            <p className="mt-1 font-mono text-[10px] uppercase text-[#dbc2b0]/50">
+              {rule.category} | SLA {rule.slaHours ?? "contextual"}h | Warranty {rule.warrantyDays ?? "contextual"}d
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

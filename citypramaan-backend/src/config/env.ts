@@ -47,6 +47,7 @@ export const env = {
   emailVerificationTtlMinutes: getNumber('EMAIL_VERIFICATION_TTL_MINUTES', 15),
   emailVerificationMaxAttempts: getNumber('EMAIL_VERIFICATION_MAX_ATTEMPTS', 5),
   emailVerificationCodeLength: getNumber('EMAIL_VERIFICATION_CODE_LENGTH', 6),
+  emailDomainMxCheck: getBoolean('EMAIL_DOMAIN_MX_CHECK', true),
   resendVerificationCooldownSeconds: getNumber('RESEND_VERIFICATION_COOLDOWN_SECONDS', 60),
   exposeDevVerificationCode: getBoolean('EXPOSE_DEV_VERIFICATION_CODE', true),
   walletChallengeMinutes: getNumber('WALLET_CHALLENGE_MINUTES', 10),
@@ -70,6 +71,16 @@ export const env = {
   smtpUser: process.env.SMTP_USER || '',
   smtpPass: process.env.SMTP_PASS || '',
   smtpFrom: process.env.SMTP_FROM || 'CityPramaan <no-reply@citypramaan.local>',
+  smtpTimeoutMs: getNumber('SMTP_TIMEOUT_MS', 10000),
+  smtpForceIpv4: getBoolean('SMTP_FORCE_IPV4', true),
+  brevoApiKey: process.env.BREVO_API_KEY || '',
+  brevoFromEmail: process.env.BREVO_FROM_EMAIL || '',
+  brevoFromName: process.env.BREVO_FROM_NAME || 'CityPramaan',
+  resendApiKey: process.env.RESEND_API_KEY || '',
+  resendFrom:
+    process.env.RESEND_FROM ||
+    process.env.SMTP_FROM ||
+    'CityPramaan <no-reply@citypramaan.local>',
 };
 
 export function hasPinataConfig(): boolean {
@@ -78,4 +89,12 @@ export function hasPinataConfig(): boolean {
 
 export function hasSmtpConfig(): boolean {
   return Boolean(env.smtpHost && env.smtpUser && env.smtpPass);
+}
+
+export function hasBrevoConfig(): boolean {
+  return Boolean(env.brevoApiKey && env.brevoFromEmail);
+}
+
+export function hasResendConfig(): boolean {
+  return Boolean(env.resendApiKey && env.resendFrom);
 }

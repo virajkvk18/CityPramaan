@@ -16,7 +16,6 @@ import {
   ScanSearch,
   Settings,
   ShieldCheck,
-  Wallet,
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
@@ -30,7 +29,7 @@ import {
   getLocalReportsSnapshot,
   subscribeLocalReports,
 } from "@/src/lib/report-storage";
-import { fetchBackendReports, mergeReportsById, saveReportEverywhere } from "@/src/lib/report-sync";
+import { mergeReportsById, saveReportEverywhere, watchBackendReports } from "@/src/lib/report-sync";
 import {
   attachReportToContractor,
   fetchBackendContractors,
@@ -40,20 +39,7 @@ import {
   specializationLabels,
   subscribeContractors,
 } from "@/src/lib/contractor-storage";
-import {
-  connectWallet,
-  formatWalletError,
-  getWalletSnapshot,
-  type OnChainProofRecord,
-  parseWalletSnapshot,
-  readProofRecords,
-  readWalletPermissions,
-  registryStatusCodes,
-  setContractorRoleTransaction,
-  setWardAdminRoleTransaction,
-  subscribeWallet,
-  updateProofStatusTransaction,
-} from "@/src/lib/wallet-storage";
+import { requestContractorMatch, type AiContractorMatchResult } from "@/src/lib/ai-agents-client";
 import { useLanguage } from "@/src/lib/use-language";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 
@@ -86,7 +72,6 @@ export default function PendingApprovalPage() {
     getContractorsSnapshot,
     () => "[]"
   );
-  const walletSnapshot = useSyncExternalStore(subscribeWallet, getWalletSnapshot, () => "");
   const selectedCity = getCityByKey(citySnapshot);
   const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const [backendReports, setBackendReports] = useState<CivicReport[]>([]);
@@ -96,17 +81,7 @@ export default function PendingApprovalPage() {
     [localReportsSnapshot]
   );
   useEffect(() => {
-    let active = true;
-
-    fetchBackendReports(selectedCity.key).then((reports) => {
-      if (active) {
-        setBackendReports(reports);
-      }
-    });
-
-    return () => {
-      active = false;
-    };
+    return watchBackendReports(selectedCity.key, setBackendReports);
   }, [selectedCity.key]);
   useEffect(() => {
     let active = true;
@@ -125,7 +100,6 @@ export default function PendingApprovalPage() {
     () => mergeContractorLists(JSON.parse(contractorsSnapshot) as ContractorProfile[], backendContractors),
     [backendContractors, contractorsSnapshot]
   );
-  const wallet = parseWalletSnapshot(walletSnapshot);
   const allReports = useMemo(() => {
     return mergeReportsById(
       getReportsForCity(selectedCity.key),
@@ -140,8 +114,20 @@ export default function PendingApprovalPage() {
         .sort(sortReviewReports),
     [allReports]
   );
-  const reviewReportIdsKey = useMemo(() => reviewReports.map((report) => report.id).join("|"), [reviewReports]);
   const pendingCount = reviewReports.filter((report) => report.status === "REPAIR_SUBMITTED").length;
+  const aiCriticalCount = reviewReports.filter(
+    (report) =>
+      report.severity === "Critical" ||
+      (report.aiPriorityScore ?? 0) >= 90 ||
+      report.status === "REPEAT_FAILURE"
+  ).length;
+  const lowConfidenceCount = reviewReports.filter((report) => report.confidence < 70).length;
+  const warrantyWatchCount = reviewReports.filter(
+    (report) =>
+      report.warrantyStatus === "ACTIVE" ||
+      report.status === "UNDER_WARRANTY" ||
+      report.status === "REPEAT_FAILURE"
+  ).length;
   const [selectedReportId, setSelectedReportId] = useState(
     reviewReports.find((report) => report.status === "REPAIR_SUBMITTED")?.id ?? reviewReports[0]?.id ?? ""
   );
@@ -151,99 +137,45 @@ export default function PendingApprovalPage() {
     reviewReports.find((report) => report.status === "REPAIR_SUBMITTED") ??
     reviewReports[0];
   const hasRepairProof = Boolean(selectedReport?.repairImageDataUrl || selectedReport?.repairImageName);
-  const suggestedContractors = selectedReport ? findSuggestedContractors(selectedReport, contractors) : contractors;
+  const suggestedContractors = useMemo(
+    () => (selectedReport ? findSuggestedContractors(selectedReport, contractors) : contractors),
+    [contractors, selectedReport]
+  );
   const [selectedContractorId, setSelectedContractorId] = useState("");
+  const [adminOverrideReason, setAdminOverrideReason] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
-  const [roleWalletAddress, setRoleWalletAddress] = useState("");
-  const [roleMessage, setRoleMessage] = useState("Connect owner wallet to manage contract roles.");
-  const [ownerMode, setOwnerMode] = useState(false);
-  const [chainRecords, setChainRecords] = useState<Record<string, OnChainProofRecord>>({});
+  const [aiContractorMatch, setAiContractorMatch] = useState<AiContractorMatchResult | null>(null);
   const activeContractor =
     suggestedContractors.find((contractor) => contractor?.contractorId === selectedContractorId) ??
     suggestedContractors[0];
 
   useEffect(() => {
-    if (!wallet.connected) {
-      window.setTimeout(() => {
-        setOwnerMode(false);
-        setRoleMessage("Connect owner wallet to manage contract roles.");
-      }, 0);
+    if (!selectedReport || !suggestedContractors.length) {
       return;
     }
 
     let active = true;
 
-    readWalletPermissions(wallet.address)
-      .then((permissions) => {
+    requestContractorMatch({
+      report: selectedReport,
+      contractors: suggestedContractors,
+    })
+      .then((match) => {
         if (!active) {
           return;
         }
 
-        setOwnerMode(permissions.isOwner);
-        setRoleMessage(
-          permissions.isOwner
-            ? "Owner wallet active. You can grant or revoke on-chain roles."
-            : "Connected wallet is not the contract owner. Role management is read-only."
-        );
-      })
-      .catch((error) => {
-        if (!active) {
-          return;
-        }
+        setAiContractorMatch(match);
 
-        setOwnerMode(false);
-        setRoleMessage(formatWalletError(error));
-      });
+        if (match.recommendedContractorId) {
+          setSelectedContractorId(match.recommendedContractorId);
+        }
+      })
 
     return () => {
       active = false;
     };
-  }, [wallet.address, wallet.connected]);
-
-  useEffect(() => {
-    const ids = reviewReports.map((report) => report.id);
-
-    if (!ids.length) {
-      window.setTimeout(() => setChainRecords({}), 0);
-      return;
-    }
-
-    let active = true;
-
-    readProofRecords(ids)
-      .then((records) => {
-        if (active) {
-          setChainRecords(records);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setChainRecords({});
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [reviewReportIdsKey, reviewReports]);
-
-  async function updateRegistryRole(role: "WARD_ADMIN" | "CONTRACTOR", allowed: boolean) {
-    try {
-      if (!wallet.connected) {
-        await connectWallet(wallet.chainKey);
-      }
-
-      setRoleMessage(`Open MetaMask to ${allowed ? "grant" : "revoke"} ${role.replace("_", " ").toLowerCase()} role...`);
-      const txHash =
-        role === "WARD_ADMIN"
-          ? await setWardAdminRoleTransaction(roleWalletAddress, allowed)
-          : await setContractorRoleTransaction(roleWalletAddress, allowed);
-
-      setRoleMessage(`${role.replace("_", " ")} role ${allowed ? "granted" : "revoked"} on-chain. Tx: ${txHash}`);
-    } catch (error) {
-      setRoleMessage(formatWalletError(error));
-    }
-  }
+  }, [selectedReport, suggestedContractors]);
 
   function assignContractor(report: CivicReport, contractor = activeContractor) {
     if (["ADMIN_APPROVED", "UNDER_WARRANTY", "CLOSED"].includes(report.status)) {
@@ -253,6 +185,15 @@ export default function PendingApprovalPage() {
 
     if (!contractor) {
       setActionMessage("No contractor profile is available for this assignment.");
+      return;
+    }
+
+    const aiRecommendedId = aiContractorMatch?.recommendedContractorId;
+    const overrideRequired = Boolean(aiRecommendedId && contractor.contractorId !== aiRecommendedId);
+    const overrideReason = adminOverrideReason.trim();
+
+    if (overrideRequired && !overrideReason) {
+      setActionMessage("Add an admin override reason before assigning a contractor different from the AI recommendation.");
       return;
     }
 
@@ -271,7 +212,9 @@ export default function PendingApprovalPage() {
       },
       {
         label: "Ward Admin assigned contractor",
-        detail: `Ward Admin assigned this issue to ${contractor.name}, Contractor ID: ${contractor.contractorId}, ${contractor.ward} ${specializationLabels[contractor.specialization as keyof typeof specializationLabels] ?? contractor.specialization} team.`,
+        detail: `Ward Admin assigned this issue to ${contractor.name}, Contractor ID: ${contractor.contractorId}, ${contractor.ward} ${specializationLabels[contractor.specialization as keyof typeof specializationLabels] ?? contractor.specialization} team.${
+          overrideReason ? ` Override reason: ${overrideReason}` : ""
+        }`,
         time: now.toLocaleString(),
         tx: `0xassign...${report.id.replace("CP-", "")}`,
       }
@@ -279,6 +222,7 @@ export default function PendingApprovalPage() {
 
     void saveReportEverywhere(updated);
     attachReportToContractor(contractor.contractorId, report.id);
+    setAdminOverrideReason("");
     setActionMessage(`${report.id} assigned to ${contractor.name}. It will now appear in Contractor dashboard.`);
   }
 
@@ -293,21 +237,7 @@ export default function PendingApprovalPage() {
       return;
     }
 
-    let tx = "";
-
-    try {
-      setActionMessage("Open MetaMask and sign updateStatus(publicId, AdminApproved)...");
-      if (!wallet.connected) {
-        await connectWallet(wallet.chainKey);
-      }
-      tx = await updateProofStatusTransaction(report.id, registryStatusCodes.AdminApproved);
-    } catch (error) {
-      setActionMessage(
-        formatWalletError(error) ||
-          "Could not approve on-chain. Check MetaMask, role permissions, testnet gas, and contract config."
-      );
-      return;
-    }
+    const tx = report.proofBundleHash ?? report.repairEvidenceHash ?? report.evidenceHash ?? report.txHash;
 
     const now = new Date();
     const isPowerOutage = report.issueCategory === "POWER_OUTAGE";
@@ -345,7 +275,7 @@ export default function PendingApprovalPage() {
     );
 
     void saveReportEverywhere(updated);
-    setActionMessage(`${report.id} approved by Ward Admin. Citizen must confirm work done before closure and warranty activation.`);
+    setActionMessage(`${report.id} approved by Ward Admin. Fabric anchoring is ready for teammate integration.`);
   }
 
   function rejectRepairProof(report: CivicReport) {
@@ -426,7 +356,7 @@ export default function PendingApprovalPage() {
         <nav className="mt-8 flex flex-1 flex-col gap-1">
           <NavItem href="/" icon={<LayoutDashboard size={18} />} label={t("commandCenter")} />
           <NavItem href="/ward-admin" icon={<ScanSearch size={18} />} label="Ward Admin Queue" active />
-          <NavItem href="/warranty" icon={<Wallet size={18} />} label={t("warrantyScanner")} />
+          <NavItem href="/warranty" icon={<CalendarClock size={18} />} label={t("warrantyScanner")} />
           <NavItem href="/reports" icon={<BadgeCheck size={18} />} label={t("publicProof")} />
         </nav>
       </aside>
@@ -472,47 +402,34 @@ export default function PendingApprovalPage() {
             </div>
           </div>
 
+          <section className="mb-6 grid gap-3 md:grid-cols-3">
+            <AiMetric
+              label="Critical escalation queue"
+              value={String(aiCriticalCount).padStart(2, "0")}
+              detail="Critical severity, repeat failures, or 90+ AI priority"
+              tone="rose"
+            />
+            <AiMetric
+              label="Low confidence review"
+              value={String(lowConfidenceCount).padStart(2, "0")}
+              detail="Reports below the 70% human-review threshold"
+              tone="cyan"
+            />
+            <AiMetric
+              label="Warranty watchlist"
+              value={String(warrantyWatchCount).padStart(2, "0")}
+              detail="Active warranty or repeat-location monitoring"
+              tone="emerald"
+            />
+          </section>
+
           <section className="mb-6 rounded-lg border border-[#00dbe9]/20 bg-[#00dbe9]/10 p-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#7df4ff]">
-                  On-chain role registry
-                </p>
-                <p className="mt-1 text-sm leading-6 text-[#d3fbff]">{roleMessage}</p>
-              </div>
-              <div className="flex flex-1 flex-col gap-3 lg:max-w-3xl lg:flex-row">
-                <input
-                  value={roleWalletAddress}
-                  onChange={(event) => setRoleWalletAddress(event.target.value)}
-                  placeholder="0x wallet address"
-                  className="min-h-11 flex-1 rounded border border-white/10 bg-black/45 px-3 font-mono text-xs text-white outline-none focus:border-[#00dbe9]/60"
-                />
-                <button
-                  type="button"
-                  disabled={!ownerMode}
-                  onClick={() => void updateRegistryRole("WARD_ADMIN", true)}
-                  className="rounded border border-[#00eb88]/35 bg-[#00eb88]/10 px-3 py-2 font-mono text-[10px] font-bold uppercase text-[#8fffc1] disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  Grant admin
-                </button>
-                <button
-                  type="button"
-                  disabled={!ownerMode}
-                  onClick={() => void updateRegistryRole("CONTRACTOR", true)}
-                  className="rounded border border-[#ffc08d]/35 bg-[#ffc08d]/10 px-3 py-2 font-mono text-[10px] font-bold uppercase text-[#ffdcc2] disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  Grant contractor
-                </button>
-                <button
-                  type="button"
-                  disabled={!ownerMode}
-                  onClick={() => void updateRegistryRole("WARD_ADMIN", false)}
-                  className="rounded border border-[#ffb4ab]/30 bg-[#ffb4ab]/10 px-3 py-2 font-mono text-[10px] font-bold uppercase text-[#ffdad6] disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  Revoke admin
-                </button>
-              </div>
-            </div>
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#7df4ff]">
+              AI/RAG review layer
+            </p>
+            <p className="mt-1 text-sm leading-6 text-[#d3fbff]">
+              The previous EVM proof flow has been removed. Ward Admin actions now produce Fabric-ready hashes and timeline events for teammate Fabric integration.
+            </p>
           </section>
 
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
@@ -564,8 +481,8 @@ export default function PendingApprovalPage() {
                       <div className="grid grid-cols-2 gap-3 text-sm sm:min-w-80">
                         <Info label={t("status")} value={statusCopy(selectedReport)} />
                         <Info
-                          label="On-chain status"
-                          value={chainRecords[selectedReport.id]?.exists ? chainRecords[selectedReport.id].statusLabel : "Not anchored"}
+                          label="Fabric status"
+                          value={selectedReport.proofBundleHash ? "Proof bundle ready" : "Pending proof bundle"}
                         />
                         <Info label={t("severity")} value={selectedReport.severity} />
                         <Info label={t("aiConfidence")} value={`${selectedReport.confidence}%`} />
@@ -616,7 +533,9 @@ export default function PendingApprovalPage() {
                             Suggested contractors for this area/category
                           </p>
                           <p className="mt-1 text-xs text-[#dbc2b0]/65">
-                            Matched against {selectedReport.ward}, {selectedReport.issueCategory ?? "GENERAL"}, and issue location.
+                            {aiContractorMatch
+                                ? `AI recommends ${aiContractorMatch.contractorName} with ${aiContractorMatch.matchScore}/100 match score.`
+                                : `Matched against ${selectedReport.ward}, ${selectedReport.issueCategory ?? "GENERAL"}, and issue location.`}
                           </p>
                         </div>
                         <span className="rounded border border-[#00dbe9]/25 bg-[#00dbe9]/10 px-2 py-1 font-mono text-[10px] text-[#7df4ff]">
@@ -665,6 +584,28 @@ export default function PendingApprovalPage() {
                           </button>
                         ))}
                       </div>
+                      {aiContractorMatch && (
+                        <div className="mt-4 rounded border border-[#00dbe9]/25 bg-[#00dbe9]/10 p-3 text-xs leading-5 text-[#d3fbff]">
+                          <p className="font-semibold text-[#7df4ff]">AI Contractor Matching Agent</p>
+                          <p className="mt-1">{aiContractorMatch.reason}</p>
+                          <p className="mt-1 text-[#ffc08d]">{aiContractorMatch.riskNote}</p>
+                        </div>
+                      )}
+                      {aiContractorMatch?.recommendedContractorId &&
+                        activeContractor?.contractorId !== aiContractorMatch.recommendedContractorId && (
+                          <label className="mt-4 block rounded border border-[#ffc08d]/25 bg-[#ffc08d]/10 p-3">
+                            <span className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#ffdcc2]">
+                              Admin override reason
+                            </span>
+                            <textarea
+                              value={adminOverrideReason}
+                              onChange={(event) => setAdminOverrideReason(event.target.value)}
+                              rows={3}
+                              className="w-full resize-none rounded border border-white/10 bg-black/45 px-3 py-3 text-sm text-white outline-none focus:border-[#ffc08d]/60"
+                              placeholder="Explain why this contractor is being selected instead of the AI recommendation."
+                            />
+                          </label>
+                        )}
                       <button
                         type="button"
                         onClick={() => assignContractor(selectedReport)}
@@ -803,6 +744,32 @@ function Stat({ label, value, tone }: { label: string; value: string; tone: "amb
     <div className="rounded border border-white/10 bg-black/35 px-4 py-2">
       <p className="font-mono text-[10px] uppercase text-[#dbc2b0]/60">{label}</p>
       <p className={`mt-1 font-mono text-xl font-semibold ${color}`}>{value}</p>
+    </div>
+  );
+}
+
+function AiMetric({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone: "rose" | "cyan" | "emerald";
+}) {
+  const colors = {
+    rose: "border-[#ffb4ab]/25 bg-[#ffb4ab]/10 text-[#ffdad6]",
+    cyan: "border-[#00dbe9]/25 bg-[#00dbe9]/10 text-[#d3fbff]",
+    emerald: "border-[#00eb88]/25 bg-[#00eb88]/10 text-[#d3ffe7]",
+  };
+
+  return (
+    <div className={`rounded-lg border p-4 ${colors[tone]}`}>
+      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em]">{label}</p>
+      <p className="mt-3 font-mono text-3xl font-semibold text-white">{value}</p>
+      <p className="mt-2 text-xs leading-5 opacity-80">{detail}</p>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { createHash, randomInt, randomUUID, timingSafeEqual } from 'crypto';
+import { resolveMx } from 'dns/promises';
 import { env } from '../config/env';
 import { store } from '../db/json-store';
 import { EmailVerificationRecord, StoredUser } from '../types/domain';
@@ -10,7 +11,7 @@ const EMAIL_PATTERN =
 
 export interface EmailVerificationIssue {
   expiresAt: string;
-  delivery: 'smtp' | 'console';
+  delivery: 'brevo' | 'resend' | 'smtp' | 'console';
   devVerificationCode?: string;
 }
 
@@ -33,6 +34,33 @@ export function isValidEmail(email: string): boolean {
   const [localPart] = email.split('@');
   if (!localPart || localPart.length > 64 || localPart.includes('..')) return false;
   return EMAIL_PATTERN.test(email);
+}
+
+export async function assertEmailDomainAcceptsMail(email: string): Promise<void> {
+  if (!env.emailDomainMxCheck) return;
+
+  const domain = email.split('@')[1];
+  if (!domain) {
+    throw new HttpError(400, 'Invalid email address.', 'INVALID_EMAIL');
+  }
+
+  try {
+    const records = await resolveMx(domain);
+    const hasMailExchange = records.some((record) => record.exchange && record.exchange !== '.');
+
+    if (!hasMailExchange) {
+      throw new HttpError(400, 'Invalid email address.', 'INVALID_EMAIL');
+    }
+  } catch (error) {
+    if (error instanceof HttpError) throw error;
+
+    const dnsCode = getDnsErrorCode(error);
+    if (['ENODATA', 'ENOTFOUND', 'ENODOMAIN'].includes(dnsCode)) {
+      throw new HttpError(400, 'Invalid email address.', 'INVALID_EMAIL');
+    }
+
+    console.warn('Email domain MX check unavailable, allowing OTP delivery attempt:', error);
+  }
 }
 
 export async function issueEmailVerification(user: StoredUser): Promise<EmailVerificationIssue> {
@@ -193,6 +221,15 @@ function invalidateActiveVerifications(records: EmailVerificationRecord[], userI
       record.usedAt = now.toISOString();
     }
   }
+}
+
+function getDnsErrorCode(error: unknown): string {
+  if (!error || typeof error !== 'object' || !('code' in error)) {
+    return '';
+  }
+
+  const code = (error as { code?: unknown }).code;
+  return typeof code === 'string' ? code : '';
 }
 
 function clean(value?: string): string {

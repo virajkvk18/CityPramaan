@@ -26,12 +26,12 @@ import {
   Sparkles,
   Trash2,
   UploadCloud,
-  Wallet,
   Wrench,
-  X,
   Zap,
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
+import { FabricProofCard } from "@/src/components/proof/FabricProofCard";
+import { ImageForensicsPanel } from "@/src/components/proof/ImageForensicsPanel";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { NotificationBell } from "@/src/components/layout/NotificationBell";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
@@ -46,27 +46,20 @@ import { getCitySnapshot, setSelectedCityKey, subscribeCity } from "@/src/lib/ci
 import { type InfrastructureAnalysis } from "@/src/lib/infrastructure-analyzer";
 import { getLanguageSnapshot, subscribeLanguage } from "@/src/lib/language-storage";
 import { translate } from "@/src/lib/language-context";
-import { buildGoogleMapsUrl, type CivicReport } from "@/src/lib/mock-data";
+import { buildGoogleMapsUrl, getReportsForCity, type CivicReport } from "@/src/lib/mock-data";
 import {
   createLocalReportId,
+  getLocalReportsSnapshot,
   readFileAsDataUrl,
 } from "@/src/lib/report-storage";
 import { saveReportEverywhere } from "@/src/lib/report-sync";
 import { requestInfrastructureAnalysis } from "@/src/lib/ai-analysis-client";
 import { getCurrentUser } from "@/src/lib/auth-storage";
 import { createProofBundleHash, deriveTransactionHash, sha256Hex } from "@/src/lib/proof-hashing";
-import {
-  buildExplorerTxUrl,
-  createDemoProofTransactionHash,
-  createReportTransaction,
-  formatWalletError,
-  getWalletSnapshot,
-  hasEthereumProvider,
-  parseWalletSnapshot,
-  shortWalletAddress,
-  subscribeWallet,
-} from "@/src/lib/wallet-storage";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
+import type { FabricProofMetadata } from "@/src/lib/fabric-proof-service";
+import { requestImageForensics } from "@/src/lib/image-forensics-client";
+import type { ImageForensicsResult } from "@/src/lib/image-forensics-types";
 
 const issuePresets = [
   {
@@ -132,6 +125,71 @@ function toRadians(value: number) {
   return (value * Math.PI) / 180;
 }
 
+async function recordReportCreatedFabricProof(report: CivicReport) {
+  try {
+    const response = await fetch("/api/fabric/proof", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        reportId: report.id,
+        eventType: "REPORT_CREATED",
+        proofHash: report.evidenceHash ?? report.proofBundleHash ?? report.txHash ?? report.id,
+        actorRole: "CITIZEN",
+        organization: "Citizen",
+        status: "REPORTED",
+        city: report.cityKey,
+        issueType: report.issueCategory,
+        locationHash: `hash_location_${report.id}`,
+        evidenceHash: report.evidenceHash,
+        citizenHash: report.citizenId ? `hash_citizen_${report.citizenId}` : undefined,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn("CityPramaan Fabric proof adapter unavailable:", await response.text());
+      return undefined;
+    }
+
+    const payload = (await response.json()) as { proof?: FabricProofMetadata };
+    return payload.proof;
+  } catch (error) {
+    console.warn("CityPramaan Fabric proof adapter unavailable:", error);
+    return undefined;
+  }
+}
+
+async function recordProofGuardFabricProof(reportId: string, result: ImageForensicsResult, actorRole = "AI_AGENT") {
+  try {
+    const response = await fetch("/api/fabric/proof", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        reportId,
+        eventType: "PROOFGUARD_IMAGE_FORENSICS",
+        proofHash: result.blockchainPayload.imageHash || result.imageHash,
+        actorRole,
+        organization: "ProofGuard AI",
+        status: `${result.blockchainPayload.decision}:${result.blockchainPayload.fraudScore}`,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn("CityPramaan Fabric ProofGuard adapter unavailable:", await response.text());
+      return undefined;
+    }
+
+    const payload = (await response.json()) as { proof?: FabricProofMetadata };
+    return payload.proof;
+  } catch (error) {
+    console.warn("CityPramaan Fabric ProofGuard adapter unavailable:", error);
+    return undefined;
+  }
+}
+
 async function reverseGeocodeArea(latitude: number, longitude: number) {
   try {
     const response = await fetch(
@@ -169,23 +227,16 @@ async function reverseGeocodeArea(latitude: number, longitude: number) {
 
 export default function ReportIssuePage() {
   const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => DEFAULT_CITY_KEY);
-  const walletSnapshot = useSyncExternalStore(subscribeWallet, getWalletSnapshot, () => "");
   const languageSnapshot = useSyncExternalStore(
     subscribeLanguage,
     getLanguageSnapshot,
     () => "en"
   );
   const selectedCity = getCityByKey(citySnapshot);
-  const wallet = parseWalletSnapshot(walletSnapshot);
   const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const tr = (key: Parameters<typeof translate>[1]) => translate(languageSnapshot, key);
-  const [ethereumAvailable, setEthereumAvailable] = useState(false);
-  const walletLabel = wallet.connected
-    ? shortWalletAddress(wallet.address)
-    : ethereumAvailable
-      ? "Connect MetaMask to sign"
-      : "Install MetaMask to sign";
   const [imageName, setImageName] = useState("");
+  const [issueImageFile, setIssueImageFile] = useState<File | undefined>();
   const [imageDataUrl, setImageDataUrl] = useState("");
   const [imageLoading, setImageLoading] = useState(false);
   const [location, setLocation] = useState(() => formatCityLocation(getCityByKey(getCitySnapshot())));
@@ -196,20 +247,18 @@ export default function ReportIssuePage() {
   const [locationDetecting, setLocationDetecting] = useState(true);
   const [locationSource, setLocationSource] = useState<"default" | "browser" | "manual" | "maps">("default");
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
-  const [description, setDescription] = useState(
-    "Large pothole appeared again near the same repaired road segment."
-  );
+  const [description, setDescription] = useState("");
   const [verified, setVerified] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [signing, setSigning] = useState(false);
   const [proofCreating, setProofCreating] = useState(false);
   const [proofError, setProofError] = useState("");
   const [createdTxHash, setCreatedTxHash] = useState("");
-  const [createdTxUrl, setCreatedTxUrl] = useState("");
   const [createdProofHash, setCreatedProofHash] = useState("");
-  const [proofMode, setProofMode] = useState<"real" | "demo">("real");
+  const [createdFabricProof, setCreatedFabricProof] = useState<FabricProofMetadata | undefined>();
   const [aiProcessing, setAiProcessing] = useState(false);
   const [aiResult, setAiResult] = useState<InfrastructureAnalysis | null>(null);
+  const [issueImageForensics, setIssueImageForensics] = useState<ImageForensicsResult | null>(null);
+  const [forensicsProcessing, setForensicsProcessing] = useState(false);
   const googleMapsUrl = buildGoogleMapsUrl(latitude, longitude);
   const googleMapsEmbedUrl = `https://maps.google.com/maps?q=${latitude},${longitude}&z=16&output=embed`;
   const autoLocationRequested = useRef(false);
@@ -220,13 +269,20 @@ export default function ReportIssuePage() {
     maps: "Google Maps link",
   }[locationSource];
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setEthereumAvailable(hasEthereumProvider());
-    }, 0);
+  function getForensicsReportHistory(cityKey = selectedCity.key) {
+    try {
+      const localReports = JSON.parse(getLocalReportsSnapshot()) as CivicReport[];
+      const reportMap = new Map<string, CivicReport>();
 
-    return () => window.clearTimeout(timer);
-  }, []);
+      for (const report of [...getReportsForCity(cityKey), ...localReports]) {
+        reportMap.set(report.id, report);
+      }
+
+      return Array.from(reportMap.values());
+    } catch {
+      return getReportsForCity(cityKey);
+    }
+  }
 
   async function runAiVerification() {
     setVerified(false);
@@ -256,23 +312,53 @@ export default function ReportIssuePage() {
     }
 
     setImageName(file.name);
+    setIssueImageFile(file);
     setImageDataUrl("");
     setImageLoading(true);
+    setForensicsProcessing(false);
+    setIssueImageForensics(null);
     setVerified(false);
     setAiResult(null);
     setSubmitted(false);
     setProofError("");
     setCreatedTxHash("");
-    setCreatedTxUrl("");
     setCreatedProofHash("");
+    setCreatedFabricProof(undefined);
 
     try {
-      setImageDataUrl(await readFileAsDataUrl(file));
+      const dataUrl = await readFileAsDataUrl(file);
+      setImageDataUrl(dataUrl);
+      setImageLoading(false);
+      setForensicsProcessing(true);
+      setProofError("ProofGuard AI is checking image authenticity, metadata, GPS, and reuse risk...");
+
+      const result = await requestImageForensics({
+        proofType: "CITIZEN_ISSUE",
+        file,
+        imageName: file.name,
+        imageDataUrl: dataUrl,
+        cityReports: getForensicsReportHistory(),
+        uploadedLatitude: latitude,
+        uploadedLongitude: longitude,
+        complaintLatitude: latitude,
+        complaintLongitude: longitude,
+      });
+
+      setIssueImageForensics(result);
+      setProofError(
+        result.decision === "ACCEPT"
+          ? ""
+          : result.decision === "REJECT"
+            ? "ProofGuard AI rejected this proof because it appears reused, fake, or highly suspicious."
+            : "ProofGuard AI marked this proof for manual review. You can submit it, but Ward Admin must verify it."
+      );
     } catch {
       setImageName("");
+      setIssueImageFile(undefined);
       setProofError("Could not prepare this image. Please capture again or choose another photo.");
     } finally {
       setImageLoading(false);
+      setForensicsProcessing(false);
     }
   }
 
@@ -292,8 +378,10 @@ export default function ReportIssuePage() {
     setSubmitted(false);
     setProofError("");
     setCreatedTxHash("");
-    setCreatedTxUrl("");
     setCreatedProofHash("");
+    setCreatedFabricProof(undefined);
+    setIssueImageForensics(null);
+    setForensicsProcessing(false);
   }
 
   const applyRealCoordinates = useCallback(async (
@@ -314,8 +402,10 @@ export default function ReportIssuePage() {
     setSubmitted(false);
     setProofError("");
     setCreatedTxHash("");
-    setCreatedTxUrl("");
     setCreatedProofHash("");
+    setCreatedFabricProof(undefined);
+    setIssueImageForensics(null);
+    setForensicsProcessing(false);
 
     const detectedArea = await reverseGeocodeArea(nextLatitude, nextLongitude);
 
@@ -405,8 +495,10 @@ export default function ReportIssuePage() {
     setSubmitted(false);
     setProofError("");
     setCreatedTxHash("");
-    setCreatedTxUrl("");
     setCreatedProofHash("");
+    setCreatedFabricProof(undefined);
+    setIssueImageForensics(null);
+    setForensicsProcessing(false);
   }
 
   async function createProof() {
@@ -416,6 +508,11 @@ export default function ReportIssuePage() {
 
     if (imageLoading) {
       setProofError("Photo is still being prepared. Please wait a moment, then sign again.");
+      return;
+    }
+
+    if (forensicsProcessing) {
+      setProofError("ProofGuard AI is still checking this image. Please wait a moment.");
       return;
     }
 
@@ -431,6 +528,27 @@ export default function ReportIssuePage() {
       const savedLocation = location.includes(latitude.toFixed(5))
         ? location
         : `${location} (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`;
+      const proofGuard =
+        issueImageForensics ??
+        (await requestImageForensics({
+          proofType: "CITIZEN_ISSUE",
+          file: issueImageFile,
+          imageName,
+          imageDataUrl,
+          cityReports: getForensicsReportHistory(reportCity.key),
+          uploadedLatitude: latitude,
+          uploadedLongitude: longitude,
+          complaintLatitude: latitude,
+          complaintLongitude: longitude,
+        }));
+
+      setIssueImageForensics(proofGuard);
+
+      if (proofGuard.decision === "REJECT") {
+        setProofError("ProofGuard AI rejected this image. Capture a fresh field photo before creating public proof.");
+        return;
+      }
+
       const result =
         aiResult ??
         (await requestInfrastructureAnalysis({
@@ -456,26 +574,7 @@ export default function ReportIssuePage() {
         savedLocation,
         now,
       ]);
-      let txHash = "";
-      let txUrl = "";
-      let mode: "real" | "demo" = "real";
-      let fallbackMessage = "";
-
-      if (wallet.connected && hasEthereumProvider()) {
-        try {
-          txHash = await createReportTransaction(reportId, proofBundleHash);
-          txUrl = buildExplorerTxUrl(txHash, wallet.chainKey);
-        } catch (transactionError) {
-          mode = "demo";
-          txHash = await createDemoProofTransactionHash(`report:${reportId}:${proofBundleHash}`);
-          txUrl = "";
-          fallbackMessage = `Tenderly/MetaMask transaction failed, so a demo proof was saved instead. ${formatWalletError(transactionError)}`;
-        }
-      } else {
-        mode = "demo";
-        txHash = await createDemoProofTransactionHash(`report:${reportId}:${proofBundleHash}`);
-        fallbackMessage = "Demo proof saved locally. Connect MetaMask to create a real blockchain transaction.";
-      }
+      const txHash = await deriveTransactionHash(`fabric-pending:${reportId}:${proofBundleHash}`);
 
       const aiTxHash = await deriveTransactionHash(`${reportId}:${result.proofTag}:aiVerification`);
 
@@ -484,7 +583,7 @@ export default function ReportIssuePage() {
         cityKey: reportCity.key,
         title: `${result.issueType} awaiting repair in ${reportCity.name}`,
         ward: reportCity.repairWard,
-        status: "PENDING_PROOF",
+        status: proofGuard.decision === "MANUAL_REVIEW" ? "OPEN" : "PENDING_PROOF",
         severity: result.severity,
         confidence: result.confidence,
         contractor: "Awaiting assignment",
@@ -525,6 +624,7 @@ export default function ReportIssuePage() {
             : undefined,
         issueImageName: imageName || "citizen-issue-evidence.jpg",
         issueImageDataUrl: imageDataUrl,
+        issueImageForensics: proofGuard,
         evidenceHash,
         proofBundleHash,
         history: [
@@ -534,11 +634,19 @@ export default function ReportIssuePage() {
             time: new Date(now).toLocaleString(),
             tx: txHash,
           },
-          {
-            label: "AI verified civic issue",
-            detail: `${result.category} classified with ${result.confidence}% confidence, ${result.severity} severity, and ${result.aiPriorityScore}/100 priority score.`,
+        {
+          label: "AI verified civic issue",
+          detail: `${result.category} classified with ${result.confidence}% confidence (${result.confidenceBand}), ${result.severity} severity, and ${result.aiPriorityScore}/100 priority score. ${
+            result.humanReviewRequired ? "Human review required before final closure." : "Normal workflow allowed."
+          }`,
             time: new Date(now).toLocaleString(),
             tx: aiTxHash,
+          },
+          {
+            label: "ProofGuard AI image forensics",
+            detail: `Fraud score ${proofGuard.fraudScore}/100, ${proofGuard.riskLevel}, decision ${proofGuard.decision}. ${proofGuard.forensicSummary}`,
+            time: new Date(now).toLocaleString(),
+            tx: proofGuard.blockchainPayload.imageHash,
           },
           ...(result.category === "POWER_OUTAGE"
             ? [
@@ -554,24 +662,40 @@ export default function ReportIssuePage() {
         ],
       };
 
-      await saveReportEverywhere(newReport);
+      const fabricProof = await recordReportCreatedFabricProof(newReport);
+      const proofGuardFabricProof = await recordProofGuardFabricProof(reportId, proofGuard);
+      const fabricProofs = [fabricProof, proofGuardFabricProof].filter(
+        (proof): proof is FabricProofMetadata => Boolean(proof)
+      );
+      const reportWithFabricProof = fabricProof
+        ? {
+            ...newReport,
+            fabricProof,
+            fabricProofs: [...(newReport.fabricProofs ?? []), ...fabricProofs],
+          }
+        : proofGuardFabricProof
+          ? {
+              ...newReport,
+              fabricProof: proofGuardFabricProof,
+              fabricProofs: [...(newReport.fabricProofs ?? []), proofGuardFabricProof],
+            }
+          : newReport;
+
+      await saveReportEverywhere(reportWithFabricProof);
 
       setAiResult(result);
       setSelectedCityKey(reportCity.key);
       setVerified(true);
       setSubmitted(true);
-      setSigning(false);
       setCreatedTxHash(txHash);
-      setCreatedTxUrl(txUrl);
       setCreatedProofHash(proofBundleHash);
-      setProofMode(mode);
-      if (fallbackMessage) {
-        setProofError(fallbackMessage);
-      }
+      setProofError("AI/RAG proof created with ProofGuard image forensics. Fabric anchoring is ready for teammate integration.");
+      setCreatedFabricProof(fabricProof ?? proofGuardFabricProof);
     } catch (error) {
       const message =
-        formatWalletError(error) ||
-        "Could not create the on-chain report transaction. Check MetaMask, testnet gas, and contract config.";
+        error instanceof Error
+          ? error.message
+          : "Could not create the AI/RAG proof bundle. Please try again.";
 
       setProofError(message);
       setLocationMessage(message);
@@ -592,17 +716,20 @@ export default function ReportIssuePage() {
     setMapsLink("");
     setLocationMessage(`${city.name} default Google Maps pin selected.`);
     setImageName("");
+    setIssueImageFile(undefined);
     setImageDataUrl("");
     setImageLoading(false);
-    setDescription(`Large pothole appeared again near the repaired road segment at ${city.primaryArea}.`);
+    setIssueImageForensics(null);
+    setForensicsProcessing(false);
+    setDescription("");
     setVerified(false);
     setAiResult(null);
     setSubmitted(false);
     setProofCreating(false);
     setProofError("");
     setCreatedTxHash("");
-    setCreatedTxUrl("");
     setCreatedProofHash("");
+    setCreatedFabricProof(undefined);
   }
 
   return (
@@ -637,15 +764,15 @@ export default function ReportIssuePage() {
           </button>
           <LanguageSelector compact />
           <ThemeToggle />
-          <button className="rounded border border-[#ffc08d]/50 bg-[#ffc08d]/10 px-4 py-2 font-mono text-xs text-[#ffc08d] transition hover:bg-[#ffc08d]/20">
-            {tr("connectWallet")}
-          </button>
+          <span className="rounded border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-4 py-2 font-mono text-xs text-[#00dbe9]">
+            AI/RAG active
+          </span>
         </div>
       </header>
 
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-[#ff9933]/15 bg-[linear-gradient(180deg,rgba(255,153,51,0.08),rgba(0,0,0,0.5)_22%,rgba(0,219,233,0.045))] px-4 pb-5 pt-20 shadow-[5px_0_24px_rgba(0,0,0,0.45)] backdrop-blur-2xl md:flex">
         <div className="mt-2 border-b border-white/10 px-2 pb-5">
-          <BrandLogo size="sm" subtitle={tr("blockchainProof")} />
+          <BrandLogo size="sm" subtitle="AI proof flow" />
         </div>
 
         <nav className="mt-5 flex flex-1 flex-col gap-1">
@@ -795,6 +922,13 @@ export default function ReportIssuePage() {
                   <p className="mt-3 rounded border border-[#ffb4ab]/25 bg-[#ffb4ab]/10 px-3 py-2 text-sm text-[#ffdad6]">
                     {proofError}
                   </p>
+                )}
+                {(forensicsProcessing || issueImageForensics) && (
+                  <ImageForensicsPanel
+                    title="ProofGuard AI image forensics"
+                    loading={forensicsProcessing}
+                    result={issueImageForensics}
+                  />
                 )}
               </section>
 
@@ -1054,6 +1188,13 @@ export default function ReportIssuePage() {
                       <AnalysisRow label={tr("duplicateRisk")} value={aiResult.duplicateRisk} />
                       <AnalysisRow label="AI Priority Score" value={`${aiResult.aiPriorityScore}/100`} />
                       <AnalysisRow label="Image Evidence Score" value={`${aiResult.imageEvidenceScore}/100`} />
+                      <AnalysisRow label="Confidence Band" value={aiResult.confidenceBand} />
+                      <AnalysisRow
+                        label="Human Review"
+                        value={aiResult.humanReviewRequired ? "Required" : "Not required"}
+                      />
+                      <AnalysisRow label="AI Mode" value={aiResult.aiMode ?? "real-ai"} />
+                      <AnalysisRow label="Provider" value={aiResult.aiProvider ?? "configured AI"} />
                       <AnalysisRow label="Model" value={aiResult.modelVersion} />
                     </div>
                     <div className="mt-4 rounded border border-white/10 bg-black/25 p-3">
@@ -1062,6 +1203,11 @@ export default function ReportIssuePage() {
                       <p className="mt-2 text-xs leading-5 text-[#dbc2b0]/75">
                         Impact: {aiResult.estimatedImpact}
                       </p>
+                      {aiResult.aiFallbackReason && (
+                        <p className="mt-2 rounded border border-[#ffc08d]/30 bg-[#ffc08d]/10 p-2 text-xs leading-5 text-[#ffdcc2]">
+                          Fallback reason: {aiResult.aiFallbackReason}
+                        </p>
+                      )}
                     </div>
                     <div className="mt-4 grid gap-2">
                       {aiResult.evidenceSignals.slice(0, 3).map((signal) => (
@@ -1113,7 +1259,7 @@ export default function ReportIssuePage() {
                   </div>
                   <div>
                     <p className="break-all font-mono text-sm text-white">
-                      {wallet.connected ? wallet.address : walletLabel}
+                      {getCurrentUser()?.email ?? "citizen-session"}
                     </p>
                     <p className="font-mono text-xs text-[#dbc2b0]/60">
                       Node ID: {selectedCity.key.toUpperCase()}-9942
@@ -1148,15 +1294,17 @@ export default function ReportIssuePage() {
                     }
 
                     setProofError("");
-                    setSigning(true);
+                    void createProof();
                   }}
-                  disabled={aiProcessing || submitted || proofCreating}
+                  disabled={aiProcessing || submitted || proofCreating || forensicsProcessing}
                   className="royal-blue-glow flex w-full items-center justify-center gap-2 rounded border border-[#2A2D35] bg-[#1A1C23] px-4 py-4 font-mono text-xs font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ShieldCheck size={16} />
                   {imageLoading
                     ? "Preparing photo..."
-                    : proofCreating
+                    : forensicsProcessing
+                      ? "ProofGuard scanning..."
+                      : proofCreating
                       ? `${tr("createProof")}...`
                       : submitted
                         ? tr("newProofCreated")
@@ -1181,7 +1329,7 @@ export default function ReportIssuePage() {
                     <p className="font-semibold">{tr("newProofCreated")}</p>
                   </div>
                   <p className="mt-3 text-sm text-[#dbc2b0]">
-                    {tr("latestCitizenReport")} {tr("viewOnCommandCenter")}. {tr("blockchainTransaction")}.
+                  {tr("latestCitizenReport")} {tr("viewOnCommandCenter")}. Fabric anchoring is ready for teammate integration.
                   </p>
                   {aiResult && (
                     <p className="mt-2 text-sm text-[#dbc2b0]">
@@ -1191,29 +1339,22 @@ export default function ReportIssuePage() {
                   <div className="mt-3 space-y-2 rounded bg-black/45 p-3 font-mono text-xs">
                     <div className="flex items-center justify-between gap-3">
                       <span className="uppercase text-[#dbc2b0]/55">Proof mode</span>
-                      <span className={proofMode === "real" ? "text-[#00eb88]" : "text-[#ffc08d]"}>
-                        {proofMode === "real" ? "Real blockchain" : "Demo/local proof"}
-                      </span>
+                      <span className="text-[#ffc08d]">AI/RAG + Fabric pending</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="uppercase text-[#dbc2b0]/55">Tx hash</span>
+                      <span className="uppercase text-[#dbc2b0]/55">Fabric-ready hash</span>
                       <span className="truncate text-[#00eb88]">{createdTxHash || "Created"}</span>
                     </div>
-                    {createdTxUrl && (
-                      <a
-                        href={createdTxUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block truncate text-[#7df4ff] underline-offset-4 hover:underline"
-                      >
-                        Open transaction in explorer
-                      </a>
-                    )}
                     <div className="flex items-center justify-between gap-3">
                       <span className="uppercase text-[#dbc2b0]/55">Proof bundle</span>
                       <span className="truncate text-[#7df4ff]">{createdProofHash || "Stored"}</span>
                     </div>
                   </div>
+                  {createdFabricProof && (
+                    <div className="mt-3">
+                      <FabricProofCard proof={createdFabricProof} />
+                    </div>
+                  )}
                   <Link
                     href="/"
                     className="mt-4 inline-flex w-full items-center justify-center rounded border border-[#00eb88]/30 bg-[#00eb88]/10 px-4 py-2 text-sm font-semibold text-[#00eb88] transition hover:bg-[#00eb88]/20"
@@ -1227,89 +1368,6 @@ export default function ReportIssuePage() {
         </div>
       </section>
 
-      {signing && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-[#050505]/82 p-4 backdrop-blur-xl">
-          <div className="cp-cyber-card pointer-events-auto relative z-[1000] w-full max-w-md rounded-lg border-[#00dbe9]/40 p-7 shadow-[0_0_34px_rgba(0,219,233,0.16)]">
-            <div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4">
-              <h3 className="flex items-center gap-2 font-mono text-xs uppercase text-[#00dbe9]">
-                <ShieldCheck size={16} />
-                {tr("signAndCreate")}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setSigning(false)}
-                className="grid h-8 w-8 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0] transition hover:text-[#ffb4ab]"
-                aria-label="Close signing request"
-              >
-                <X size={15} />
-              </button>
-            </div>
-
-            <div className="mb-6 grid place-items-center py-4 text-center">
-              <div className="mb-4 grid h-16 w-16 animate-spin place-items-center rounded-full border-2 border-dashed border-[#00dbe9] text-[#00dbe9]">
-                <Fingerprint size={24} />
-              </div>
-              <div className="mb-4 h-1 w-full overflow-hidden rounded bg-[#201f20]">
-                <div className="shimmer-bg h-full w-full" />
-              </div>
-              <p className="font-mono text-sm text-white">{tr("readyToSign")}</p>
-              <p className="font-mono text-sm text-[#ffc08d]">{walletLabel}</p>
-            </div>
-
-            <div className="mb-5 space-y-2 rounded border border-white/5 bg-black/40 p-4">
-              <SignRow
-                label="Contract"
-                value="CityPramaanRegistry"
-              />
-              <SignRow label="Method" value="createReport(publicId, reportHash)" />
-              <SignRow label="Issue" value={aiResult?.issueType ?? "Infrastructure issue"} />
-              <SignRow label="Proof Tag" value={aiResult?.proofTag ?? "CIVIC_ASSET_PROOF"} />
-              <SignRow
-                label="Network"
-                value={wallet.chainKey.replace("-", " ")}
-              />
-              <SignRow
-                label="Gas"
-                value="Uses real testnet gas from your wallet"
-              />
-            </div>
-
-            <div className="rounded border border-[#00eb88]/20 bg-[#00eb88]/10 p-4">
-              <div className="flex items-center gap-2 text-[#00eb88]">
-                <Wallet size={16} />
-                <p className="font-semibold">{tr("blockchainProof")}</p>
-              </div>
-              <p className="mt-2 text-sm text-[#dbc2b0]">
-                A public report record will be created for {location} after you sign the on-chain transaction.
-              </p>
-            </div>
-
-            <div className="mt-5 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setSigning(false)}
-                className="flex-1 rounded border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => void createProof()}
-                disabled={imageLoading || proofCreating}
-                className="relative z-10 flex-1 rounded bg-[#ffc08d] px-4 py-2 text-sm font-semibold text-[#4c2700] shadow-[0_0_22px_rgba(255,153,51,0.22)] transition hover:bg-[#ffdcc2] disabled:cursor-wait disabled:opacity-70"
-              >
-                {imageLoading ? "Preparing..." : proofCreating ? `${tr("signAndCreate")}...` : tr("signAndCreate")}
-              </button>
-            </div>
-
-            {proofError && (
-              <p className="mt-3 rounded border border-[#ffb4ab]/25 bg-[#ffb4ab]/10 px-3 py-2 text-sm text-[#ffdad6]">
-                {proofError}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
     </main>
   );
 }
@@ -1351,11 +1409,3 @@ function AnalysisRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function SignRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="font-mono text-[10px] uppercase text-[#dbc2b0]/55">{label}</span>
-      <span className="text-right font-mono text-xs text-white">{value}</span>
-    </div>
-  );
-}

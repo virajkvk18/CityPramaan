@@ -4,6 +4,7 @@ import {
   type InfrastructureAnalysis,
   type InfrastructureCategory,
 } from "@/src/lib/infrastructure-analyzer";
+import { formatRetrievedRulesForPrompt, retrieveCivicRules } from "@/src/lib/civic-rag-rules";
 
 type AnalyzeIssueBody = {
   description?: string;
@@ -38,22 +39,32 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as AnalyzeIssueBody;
   const input = normalizeInput(body);
   const fallback = analyzeInfrastructureIssue(input);
+  const retrievedRules = retrieveCivicRules({
+    text: `${input.description} ${input.imageName} ${input.location}`,
+    category: fallback.category,
+    city: input.cityName,
+    limit: 5,
+  });
   const provider = getProviderConfig();
 
   if (!provider) {
     return NextResponse.json({
       mode: "ruleset-fallback",
       provider: "local",
-      fallbackReason: "No GROQ_API_KEY or XAI_API_KEY configured.",
+      fallbackReason: "No CITYPRAMAAN_GROQ_API_KEY or CITYPRAMAAN_XAI_API_KEY configured.",
+      retrievedRules,
       analysis: {
         ...fallback,
-        modelVersion: `${fallback.modelVersion} (no API key fallback)`,
+        modelVersion: `${fallback.modelVersion} + RAG (no API key fallback)`,
+        aiMode: "ruleset-fallback",
+        aiProvider: "local",
+        aiFallbackReason: "No CITYPRAMAAN_GROQ_API_KEY or CITYPRAMAAN_XAI_API_KEY configured.",
       },
     });
   }
 
   try {
-    const completion = await callVisionProvider(provider, input, fallback);
+    const completion = await callVisionProvider(provider, input, fallback, retrievedRules);
     const content = completion?.choices?.[0]?.message?.content;
 
     if (!content) {
@@ -66,7 +77,12 @@ export async function POST(request: Request) {
     return NextResponse.json({
       mode: "real-ai",
       provider: provider.provider,
-      analysis,
+      retrievedRules,
+      analysis: {
+        ...analysis,
+        aiMode: "real-ai",
+        aiProvider: provider.label,
+      },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "AI provider request failed.";
@@ -75,9 +91,13 @@ export async function POST(request: Request) {
       mode: "ruleset-fallback",
       provider: provider.provider,
       fallbackReason: message,
+      retrievedRules,
       analysis: {
         ...fallback,
-        modelVersion: `${fallback.modelVersion} (AI fallback: ${provider.label})`,
+        modelVersion: `${fallback.modelVersion} + RAG (AI fallback: ${provider.label})`,
+        aiMode: "ruleset-fallback",
+        aiProvider: provider.label,
+        aiFallbackReason: message,
       },
     });
   }
@@ -94,7 +114,7 @@ function normalizeInput(body: AnalyzeIssueBody) {
 }
 
 function getProviderConfig(): ProviderConfig | null {
-  const groqKey = process.env.GROQ_API_KEY;
+  const groqKey = process.env.CITYPRAMAAN_GROQ_API_KEY;
 
   if (groqKey) {
     return {
@@ -102,11 +122,11 @@ function getProviderConfig(): ProviderConfig | null {
       label: "Groq Vision",
       endpoint: "https://api.groq.com/openai/v1/chat/completions",
       apiKey: groqKey,
-      model: process.env.GROQ_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct",
+      model: process.env.CITYPRAMAAN_GROQ_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct",
     };
   }
 
-  const xaiKey = process.env.XAI_API_KEY;
+  const xaiKey = process.env.CITYPRAMAAN_XAI_API_KEY;
 
   if (xaiKey) {
     return {
@@ -114,7 +134,7 @@ function getProviderConfig(): ProviderConfig | null {
       label: "xAI Grok Vision",
       endpoint: "https://api.x.ai/v1/chat/completions",
       apiKey: xaiKey,
-      model: process.env.XAI_MODEL || "grok-2-vision-1212",
+      model: process.env.CITYPRAMAAN_XAI_MODEL || "grok-2-vision-1212",
     };
   }
 
@@ -124,7 +144,8 @@ function getProviderConfig(): ProviderConfig | null {
 async function callVisionProvider(
   provider: ProviderConfig,
   input: ReturnType<typeof normalizeInput>,
-  fallback: InfrastructureAnalysis
+  fallback: InfrastructureAnalysis,
+  retrievedRules: ReturnType<typeof retrieveCivicRules>
 ) {
   const content: Array<
     | { type: "text"; text: string }
@@ -132,7 +153,7 @@ async function callVisionProvider(
   > = [
     {
       type: "text",
-      text: buildPrompt(input, fallback),
+      text: buildPrompt(input, fallback, retrievedRules),
     },
   ];
 
@@ -191,14 +212,21 @@ async function callVisionProvider(
   }>;
 }
 
-function buildPrompt(input: ReturnType<typeof normalizeInput>, fallback: InfrastructureAnalysis) {
+function buildPrompt(
+  input: ReturnType<typeof normalizeInput>,
+  fallback: InfrastructureAnalysis,
+  retrievedRules: ReturnType<typeof retrieveCivicRules>
+) {
   return `
-Analyze this CityPramaan civic issue using the image when present.
+Analyze this CityPramaan civic issue using the image when present and the retrieved civic rules as ground truth.
 
 Citizen description: ${input.description}
 Image filename: ${input.imageName || "not provided"}
 Location: ${input.location}
 City: ${input.cityName}
+
+Retrieved civic rules / RAG context:
+${formatRetrievedRulesForPrompt(retrievedRules)}
 
 Allowed categories:
 ${allowedCategories.join(", ")}
@@ -206,18 +234,23 @@ ${allowedCategories.join(", ")}
 Return JSON with exactly these keys:
 category, issueType, assetType, severity, confidence, slaHours, warrantyRequired, duplicateRisk,
 publicSummary, recommendedAction, proofTag, evidenceSignals, aiPriorityScore, imageEvidenceScore,
-estimatedImpact.
+estimatedImpact, humanReviewRequired, confidenceBand.
 
 Rules:
 - category must be one of the allowed categories.
 - severity must be Low, Medium, High, or Critical.
 - confidence, aiPriorityScore, imageEvidenceScore must be 0-100 numbers.
+- confidenceBand must be LOW, MEDIUM, or HIGH.
+- humanReviewRequired must be true when confidence is below 70, image evidence is weak, or public safety is critical.
 - evidenceSignals must be 3-6 short strings.
 - publicSummary must mention the issue, location, and public proof tracking.
+- slaHours and warrantyRequired must follow retrieved civic rules when relevant.
 - If image evidence is unclear, say so in evidenceSignals and reduce imageEvidenceScore.
+- If the image looks like a dashboard, document, random screenshot, selfie, indoor object, or anything unrelated to civic infrastructure, return GENERAL_INFRASTRUCTURE, issueType "Unclear / Non-civic Evidence", confidence below 55, imageEvidenceScore below 45, and humanReviewRequired true.
+- Do not copy the baseline local ruleset if the image contradicts the text.
 - Prefer practical Indian municipal actions.
 
-Baseline local ruleset result for reference:
+Baseline local ruleset result for fallback reference only, not as truth:
 ${JSON.stringify(fallback)}
 `.trim();
 }
@@ -248,6 +281,7 @@ function sanitizeAnalysis(
   const aiPriorityScore = clampNumber(raw.aiPriorityScore, fallback.aiPriorityScore);
   const imageEvidenceScore = clampNumber(raw.imageEvidenceScore, fallback.imageEvidenceScore);
   const evidenceSignals = asStringArray(raw.evidenceSignals, fallback.evidenceSignals);
+  const confidenceBand = asConfidenceBand(raw.confidenceBand) ?? bandForConfidence(confidence);
 
   return {
     category,
@@ -267,6 +301,11 @@ function sanitizeAnalysis(
     imageEvidenceScore,
     estimatedImpact: asString(raw.estimatedImpact, fallback.estimatedImpact),
     modelVersion: `${provider.label} | ${provider.model}`,
+    humanReviewRequired:
+      typeof raw.humanReviewRequired === "boolean"
+        ? raw.humanReviewRequired
+        : confidence < 70 || imageEvidenceScore < 55 || severity === "Critical",
+    confidenceBand,
   };
 }
 
@@ -280,6 +319,22 @@ function asSeverity(value: unknown): InfrastructureAnalysis["severity"] | null {
   return typeof value === "string" && allowedSeverities.includes(value as InfrastructureAnalysis["severity"])
     ? (value as InfrastructureAnalysis["severity"])
     : null;
+}
+
+function asConfidenceBand(value: unknown): InfrastructureAnalysis["confidenceBand"] | null {
+  return value === "LOW" || value === "MEDIUM" || value === "HIGH" ? value : null;
+}
+
+function bandForConfidence(confidence: number): InfrastructureAnalysis["confidenceBand"] {
+  if (confidence >= 85) {
+    return "HIGH";
+  }
+
+  if (confidence >= 65) {
+    return "MEDIUM";
+  }
+
+  return "LOW";
 }
 
 function asString(value: unknown, fallback: string) {

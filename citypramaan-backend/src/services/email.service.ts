@@ -1,5 +1,6 @@
+import { resolve4 } from 'dns/promises';
 import nodemailer from 'nodemailer';
-import { env, hasSmtpConfig } from '../config/env';
+import { env, hasBrevoConfig, hasResendConfig, hasSmtpConfig } from '../config/env';
 import { HttpError } from '../utils/http-error';
 
 export interface VerificationEmailInput {
@@ -10,44 +11,192 @@ export interface VerificationEmailInput {
 }
 
 export interface EmailDeliveryResult {
-  delivery: 'smtp' | 'console';
+  delivery: 'brevo' | 'resend' | 'smtp' | 'console';
   devCodeExposed: boolean;
   messageId?: string;
 }
 
 export async function sendVerificationEmail(input: VerificationEmailInput): Promise<EmailDeliveryResult> {
-  if (!hasSmtpConfig()) {
-    if (env.nodeEnv === 'production') {
-      throw new HttpError(503, 'SMTP is required to send verification emails in production.', 'SMTP_REQUIRED');
-    }
-
-    console.log(
-      `[CityPramaan] Verification code for ${input.email}: ${input.code} ` +
-        `(expires ${input.expiresAt})`
-    );
-
-    return {
-      delivery: 'console',
-      devCodeExposed: env.exposeDevVerificationCode,
-    };
+  if (hasBrevoConfig()) {
+    return sendViaBrevo(input);
   }
 
+  if (hasResendConfig()) {
+    return sendViaResend(input);
+  }
+
+  if (hasSmtpConfig()) {
+    return sendViaSmtp(input);
+  }
+
+  if (env.nodeEnv === 'production') {
+    throw new HttpError(
+      503,
+      'An email provider is required to send verification emails in production.',
+      'EMAIL_PROVIDER_REQUIRED'
+    );
+  }
+
+  console.log(
+    `[CityPramaan] Verification code for ${input.email}: ${input.code} ` +
+      `(expires ${input.expiresAt})`
+  );
+
+  return {
+    delivery: 'console',
+    devCodeExposed: env.exposeDevVerificationCode,
+  };
+}
+
+async function sendViaBrevo(input: VerificationEmailInput): Promise<EmailDeliveryResult> {
+  const content = buildVerificationEmailContent(input);
+  const recipient: { email: string; name?: string } = { email: input.email };
+  if (input.name) recipient.name = input.name;
+
+  try {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'api-key': env.brevoApiKey,
+      },
+      body: JSON.stringify({
+        sender: {
+          name: env.brevoFromName,
+          email: env.brevoFromEmail,
+        },
+        to: [recipient],
+        subject: content.subject,
+        textContent: content.text,
+        htmlContent: content.html,
+      }),
+    });
+
+    const responseBody = await parseJsonOrText(response);
+
+    if (!response.ok) {
+      throw new Error(`Brevo API error ${response.status}: ${JSON.stringify(responseBody)}`);
+    }
+
+    return {
+      delivery: 'brevo',
+      devCodeExposed: false,
+      messageId: getMessageId(responseBody),
+    };
+  } catch (error) {
+    console.error('Verification email delivery failed:', error);
+    throw new HttpError(
+      503,
+      'Could not send verification email. Check email provider settings in Render.',
+      'EMAIL_DELIVERY_FAILED'
+    );
+  }
+}
+
+async function sendViaSmtp(input: VerificationEmailInput): Promise<EmailDeliveryResult> {
+  const smtpConnectionHost = await getSmtpConnectionHost();
   const transporter = nodemailer.createTransport({
-    host: env.smtpHost,
+    host: smtpConnectionHost,
     port: env.smtpPort,
     secure: env.smtpSecure,
+    connectionTimeout: env.smtpTimeoutMs,
+    greetingTimeout: env.smtpTimeoutMs,
+    socketTimeout: env.smtpTimeoutMs,
+    tls: smtpConnectionHost !== env.smtpHost ? { servername: env.smtpHost } : undefined,
     auth: {
       user: env.smtpUser,
       pass: env.smtpPass,
     },
   });
+  const content = buildVerificationEmailContent(input);
+  let info;
+
+  try {
+    info = await transporter.sendMail({
+      from: env.smtpFrom,
+      to: input.email,
+      ...content,
+    });
+  } catch (error) {
+    console.error('Verification email delivery failed:', error);
+    throw new HttpError(
+      503,
+      'Could not send verification email. Check email provider settings in Render.',
+      'EMAIL_DELIVERY_FAILED'
+    );
+  }
+
+  return {
+    delivery: 'smtp',
+    devCodeExposed: false,
+    messageId: info.messageId,
+  };
+}
+
+async function sendViaResend(input: VerificationEmailInput): Promise<EmailDeliveryResult> {
+  const content = buildVerificationEmailContent(input);
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${env.resendApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: env.resendFrom,
+        to: [input.email],
+        ...content,
+      }),
+    });
+
+    const responseBody = await parseJsonOrText(response);
+
+    if (!response.ok) {
+      throw new Error(`Resend API error ${response.status}: ${JSON.stringify(responseBody)}`);
+    }
+
+    return {
+      delivery: 'resend',
+      devCodeExposed: false,
+      messageId: getMessageId(responseBody),
+    };
+  } catch (error) {
+    console.error('Verification email delivery failed:', error);
+    throw new HttpError(
+      503,
+      'Could not send verification email. Check email provider settings in Render.',
+      'EMAIL_DELIVERY_FAILED'
+    );
+  }
+}
+
+async function getSmtpConnectionHost(): Promise<string> {
+  if (!env.smtpForceIpv4) {
+    return env.smtpHost;
+  }
+
+  try {
+    const addresses = await resolve4(env.smtpHost);
+    return addresses[0] || env.smtpHost;
+  } catch (error) {
+    console.warn('Could not resolve SMTP IPv4 address, using configured SMTP host:', error);
+    return env.smtpHost;
+  }
+}
+
+function buildVerificationEmailContent(input: VerificationEmailInput): {
+  subject: string;
+  text: string;
+  html: string;
+} {
   const minutes = Math.max(
     1,
     Math.ceil((new Date(input.expiresAt).getTime() - Date.now()) / 60_000)
   );
-  const info = await transporter.sendMail({
-    from: env.smtpFrom,
-    to: input.email,
+
+  return {
     subject: 'Verify your CityPramaan email',
     text: [
       `Hi ${input.name || 'there'},`,
@@ -64,13 +213,32 @@ export async function sendVerificationEmail(input: VerificationEmailInput): Prom
       `<p>It expires in ${minutes} minutes.</p>`,
       '<p>If you did not request this, you can ignore this email.</p>',
     ].join(''),
-  });
-
-  return {
-    delivery: 'smtp',
-    devCodeExposed: false,
-    messageId: info.messageId,
   };
+}
+
+async function parseJsonOrText(response: Response): Promise<unknown> {
+  const responseText = await response.text();
+
+  if (!responseText) {
+    return undefined;
+  }
+
+  try {
+    return JSON.parse(responseText);
+  } catch {
+    return responseText;
+  }
+}
+
+function getMessageId(responseBody: unknown): string | undefined {
+  if (!responseBody || typeof responseBody !== 'object') {
+    return undefined;
+  }
+
+  const body = responseBody as { id?: unknown; messageId?: unknown };
+  if (typeof body.id === 'string') return body.id;
+  if (typeof body.messageId === 'string') return body.messageId;
+  return undefined;
 }
 
 function escapeHtml(value: string): string {

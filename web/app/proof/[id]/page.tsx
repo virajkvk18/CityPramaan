@@ -14,6 +14,7 @@ import {
   FileImage,
   Fingerprint,
   MapPin,
+  ScanSearch,
   ShieldAlert,
   ShieldCheck,
   Sparkles,
@@ -24,31 +25,32 @@ import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { ChainProofCard } from "@/src/components/proof/ChainProofCard";
+import { FabricProofCard } from "@/src/components/proof/FabricProofCard";
+import { ImageForensicsPanel } from "@/src/components/proof/ImageForensicsPanel";
 import { DEFAULT_CITY_KEY, getCityByKey } from "@/src/lib/city-context";
 import { getCitySnapshot, subscribeCity } from "@/src/lib/city-storage";
+import { getLanguageSnapshot, subscribeLanguage } from "@/src/lib/language-storage";
 import { getReportsForCity, type CivicReport } from "@/src/lib/mock-data";
 import {
   appendReportEvent,
   getLocalReportsSnapshot,
   subscribeLocalReports,
 } from "@/src/lib/report-storage";
-import { fetchBackendReports, mergeReportsById, saveReportEverywhere } from "@/src/lib/report-sync";
-import {
-  connectWallet,
-  formatWalletError,
-  getContractAddress,
-  getPreferredChainKey,
-  getWalletSnapshot,
-  parseWalletSnapshot,
-  readProofRecord,
-  registryStatusCodes,
-  shortWalletAddress,
-  subscribeWallet,
-  type OnChainProofRecord,
-  updateProofStatusTransaction,
-} from "@/src/lib/wallet-storage";
+import { mergeReportsById, saveReportEverywhere, watchBackendReports } from "@/src/lib/report-sync";
 import { useLanguage } from "@/src/lib/use-language";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
+import {
+  requestDuplicateCheck,
+  requestEscalationRisk,
+  requestPublicSummary,
+  requestWarrantyRisk,
+  type AiAgentAudit,
+  type AiDuplicateCheckResult,
+  type AiEscalationRiskResult,
+  type AiPublicSummaryResult,
+  type AiWarrantyRiskResult,
+} from "@/src/lib/ai-agents-client";
+import { appendAiDecisionLog } from "@/src/lib/ai-decision-log";
 
 const statusTone: Record<CivicReport["status"], string> = {
   OPEN: "border-[#ffb4ab]/30 bg-[#ffb4ab]/10 text-[#ffb4ab]",
@@ -71,30 +73,19 @@ export default function ProofTimelinePage() {
   const params = useParams<{ id: string }>();
   const proofId = params.id;
   const citySnapshot = useSyncExternalStore(subscribeCity, getCitySnapshot, () => DEFAULT_CITY_KEY);
+  const languageSnapshot = useSyncExternalStore(subscribeLanguage, getLanguageSnapshot, () => "en");
   const localReportsSnapshot = useSyncExternalStore(
     subscribeLocalReports,
     getLocalReportsSnapshot,
     () => "[]"
   );
-  const walletSnapshot = useSyncExternalStore(subscribeWallet, getWalletSnapshot, () => "");
   const localReports = useMemo(
     () => JSON.parse(localReportsSnapshot) as CivicReport[],
     [localReportsSnapshot]
   );
-  const wallet = parseWalletSnapshot(walletSnapshot);
   const [backendReports, setBackendReports] = useState<CivicReport[]>([]);
   useEffect(() => {
-    let active = true;
-
-    fetchBackendReports().then((reports) => {
-      if (active) {
-        setBackendReports(reports);
-      }
-    });
-
-    return () => {
-      active = false;
-    };
+    return watchBackendReports(undefined, setBackendReports);
   }, []);
   const cityReports = useMemo(() => getReportsForCity(citySnapshot), [citySnapshot]);
   const allReports = useMemo(() => {
@@ -127,34 +118,49 @@ export default function ProofTimelinePage() {
   const primaryTransactionHash = report.repairTxHash ?? report.txHash;
   const [feedbackText, setFeedbackText] = useState("");
   const [actionMessage, setActionMessage] = useState("");
-  const [chainRecord, setChainRecord] = useState<OnChainProofRecord | null>(null);
-  const [chainReadStatus, setChainReadStatus] = useState("Reading contract record...");
+  const [publicSummary, setPublicSummary] = useState<AiPublicSummaryResult | null>(null);
+  const [warrantyRisk, setWarrantyRisk] = useState<AiWarrantyRiskResult | null>(null);
+  const [duplicateCheck, setDuplicateCheck] = useState<AiDuplicateCheckResult | null>(null);
+  const [escalationRisk, setEscalationRisk] = useState<AiEscalationRiskResult | null>(null);
+  const [agentStatus, setAgentStatus] = useState("Running public summary, duplicate, escalation, and warranty agents...");
 
   useEffect(() => {
     let active = true;
 
-    readProofRecord(report.id)
-      .then((record) => {
+    Promise.all([
+      requestPublicSummary({ report, language: languageSnapshot }),
+      requestWarrantyRisk({ report, cityReports: cityHistoryReports }),
+      requestDuplicateCheck({ report, cityReports: cityHistoryReports }),
+      requestEscalationRisk({ report }),
+    ])
+      .then(([summary, risk, duplicate, escalation]) => {
         if (!active) {
           return;
         }
 
-        setChainRecord(record);
-        setChainReadStatus(record.exists ? "Synced from contract" : "No on-chain record found for this public ID");
+        setPublicSummary(summary);
+        setWarrantyRisk(risk);
+        setDuplicateCheck(duplicate);
+        setEscalationRisk(escalation);
+        logAgentDecision(report.id, summary.aiAudit, summary.headline, report.confidence);
+        logAgentDecision(report.id, risk.aiAudit, `${risk.riskLevel} warranty risk`, risk.repeatProbability);
+        logAgentDecision(report.id, duplicate.aiAudit, `${duplicate.similarityScore}/100 duplicate score`, duplicate.similarityScore);
+        logAgentDecision(report.id, escalation.aiAudit, `${escalation.escalationLevel} escalation`, report.confidence);
+        setAgentStatus("AI/RAG agents completed using versioned civic rules and policy documents.");
       })
       .catch((error) => {
         if (!active) {
           return;
         }
 
-        setChainRecord(null);
-        setChainReadStatus(formatWalletError(error));
+        console.warn("CityPramaan proof agents unavailable:", error);
+        setAgentStatus("AI/RAG agents fell back to local civic rules.");
       });
 
     return () => {
       active = false;
     };
-  }, [report.id]);
+  }, [cityHistoryReports, languageSnapshot, report]);
 
   function getLatestReport() {
     try {
@@ -213,23 +219,12 @@ export default function ProofTimelinePage() {
       return;
     }
 
-    let tx = "";
-
-    try {
-      setActionMessage("Open MetaMask and sign updateStatus(publicId, AdminApproved)...");
-      if (!wallet.connected) {
-        await connectWallet(wallet.chainKey);
-      }
-      tx = await updateProofStatusTransaction(latestReport.id, registryStatusCodes.AdminApproved);
-      setChainRecord(await readProofRecord(latestReport.id));
-      setChainReadStatus("Synced from contract");
-    } catch (error) {
-      setActionMessage(
-        formatWalletError(error) ||
-          "Could not approve on-chain. Check MetaMask, role permissions, testnet gas, and contract config."
-      );
-      return;
-    }
+    const tx =
+      latestReport.proofBundleHash ??
+      latestReport.repairEvidenceHash ??
+      latestReport.repairTxHash ??
+      latestReport.evidenceHash ??
+      latestReport.txHash;
 
     const now = new Date();
     const warrantyDays = 90;
@@ -422,6 +417,12 @@ export default function ProofTimelinePage() {
             warrantyStatus={warrantyLabel(report, t)}
           />
 
+          {report.fabricProof && (
+            <div className="mt-6">
+              <FabricProofCard proof={report.fabricProof} />
+            </div>
+          )}
+
           <div className="cp-cyber-card cp-cyber-card-hover cp-proof-timeline-card mt-6 rounded-2xl p-6">
             <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -459,7 +460,7 @@ export default function ProofTimelinePage() {
                         </div>
 
                         <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
-                          <span className="text-xs text-zinc-500">{t("blockchainTransaction")}</span>
+                          <span className="text-xs text-zinc-500">Fabric-ready proof hash</span>
                           <span className="truncate text-xs text-emerald-300">
                             {event.tx ?? report.repairTxHash ?? report.evidenceHash ?? report.txHash}
                           </span>
@@ -492,20 +493,152 @@ export default function ProofTimelinePage() {
               image={report.repairImageDataUrl}
             />
           </div>
+
+          {(report.issueImageForensics || report.repairImageForensics) && (
+            <div className="mt-6 grid gap-4 xl:grid-cols-2">
+              {report.issueImageForensics && (
+                <ImageForensicsPanel
+                  title="Citizen ProofGuard image forensics"
+                  result={report.issueImageForensics}
+                />
+              )}
+              {report.repairImageForensics && (
+                <ImageForensicsPanel
+                  title="Contractor ProofGuard repair forensics"
+                  result={report.repairImageForensics}
+                />
+              )}
+            </div>
+          )}
         </div>
 
         <aside className="space-y-5">
           <ChainProofCard
             proofData={{
-              network: getPreferredChainKey().replace("-", " "),
-              contract: getContractAddress() || "Contract env missing",
-              block: chainRecord?.updatedAt ? new Date(chainRecord.updatedAt * 1000).toLocaleString() : "Pending",
+              network: "Hyperledger Fabric pending",
+              contract: "Fabric chaincode to be integrated by teammate",
+              block: "Pending Fabric anchoring",
               txHash: primaryTransactionHash,
-              ipfsCid: chainRecord?.reportHash ?? evidenceProofHash,
+              ipfsCid: evidenceProofHash,
             }}
           />
 
-          <OnChainRegistryCard record={chainRecord} status={chainReadStatus} />
+          <FabricReadyCard report={report} evidenceProofHash={evidenceProofHash} />
+
+          <div className="rounded-2xl border border-[#00dbe9]/20 bg-[#00dbe9]/5 p-5">
+            <div className="flex items-center gap-2 text-[#7df4ff]">
+              <Sparkles size={18} />
+              <p className="font-medium">Civic RAG public summary</p>
+            </div>
+            <p className="mt-2 text-xs text-zinc-500">{agentStatus}</p>
+            <h3 className="mt-4 text-lg font-semibold text-white">
+              {publicSummary?.headline ?? report.title}
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-zinc-300">
+              {publicSummary?.citizenSummary ?? report.aiSummary ?? "Preparing citizen-safe public summary..."}
+            </p>
+            <div className="mt-4 space-y-3">
+              <Score label="Current status" value={publicSummary?.currentStatus ?? report.status} />
+              <Score label="Next action" value={publicSummary?.nextAction ?? report.recommendedAction ?? "Pending"} />
+            </div>
+            <p className="mt-4 rounded-lg border border-white/10 bg-zinc-950/55 p-3 text-xs leading-5 text-zinc-400">
+              {publicSummary?.transparencyNote ?? "Reporter private identity stays protected while public proof remains visible."}
+            </p>
+            {publicSummary?.aiAudit && <AgentAuditPanel audit={publicSummary.aiAudit} />}
+          </div>
+
+          <div className={`rounded-2xl border p-5 ${warrantyRiskTone(warrantyRisk?.riskLevel)}`}>
+            <div className="flex items-center gap-2">
+              <ShieldAlert size={18} />
+              <p className="font-medium">Warranty Risk Agent</p>
+            </div>
+            <div className="mt-4 space-y-3">
+              <Score label="Risk level" value={warrantyRisk?.riskLevel ?? "Scanning"} />
+              <Score
+                label="Repeat probability"
+                value={
+                  typeof warrantyRisk?.repeatProbability === "number"
+                    ? `${warrantyRisk.repeatProbability}/100`
+                    : "Pending"
+                }
+              />
+              <Score
+                label="Warranty breach likely"
+                value={warrantyRisk?.warrantyBreachLikely ? "Yes" : "No"}
+              />
+              <Score
+                label="Matched reports"
+                value={warrantyRisk?.matchedReportIds.length ? warrantyRisk.matchedReportIds.join(", ") : "None"}
+              />
+            </div>
+            <p className="mt-4 text-sm leading-6">
+              {warrantyRisk?.reason ?? "Checking same-location repeat issue patterns with civic warranty rules."}
+            </p>
+            <p className="mt-3 rounded-lg border border-white/10 bg-zinc-950/55 p-3 text-sm leading-6">
+              {warrantyRisk?.recommendedAction ?? "Continue normal warranty monitoring."}
+            </p>
+            {warrantyRisk?.aiAudit && <AgentAuditPanel audit={warrantyRisk.aiAudit} />}
+          </div>
+
+          <div className={`rounded-2xl border p-5 ${duplicateTone(duplicateCheck)}`}>
+            <div className="flex items-center gap-2">
+              <ScanSearch size={18} />
+              <p className="font-medium">Duplicate Complaint Agent</p>
+            </div>
+            <div className="mt-4 space-y-3">
+              <Score
+                label="Duplicate likely"
+                value={duplicateCheck?.duplicateLikely ? "Yes" : "No"}
+              />
+              <Score
+                label="Similarity score"
+                value={
+                  typeof duplicateCheck?.similarityScore === "number"
+                    ? `${duplicateCheck.similarityScore}/100`
+                    : "Scanning"
+                }
+              />
+              <Score
+                label="Matched records"
+                value={duplicateCheck?.matchedReportIds.length ? duplicateCheck.matchedReportIds.join(", ") : "None"}
+              />
+              <Score label="Human review" value={duplicateCheck?.humanReviewRequired ? "Required" : "Not required"} />
+            </div>
+            <p className="mt-4 text-sm leading-6">
+              {duplicateCheck?.reason ?? "Checking same-category, same-ward, same-location complaint history."}
+            </p>
+            <p className="mt-3 rounded-lg border border-white/10 bg-zinc-950/55 p-3 text-sm leading-6">
+              {duplicateCheck?.recommendedAction ?? "Use duplicate results before creating a fresh work order."}
+            </p>
+            {duplicateCheck?.aiAudit && <AgentAuditPanel audit={duplicateCheck.aiAudit} />}
+          </div>
+
+          <div className={`rounded-2xl border p-5 ${escalationTone(escalationRisk?.escalationLevel)}`}>
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={18} />
+              <p className="font-medium">Critical Escalation Agent</p>
+            </div>
+            <div className="mt-4 space-y-3">
+              <Score label="Escalation" value={escalationRisk?.escalationLevel ?? "Scanning"} />
+              <Score label="Public safety risk" value={escalationRisk?.publicSafetyRisk ? "Yes" : "No"} />
+              <Score
+                label="Notify roles"
+                value={escalationRisk?.notifyRoles.length ? escalationRisk.notifyRoles.join(", ") : "None"}
+              />
+              <Score label="Human review" value={escalationRisk?.humanReviewRequired ? "Required" : "Not required"} />
+            </div>
+            <div className="mt-4 space-y-2">
+              {(escalationRisk?.escalationReasons.length ? escalationRisk.escalationReasons : ["Awaiting escalation scan."]).map((reason) => (
+                <p key={reason} className="rounded border border-white/10 bg-zinc-950/45 px-3 py-2 text-xs leading-5">
+                  {reason}
+                </p>
+              ))}
+            </div>
+            <p className="mt-3 rounded-lg border border-white/10 bg-zinc-950/55 p-3 text-sm leading-6">
+              {escalationRisk?.recommendedAction ?? "Critical reports move to admin review before closure."}
+            </p>
+            {escalationRisk?.aiAudit && <AgentAuditPanel audit={escalationRisk.aiAudit} />}
+          </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
             <div className="flex items-center gap-2">
@@ -989,6 +1122,101 @@ function Score({ label, value }: { label: string; value: string }) {
   );
 }
 
+function warrantyRiskTone(level?: AiWarrantyRiskResult["riskLevel"]) {
+  switch (level) {
+    case "CRITICAL":
+    case "HIGH":
+      return "border-[#ffb4ab]/30 bg-[#ffb4ab]/10 text-[#ffdad6]";
+    case "MEDIUM":
+      return "border-[#ffc08d]/30 bg-[#ffc08d]/10 text-[#ffdcc2]";
+    case "LOW":
+      return "border-[#00eb88]/25 bg-[#00eb88]/10 text-[#d3ffe7]";
+    default:
+      return "border-[#00dbe9]/20 bg-[#00dbe9]/5 text-zinc-300";
+  }
+}
+
+function duplicateTone(result?: AiDuplicateCheckResult | null) {
+  if (result?.duplicateLikely || (result?.similarityScore ?? 0) >= 70) {
+    return "border-[#ffc08d]/30 bg-[#ffc08d]/10 text-[#ffdcc2]";
+  }
+
+  if (result?.humanReviewRequired) {
+    return "border-[#00dbe9]/25 bg-[#00dbe9]/10 text-[#d3fbff]";
+  }
+
+  return "border-[#00eb88]/25 bg-[#00eb88]/10 text-[#d3ffe7]";
+}
+
+function escalationTone(level?: AiEscalationRiskResult["escalationLevel"]) {
+  switch (level) {
+    case "EMERGENCY":
+      return "border-[#ffb4ab]/35 bg-[#ffb4ab]/10 text-[#ffdad6]";
+    case "URGENT":
+      return "border-[#ffc08d]/35 bg-[#ffc08d]/10 text-[#ffdcc2]";
+    case "WARD_REVIEW":
+      return "border-[#00dbe9]/25 bg-[#00dbe9]/10 text-[#d3fbff]";
+    case "NONE":
+      return "border-[#00eb88]/25 bg-[#00eb88]/10 text-[#d3ffe7]";
+    default:
+      return "border-white/10 bg-white/[0.03] text-zinc-300";
+  }
+}
+
+function logAgentDecision(
+  reportId: string,
+  audit: AiAgentAudit | undefined,
+  decision: string,
+  confidence?: number
+) {
+  if (!audit) {
+    return;
+  }
+
+  appendAiDecisionLog({
+    reportId,
+    agentName: audit.agentName,
+    decision,
+    confidence,
+    mode: audit.mode,
+    provider: audit.providerLabel,
+    fallbackReason: audit.fallbackReason,
+    retrievedRuleIds: audit.retrievedRules.map((rule) => rule.id),
+  });
+}
+
+function AgentAuditPanel({ audit }: { audit: AiAgentAudit }) {
+  return (
+    <div className="mt-4 rounded-lg border border-white/10 bg-zinc-950/55 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#7df4ff]">
+          Explainability audit
+        </p>
+        <span className="rounded border border-white/10 bg-black/35 px-2 py-1 font-mono text-[10px] uppercase text-zinc-300">
+          {audit.mode} | {audit.providerLabel}
+        </span>
+      </div>
+      {audit.fallbackReason && (
+        <p className="mt-2 text-xs leading-5 text-[#ffc08d]">{audit.fallbackReason}</p>
+      )}
+      <div className="mt-3 space-y-2">
+        {audit.retrievedRules.slice(0, 3).map((rule) => (
+          <div key={rule.id} className="rounded border border-white/10 bg-black/25 p-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-white">{rule.title}</p>
+              <span className="font-mono text-[10px] text-[#00eb88]">{rule.matchScore}</span>
+            </div>
+            <p className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-400">{rule.ruleText}</p>
+            <p className="mt-1 font-mono text-[10px] uppercase text-zinc-500">
+              {rule.category} | {rule.version ?? "unversioned"} | SLA {rule.slaHours ?? "contextual"}h | Warranty {rule.warrantyDays ?? "contextual"}d
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function MiniState({
   done,
   label,
@@ -1008,36 +1236,31 @@ function MiniState({
   );
 }
 
-function OnChainRegistryCard({
-  record,
-  status,
+function FabricReadyCard({
+  report,
+  evidenceProofHash,
 }: {
-  record: OnChainProofRecord | null;
-  status: string;
+  report: CivicReport;
+  evidenceProofHash: string;
 }) {
   return (
     <div className="rounded-2xl border border-[#00dbe9]/20 bg-[#00dbe9]/10 p-5">
       <div className="flex items-center gap-2 text-[#7df4ff]">
         <Blocks size={18} />
-        <p className="font-medium">On-chain registry readback</p>
+        <p className="font-medium">Fabric-ready proof package</p>
       </div>
-      <p className="mt-3 text-sm leading-6 text-zinc-300">{status}</p>
+      <p className="mt-3 text-sm leading-6 text-zinc-300">
+        The previous EVM proof calls have been removed. This page now keeps the
+        report hash, repair hash, AI audit, and timeline ready for Hyperledger Fabric
+        chaincode integration.
+      </p>
 
       <div className="mt-4 space-y-3">
-        <Score label="Registry status" value={record?.exists ? record.statusLabel : "Not found"} />
-        <Score
-          label="Last actor"
-          value={record?.exists ? shortWalletAddress(record.actor) : "Pending"}
-        />
-        <Score
-          label="Updated at"
-          value={record?.updatedAt ? new Date(record.updatedAt * 1000).toLocaleString() : "Pending"}
-        />
-        <Score label="Report hash" value={record?.exists ? record.reportHash : "Pending"} />
-        <Score
-          label="Repair hash"
-          value={record?.repairHash && record.repairHash !== "0x0000000000000000000000000000000000000000000000000000000000000000" ? record.repairHash : "Pending"}
-        />
+        <Score label="Ledger status" value="Fabric integration pending" />
+        <Score label="Report ID" value={report.id} />
+        <Score label="Report hash" value={evidenceProofHash} />
+        <Score label="Proof bundle" value={report.proofBundleHash ?? "Generated after proof action"} />
+        <Score label="Repair hash" value={report.repairEvidenceHash ?? "Pending contractor proof"} />
       </div>
     </div>
   );
@@ -1084,7 +1307,7 @@ function ProofSnapshotCard({
       <div className="grid gap-3 md:grid-cols-2">
         <ProofSnapshotItem icon={<MapPin size={15} />} label="Location" value={report.location} />
         <ProofSnapshotItem icon={<MapPin size={15} />} label="Coordinates" value={coordinates} />
-        <ProofSnapshotItem icon={<Fingerprint size={15} />} label="Blockchain evidence hash" value={evidenceProofHash} />
+        <ProofSnapshotItem icon={<Fingerprint size={15} />} label="Evidence hash" value={evidenceProofHash} />
         <ProofSnapshotItem
           icon={<Blocks size={15} />}
           label="Proof bundle hash"
