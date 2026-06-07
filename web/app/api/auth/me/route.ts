@@ -1,26 +1,12 @@
-import { authErrorJson, authJson } from "@/src/server/auth/http";
-import { AuthApiError, updateSupabaseProfile } from "@/src/server/auth/supabase-auth";
+import { proxyBackendRequest } from "@/src/server/auth/backend-proxy";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function PATCH(request: Request) {
-  try {
-    const accessToken = getBearerToken(request);
-    const body = await request.json();
-    return authJson(await updateSupabaseProfile(accessToken, body));
-  } catch (error) {
-    return authErrorJson(error);
-  }
+export async function GET(request: Request) {
+  return proxyBackendRequest(request, "/api/auth/me");
 }
 
-function getBearerToken(request: Request) {
-  const authorization = request.headers.get("authorization") || "";
-  const match = authorization.match(/^Bearer\s+(.+)$/i);
-
-  if (!match?.[1]) {
-    throw new AuthApiError(401, "Login required before updating profile.", "LOGIN_REQUIRED");
-  }
-
-  return match[1];
+export async function PATCH(request: Request) {
+  return proxyBackendRequest(request, "/api/auth/me");
 }
