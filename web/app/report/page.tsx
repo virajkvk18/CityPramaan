@@ -135,6 +135,11 @@ async function recordReportCreatedFabricProof(report: CivicReport) {
         actorRole: "CITIZEN",
         organization: "Citizen",
         status: "REPORTED",
+        city: report.cityKey,
+        issueType: report.issueCategory,
+        locationHash: `hash_location_${report.id}`,
+        evidenceHash: report.evidenceHash,
+        citizenHash: report.citizenId ? `hash_citizen_${report.citizenId}` : undefined,
       }),
     });
 

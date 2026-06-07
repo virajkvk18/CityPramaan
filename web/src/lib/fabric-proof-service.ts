@@ -5,14 +5,21 @@ export type FabricProofEventInput = {
   actorRole: string;
   organization: string;
   status: string;
+  city?: string;
+  issueType?: string;
+  locationHash?: string;
+  evidenceHash?: string;
+  citizenHash?: string;
 };
 
 export type FabricProofMetadata = FabricProofEventInput & {
+  source?: "REAL_FABRIC_GATEWAY" | "FABRIC_ADAPTER_FALLBACK";
   fabricTxId: string;
   fabricChannel: "cityrepairchannel";
   chaincodeName: "citypramaan";
-  endorsementPolicy: "Org1MSP + Org2MSP";
+  endorsementPolicy: "Org1MSP + Org2MSP" | "OR('Org1MSP.peer')";
   timestamp: string;
+  fabricResult?: unknown;
 };
 
 // This adapter is designed to be replaced with real Hyperledger Fabric Gateway SDK calls to the deployed citypramaan chaincode.
@@ -20,6 +27,7 @@ export async function recordFabricProofEvent(
   event: FabricProofEventInput
 ): Promise<FabricProofMetadata> {
   return {
+    source: "FABRIC_ADAPTER_FALLBACK",
     fabricTxId: createFabricStyleTxId(event),
     fabricChannel: "cityrepairchannel",
     chaincodeName: "citypramaan",
