@@ -5,6 +5,7 @@ load_dotenv()
 
 from langgraph.graph import StateGraph, END
 from langchain_openai import ChatOpenAI
+from langchain_chroma import Chroma
 
 from rag.vectorstore import get_vectorstore
 from agents.analyze_issue import analyze_issue_node

@@ -2,10 +2,11 @@ fastapi
 uvicorn
 langchain
 langchain-groq
+langchain-chroma
+langchain-huggingface
 langchain-community
 langgraph
 chromadb
 python-dotenv
 pydantic
-openai
 sentence-transformers
