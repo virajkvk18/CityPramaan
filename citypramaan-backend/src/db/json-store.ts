@@ -3,10 +3,6 @@ import path from 'path';
 import { env } from '../config/env';
 import { DatabaseShape } from '../types/domain';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function emptyDatabase(): DatabaseShape {
   return {
     version: 1,
@@ -43,65 +39,38 @@ function normalizeDatabase(input: Partial<DatabaseShape>): DatabaseShape {
 }
 
 // ---------------------------------------------------------------------------
-// JSONBin.io persistent store
-// Falls back to local file if JSONBIN_API_KEY / JSONBIN_BIN_ID are not set.
+// JSONBin.io remote persistence
 // ---------------------------------------------------------------------------
 
 const JSONBIN_API = 'https://api.jsonbin.io/v3';
 
-async function jsonbinRead(): Promise<DatabaseShape> {
-  const key = process.env.JSONBIN_API_KEY;
-  const binId = process.env.JSONBIN_BIN_ID;
-  if (!key || !binId) return emptyDatabase();
+function hasJsonBin(): boolean {
+  return Boolean(process.env.JSONBIN_API_KEY && process.env.JSONBIN_BIN_ID);
+}
 
-  const res = await fetch(`${JSONBIN_API}/b/${binId}/latest`, {
-    headers: { 'X-Master-Key': key },
+async function jsonbinRead(): Promise<DatabaseShape> {
+  const res = await fetch(`${JSONBIN_API}/b/${process.env.JSONBIN_BIN_ID}/latest`, {
+    headers: { 'X-Master-Key': process.env.JSONBIN_API_KEY! },
   });
-  if (!res.ok) throw new Error(`JSONBin read failed: ${res.status}`);
+  if (!res.ok) throw new Error(`JSONBin read failed: ${res.status} ${await res.text()}`);
   const json = await res.json() as { record: Partial<DatabaseShape> };
   return normalizeDatabase(json.record);
 }
 
 async function jsonbinWrite(db: DatabaseShape): Promise<void> {
-  const key = process.env.JSONBIN_API_KEY;
-  const binId = process.env.JSONBIN_BIN_ID;
-  if (!key || !binId) return;
-
-  const res = await fetch(`${JSONBIN_API}/b/${binId}`, {
+  const res = await fetch(`${JSONBIN_API}/b/${process.env.JSONBIN_BIN_ID}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
-      'X-Master-Key': key,
+      'X-Master-Key': process.env.JSONBIN_API_KEY!,
     },
     body: JSON.stringify(db),
   });
-  if (!res.ok) throw new Error(`JSONBin write failed: ${res.status}`);
+  if (!res.ok) throw new Error(`JSONBin write failed: ${res.status} ${await res.text()}`);
 }
 
 // ---------------------------------------------------------------------------
-// In-memory cache so we don't hit JSONBin on every request
-// ---------------------------------------------------------------------------
-
-let memCache: DatabaseShape | null = null;
-let cacheLoadedAt = 0;
-const CACHE_TTL_MS = 10_000; // re-fetch from JSONBin at most every 10s
-
-async function getCached(): Promise<DatabaseShape> {
-  if (memCache && Date.now() - cacheLoadedAt < CACHE_TTL_MS) {
-    return memCache;
-  }
-  const db = await jsonbinRead();
-  memCache = db;
-  cacheLoadedAt = Date.now();
-  return db;
-}
-
-function invalidateCache() {
-  memCache = null;
-}
-
-// ---------------------------------------------------------------------------
-// Local file fallback (used when JSONBin env vars are absent)
+// Local file store
 // ---------------------------------------------------------------------------
 
 class LocalFileStore {
@@ -129,7 +98,7 @@ class LocalFileStore {
 }
 
 // ---------------------------------------------------------------------------
-// Public JsonStore — same interface as before
+// JsonStore — same public interface as before
 // ---------------------------------------------------------------------------
 
 export class JsonStore {
@@ -140,49 +109,20 @@ export class JsonStore {
   }
 
   read(): DatabaseShape {
-    // Sync read: return cache if warm, otherwise local file
-    // (JSONBin is async; use readAsync for fresh remote data)
-    if (memCache && Date.now() - cacheLoadedAt < CACHE_TTL_MS) {
-      return memCache;
-    }
-    return this.local.read();
-  }
-
-  async readAsync(): Promise<DatabaseShape> {
-    if (process.env.JSONBIN_API_KEY && process.env.JSONBIN_BIN_ID) {
-      return getCached();
-    }
     return this.local.read();
   }
 
   update<T>(mutator: (db: DatabaseShape) => T): T {
-    const db = this.read();
-    const result = mutator(db);
-    db.updatedAt = new Date().toISOString();
-    this.local.write(db); // write locally immediately (sync)
-
-    // persist to JSONBin in background (don't block the request)
-    if (process.env.JSONBIN_API_KEY && process.env.JSONBIN_BIN_ID) {
-      memCache = db;
-      cacheLoadedAt = Date.now();
-      jsonbinWrite(db).catch((err) =>
-        console.error('[JSONBin] write failed:', err)
-      );
-    }
-
-    return result;
-  }
-
-  async updateAsync<T>(mutator: (db: DatabaseShape) => T): Promise<T> {
-    const db = await this.readAsync();
+    const db = this.local.read();
     const result = mutator(db);
     db.updatedAt = new Date().toISOString();
     this.local.write(db);
 
-    if (process.env.JSONBIN_API_KEY && process.env.JSONBIN_BIN_ID) {
-      memCache = db;
-      cacheLoadedAt = Date.now();
-      await jsonbinWrite(db);
+    // Persist to JSONBin in background — don't block the response
+    if (hasJsonBin()) {
+      jsonbinWrite(db).catch((err) =>
+        console.error('[JSONBin] background write failed:', err)
+      );
     }
 
     return result;
@@ -191,13 +131,18 @@ export class JsonStore {
 
 export const store = new JsonStore(env.dataFile);
 
-// On startup: warm the cache from JSONBin so first request is fast
-if (process.env.JSONBIN_API_KEY && process.env.JSONBIN_BIN_ID) {
-  getCached()
-    .then((db) => {
-      // Also write to local file so sync reads work immediately
-      new LocalFileStore(env.dataFile).write(db);
-      console.log('[JSONBin] Cache warmed on startup. Users:', db.users.length);
-    })
-    .catch((err) => console.error('[JSONBin] Startup cache warm failed:', err));
+// ---------------------------------------------------------------------------
+// Exported warm function — called in app.ts BEFORE server.listen()
+// ---------------------------------------------------------------------------
+
+export async function warmJsonBinCache(): Promise<void> {
+  if (!hasJsonBin()) return;
+
+  try {
+    const db = await jsonbinRead();
+    new LocalFileStore(env.dataFile).write(db);
+    console.log(`[JSONBin] Loaded ${db.users.length} users, ${db.emailVerifications.length} verifications on startup.`);
+  } catch (err) {
+    console.error('[JSONBin] Startup load failed:', err);
+  }
 }
