@@ -11,7 +11,7 @@ import authRouter from './routes/auth';
 import uploadRouter from './routes/upload';
 import contractorsRouter from './routes/contractors';
 import { env } from './config/env';
-import { store } from './db/json-store';
+import { store, warmJsonBinCache } from './db/json-store';
 import { testPinataConnection } from './services/ipfs.service';
 import { toHttpError } from './utils/http-error';
 
@@ -75,7 +75,19 @@ app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
 
 if (require.main === module) {
   testPinataConnection();
-  app.listen(env.port, () => {
-    console.log(`Server running on http://localhost:${env.port}`);
-  });
+
+  const startServer = () => {
+    app.listen(env.port, () => {
+      console.log(`Server running on http://localhost:${env.port}`);
+    });
+  };
+
+  // Wait for JSONBin cache to warm BEFORE accepting connections,
+  // so the first request sees the persisted users from JSONBin.
+  warmJsonBinCache()
+    .then(startServer)
+    .catch((err: unknown) => {
+      console.error('[JSONBin] Startup warm failed, starting anyway:', err);
+      startServer();
+    });
 }
