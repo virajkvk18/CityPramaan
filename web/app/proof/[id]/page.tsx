@@ -26,6 +26,7 @@ import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { ChainProofCard } from "@/src/components/proof/ChainProofCard";
 import { FabricProofCard } from "@/src/components/proof/FabricProofCard";
+import { ImageForensicsPanel } from "@/src/components/proof/ImageForensicsPanel";
 import { DEFAULT_CITY_KEY, getCityByKey } from "@/src/lib/city-context";
 import { getCitySnapshot, subscribeCity } from "@/src/lib/city-storage";
 import { getLanguageSnapshot, subscribeLanguage } from "@/src/lib/language-storage";
@@ -492,6 +493,23 @@ export default function ProofTimelinePage() {
               image={report.repairImageDataUrl}
             />
           </div>
+
+          {(report.issueImageForensics || report.repairImageForensics) && (
+            <div className="mt-6 grid gap-4 xl:grid-cols-2">
+              {report.issueImageForensics && (
+                <ImageForensicsPanel
+                  title="Citizen ProofGuard image forensics"
+                  result={report.issueImageForensics}
+                />
+              )}
+              {report.repairImageForensics && (
+                <ImageForensicsPanel
+                  title="Contractor ProofGuard repair forensics"
+                  result={report.repairImageForensics}
+                />
+              )}
+            </div>
+          )}
         </div>
 
         <aside className="space-y-5">

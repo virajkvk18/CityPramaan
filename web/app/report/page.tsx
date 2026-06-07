@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { FabricProofCard } from "@/src/components/proof/FabricProofCard";
+import { ImageForensicsPanel } from "@/src/components/proof/ImageForensicsPanel";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { NotificationBell } from "@/src/components/layout/NotificationBell";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
@@ -45,9 +46,10 @@ import { getCitySnapshot, setSelectedCityKey, subscribeCity } from "@/src/lib/ci
 import { type InfrastructureAnalysis } from "@/src/lib/infrastructure-analyzer";
 import { getLanguageSnapshot, subscribeLanguage } from "@/src/lib/language-storage";
 import { translate } from "@/src/lib/language-context";
-import { buildGoogleMapsUrl, type CivicReport } from "@/src/lib/mock-data";
+import { buildGoogleMapsUrl, getReportsForCity, type CivicReport } from "@/src/lib/mock-data";
 import {
   createLocalReportId,
+  getLocalReportsSnapshot,
   readFileAsDataUrl,
 } from "@/src/lib/report-storage";
 import { saveReportEverywhere } from "@/src/lib/report-sync";
@@ -56,6 +58,8 @@ import { getCurrentUser } from "@/src/lib/auth-storage";
 import { createProofBundleHash, deriveTransactionHash, sha256Hex } from "@/src/lib/proof-hashing";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 import type { FabricProofMetadata } from "@/src/lib/fabric-proof-service";
+import { requestImageForensics } from "@/src/lib/image-forensics-client";
+import type { ImageForensicsResult } from "@/src/lib/image-forensics-types";
 
 const issuePresets = [
   {
@@ -156,6 +160,36 @@ async function recordReportCreatedFabricProof(report: CivicReport) {
   }
 }
 
+async function recordProofGuardFabricProof(reportId: string, result: ImageForensicsResult, actorRole = "AI_AGENT") {
+  try {
+    const response = await fetch("/api/fabric/proof", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        reportId,
+        eventType: "PROOFGUARD_IMAGE_FORENSICS",
+        proofHash: result.blockchainPayload.imageHash || result.imageHash,
+        actorRole,
+        organization: "ProofGuard AI",
+        status: `${result.blockchainPayload.decision}:${result.blockchainPayload.fraudScore}`,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn("CityPramaan Fabric ProofGuard adapter unavailable:", await response.text());
+      return undefined;
+    }
+
+    const payload = (await response.json()) as { proof?: FabricProofMetadata };
+    return payload.proof;
+  } catch (error) {
+    console.warn("CityPramaan Fabric ProofGuard adapter unavailable:", error);
+    return undefined;
+  }
+}
+
 async function reverseGeocodeArea(latitude: number, longitude: number) {
   try {
     const response = await fetch(
@@ -202,6 +236,7 @@ export default function ReportIssuePage() {
   const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const tr = (key: Parameters<typeof translate>[1]) => translate(languageSnapshot, key);
   const [imageName, setImageName] = useState("");
+  const [issueImageFile, setIssueImageFile] = useState<File | undefined>();
   const [imageDataUrl, setImageDataUrl] = useState("");
   const [imageLoading, setImageLoading] = useState(false);
   const [location, setLocation] = useState(() => formatCityLocation(getCityByKey(getCitySnapshot())));
@@ -222,6 +257,8 @@ export default function ReportIssuePage() {
   const [createdFabricProof, setCreatedFabricProof] = useState<FabricProofMetadata | undefined>();
   const [aiProcessing, setAiProcessing] = useState(false);
   const [aiResult, setAiResult] = useState<InfrastructureAnalysis | null>(null);
+  const [issueImageForensics, setIssueImageForensics] = useState<ImageForensicsResult | null>(null);
+  const [forensicsProcessing, setForensicsProcessing] = useState(false);
   const googleMapsUrl = buildGoogleMapsUrl(latitude, longitude);
   const googleMapsEmbedUrl = `https://maps.google.com/maps?q=${latitude},${longitude}&z=16&output=embed`;
   const autoLocationRequested = useRef(false);
@@ -231,6 +268,21 @@ export default function ReportIssuePage() {
     manual: "Manual coordinates",
     maps: "Google Maps link",
   }[locationSource];
+
+  function getForensicsReportHistory(cityKey = selectedCity.key) {
+    try {
+      const localReports = JSON.parse(getLocalReportsSnapshot()) as CivicReport[];
+      const reportMap = new Map<string, CivicReport>();
+
+      for (const report of [...getReportsForCity(cityKey), ...localReports]) {
+        reportMap.set(report.id, report);
+      }
+
+      return Array.from(reportMap.values());
+    } catch {
+      return getReportsForCity(cityKey);
+    }
+  }
 
   async function runAiVerification() {
     setVerified(false);
@@ -260,22 +312,53 @@ export default function ReportIssuePage() {
     }
 
     setImageName(file.name);
+    setIssueImageFile(file);
     setImageDataUrl("");
     setImageLoading(true);
+    setForensicsProcessing(false);
+    setIssueImageForensics(null);
     setVerified(false);
     setAiResult(null);
     setSubmitted(false);
     setProofError("");
     setCreatedTxHash("");
     setCreatedProofHash("");
+    setCreatedFabricProof(undefined);
 
     try {
-      setImageDataUrl(await readFileAsDataUrl(file));
+      const dataUrl = await readFileAsDataUrl(file);
+      setImageDataUrl(dataUrl);
+      setImageLoading(false);
+      setForensicsProcessing(true);
+      setProofError("ProofGuard AI is checking image authenticity, metadata, GPS, and reuse risk...");
+
+      const result = await requestImageForensics({
+        proofType: "CITIZEN_ISSUE",
+        file,
+        imageName: file.name,
+        imageDataUrl: dataUrl,
+        cityReports: getForensicsReportHistory(),
+        uploadedLatitude: latitude,
+        uploadedLongitude: longitude,
+        complaintLatitude: latitude,
+        complaintLongitude: longitude,
+      });
+
+      setIssueImageForensics(result);
+      setProofError(
+        result.decision === "ACCEPT"
+          ? ""
+          : result.decision === "REJECT"
+            ? "ProofGuard AI rejected this proof because it appears reused, fake, or highly suspicious."
+            : "ProofGuard AI marked this proof for manual review. You can submit it, but Ward Admin must verify it."
+      );
     } catch {
       setImageName("");
+      setIssueImageFile(undefined);
       setProofError("Could not prepare this image. Please capture again or choose another photo.");
     } finally {
       setImageLoading(false);
+      setForensicsProcessing(false);
     }
   }
 
@@ -297,6 +380,8 @@ export default function ReportIssuePage() {
     setCreatedTxHash("");
     setCreatedProofHash("");
     setCreatedFabricProof(undefined);
+    setIssueImageForensics(null);
+    setForensicsProcessing(false);
   }
 
   const applyRealCoordinates = useCallback(async (
@@ -318,6 +403,9 @@ export default function ReportIssuePage() {
     setProofError("");
     setCreatedTxHash("");
     setCreatedProofHash("");
+    setCreatedFabricProof(undefined);
+    setIssueImageForensics(null);
+    setForensicsProcessing(false);
 
     const detectedArea = await reverseGeocodeArea(nextLatitude, nextLongitude);
 
@@ -408,6 +496,9 @@ export default function ReportIssuePage() {
     setProofError("");
     setCreatedTxHash("");
     setCreatedProofHash("");
+    setCreatedFabricProof(undefined);
+    setIssueImageForensics(null);
+    setForensicsProcessing(false);
   }
 
   async function createProof() {
@@ -417,6 +508,11 @@ export default function ReportIssuePage() {
 
     if (imageLoading) {
       setProofError("Photo is still being prepared. Please wait a moment, then sign again.");
+      return;
+    }
+
+    if (forensicsProcessing) {
+      setProofError("ProofGuard AI is still checking this image. Please wait a moment.");
       return;
     }
 
@@ -432,6 +528,27 @@ export default function ReportIssuePage() {
       const savedLocation = location.includes(latitude.toFixed(5))
         ? location
         : `${location} (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`;
+      const proofGuard =
+        issueImageForensics ??
+        (await requestImageForensics({
+          proofType: "CITIZEN_ISSUE",
+          file: issueImageFile,
+          imageName,
+          imageDataUrl,
+          cityReports: getForensicsReportHistory(reportCity.key),
+          uploadedLatitude: latitude,
+          uploadedLongitude: longitude,
+          complaintLatitude: latitude,
+          complaintLongitude: longitude,
+        }));
+
+      setIssueImageForensics(proofGuard);
+
+      if (proofGuard.decision === "REJECT") {
+        setProofError("ProofGuard AI rejected this image. Capture a fresh field photo before creating public proof.");
+        return;
+      }
+
       const result =
         aiResult ??
         (await requestInfrastructureAnalysis({
@@ -466,7 +583,7 @@ export default function ReportIssuePage() {
         cityKey: reportCity.key,
         title: `${result.issueType} awaiting repair in ${reportCity.name}`,
         ward: reportCity.repairWard,
-        status: "PENDING_PROOF",
+        status: proofGuard.decision === "MANUAL_REVIEW" ? "OPEN" : "PENDING_PROOF",
         severity: result.severity,
         confidence: result.confidence,
         contractor: "Awaiting assignment",
@@ -507,6 +624,7 @@ export default function ReportIssuePage() {
             : undefined,
         issueImageName: imageName || "citizen-issue-evidence.jpg",
         issueImageDataUrl: imageDataUrl,
+        issueImageForensics: proofGuard,
         evidenceHash,
         proofBundleHash,
         history: [
@@ -521,9 +639,15 @@ export default function ReportIssuePage() {
           detail: `${result.category} classified with ${result.confidence}% confidence (${result.confidenceBand}), ${result.severity} severity, and ${result.aiPriorityScore}/100 priority score. ${
             result.humanReviewRequired ? "Human review required before final closure." : "Normal workflow allowed."
           }`,
-          time: new Date(now).toLocaleString(),
-          tx: aiTxHash,
-        },
+            time: new Date(now).toLocaleString(),
+            tx: aiTxHash,
+          },
+          {
+            label: "ProofGuard AI image forensics",
+            detail: `Fraud score ${proofGuard.fraudScore}/100, ${proofGuard.riskLevel}, decision ${proofGuard.decision}. ${proofGuard.forensicSummary}`,
+            time: new Date(now).toLocaleString(),
+            tx: proofGuard.blockchainPayload.imageHash,
+          },
           ...(result.category === "POWER_OUTAGE"
             ? [
                 {
@@ -539,13 +663,23 @@ export default function ReportIssuePage() {
       };
 
       const fabricProof = await recordReportCreatedFabricProof(newReport);
+      const proofGuardFabricProof = await recordProofGuardFabricProof(reportId, proofGuard);
+      const fabricProofs = [fabricProof, proofGuardFabricProof].filter(
+        (proof): proof is FabricProofMetadata => Boolean(proof)
+      );
       const reportWithFabricProof = fabricProof
         ? {
             ...newReport,
             fabricProof,
-            fabricProofs: [...(newReport.fabricProofs ?? []), fabricProof],
+            fabricProofs: [...(newReport.fabricProofs ?? []), ...fabricProofs],
           }
-        : newReport;
+        : proofGuardFabricProof
+          ? {
+              ...newReport,
+              fabricProof: proofGuardFabricProof,
+              fabricProofs: [...(newReport.fabricProofs ?? []), proofGuardFabricProof],
+            }
+          : newReport;
 
       await saveReportEverywhere(reportWithFabricProof);
 
@@ -555,8 +689,8 @@ export default function ReportIssuePage() {
       setSubmitted(true);
       setCreatedTxHash(txHash);
       setCreatedProofHash(proofBundleHash);
-      setProofError("AI/RAG proof created. Fabric anchoring is ready for teammate integration.");
-      setCreatedFabricProof(fabricProof);
+      setProofError("AI/RAG proof created with ProofGuard image forensics. Fabric anchoring is ready for teammate integration.");
+      setCreatedFabricProof(fabricProof ?? proofGuardFabricProof);
     } catch (error) {
       const message =
         error instanceof Error
@@ -582,8 +716,11 @@ export default function ReportIssuePage() {
     setMapsLink("");
     setLocationMessage(`${city.name} default Google Maps pin selected.`);
     setImageName("");
+    setIssueImageFile(undefined);
     setImageDataUrl("");
     setImageLoading(false);
+    setIssueImageForensics(null);
+    setForensicsProcessing(false);
     setDescription("");
     setVerified(false);
     setAiResult(null);
@@ -592,6 +729,7 @@ export default function ReportIssuePage() {
     setProofError("");
     setCreatedTxHash("");
     setCreatedProofHash("");
+    setCreatedFabricProof(undefined);
   }
 
   return (
@@ -784,6 +922,13 @@ export default function ReportIssuePage() {
                   <p className="mt-3 rounded border border-[#ffb4ab]/25 bg-[#ffb4ab]/10 px-3 py-2 text-sm text-[#ffdad6]">
                     {proofError}
                   </p>
+                )}
+                {(forensicsProcessing || issueImageForensics) && (
+                  <ImageForensicsPanel
+                    title="ProofGuard AI image forensics"
+                    loading={forensicsProcessing}
+                    result={issueImageForensics}
+                  />
                 )}
               </section>
 
@@ -1151,13 +1296,15 @@ export default function ReportIssuePage() {
                     setProofError("");
                     void createProof();
                   }}
-                  disabled={aiProcessing || submitted || proofCreating}
+                  disabled={aiProcessing || submitted || proofCreating || forensicsProcessing}
                   className="royal-blue-glow flex w-full items-center justify-center gap-2 rounded border border-[#2A2D35] bg-[#1A1C23] px-4 py-4 font-mono text-xs font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ShieldCheck size={16} />
                   {imageLoading
                     ? "Preparing photo..."
-                    : proofCreating
+                    : forensicsProcessing
+                      ? "ProofGuard scanning..."
+                      : proofCreating
                       ? `${tr("createProof")}...`
                       : submitted
                         ? tr("newProofCreated")

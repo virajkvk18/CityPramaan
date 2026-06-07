@@ -24,6 +24,7 @@ import {
   UploadCloud,
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
+import { ImageForensicsPanel } from "@/src/components/proof/ImageForensicsPanel";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { NotificationBell } from "@/src/components/layout/NotificationBell";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
@@ -43,6 +44,9 @@ import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 import { getAuthSnapshot, getCurrentUser, roleLabels, subscribeAuth } from "@/src/lib/auth-storage";
 import { getContractorsSnapshot, specializationLabels, subscribeContractors } from "@/src/lib/contractor-storage";
 import { requestRepairAudit, type AiRepairAuditResult } from "@/src/lib/ai-agents-client";
+import { requestImageForensics } from "@/src/lib/image-forensics-client";
+import type { ImageForensicsResult } from "@/src/lib/image-forensics-types";
+import type { FabricProofMetadata } from "@/src/lib/fabric-proof-service";
 
 const contractorVisibleStatuses: CivicReport["status"][] = [
   "OPEN",
@@ -59,6 +63,36 @@ const contractorVisibleStatuses: CivicReport["status"][] = [
 ];
 
 const unassignedContractorNames = new Set(["", "not assigned", "awaiting assignment"]);
+
+async function recordProofGuardFabricProof(reportId: string, result: ImageForensicsResult) {
+  try {
+    const response = await fetch("/api/fabric/proof", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        reportId,
+        eventType: "PROOFGUARD_REPAIR_FORENSICS",
+        proofHash: result.blockchainPayload.imageHash || result.imageHash,
+        actorRole: "CONTRACTOR",
+        organization: "ProofGuard AI",
+        status: `${result.blockchainPayload.decision}:${result.blockchainPayload.fraudScore}`,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn("CityPramaan Fabric ProofGuard repair adapter unavailable:", await response.text());
+      return undefined;
+    }
+
+    const payload = (await response.json()) as { proof?: FabricProofMetadata };
+    return payload.proof;
+  } catch (error) {
+    console.warn("CityPramaan Fabric ProofGuard repair adapter unavailable:", error);
+    return undefined;
+  }
+}
 
 export default function ContractorPage() {
   const { t } = useLanguage();
@@ -109,7 +143,10 @@ export default function ContractorPage() {
   const [selectedReportId, setSelectedReportId] = useState(repairQueue[0]?.id ?? "");
   const selectedReport = repairQueue.find((report) => report.id === selectedReportId) ?? repairQueue[0];
   const [repairImage, setRepairImage] = useState("");
+  const [repairImageFile, setRepairImageFile] = useState<File | undefined>();
   const [repairImageDataUrl, setRepairImageDataUrl] = useState("");
+  const [repairImageForensics, setRepairImageForensics] = useState<ImageForensicsResult | null>(null);
+  const [repairForensicsProcessing, setRepairForensicsProcessing] = useState(false);
   const [repairNotes, setRepairNotes] = useState("");
   const [repairImageLoading, setRepairImageLoading] = useState(false);
   const [audited, setAudited] = useState(false);
@@ -167,13 +204,63 @@ export default function ContractorPage() {
     setActionMessage(`${stageConfig.label}. Citizen, Ward Admin, and Public Proof timeline are updated.`);
   }
 
+  async function runRepairImageForensics({
+    report = selectedReport,
+    file = repairImageFile,
+    imageName = repairImage,
+    imageDataUrl = repairImageDataUrl,
+  }: {
+    report?: CivicReport;
+    file?: File;
+    imageName?: string;
+    imageDataUrl?: string;
+  } = {}) {
+    if (!report || !imageDataUrl) {
+      return null;
+    }
+
+    setRepairForensicsProcessing(true);
+    setActionMessage("ProofGuard AI is checking repair proof authenticity, reuse, metadata, and before/after consistency...");
+
+    try {
+      const result = await requestImageForensics({
+        proofType: "CONTRACTOR_REPAIR",
+        file,
+        imageName: imageName || "contractor-repair-proof.jpg",
+        imageDataUrl,
+        cityReports: allReports,
+        report,
+        uploadedLatitude: report.latitude,
+        uploadedLongitude: report.longitude,
+        complaintLatitude: report.latitude,
+        complaintLongitude: report.longitude,
+        beforeImageDataUrl: report.issueImageDataUrl,
+      });
+
+      setRepairImageForensics(result);
+      setActionMessage(
+        result.decision === "ACCEPT"
+          ? `ProofGuard AI accepted repair proof. Fraud score ${result.fraudScore}/100. Run repair audit or submit for approval.`
+          : result.decision === "REJECT"
+            ? `ProofGuard AI rejected repair proof. Fraud score ${result.fraudScore}/100. Upload a fresh repair photo.`
+            : `ProofGuard AI marked repair proof for manual review. Fraud score ${result.fraudScore}/100. Ward Admin must verify before approval.`
+      );
+      return result;
+    } finally {
+      setRepairForensicsProcessing(false);
+    }
+  }
+
   async function handleRepairFile(file?: File) {
     if (!file) {
       return;
     }
 
     setRepairImage(file.name);
+    setRepairImageFile(file);
     setRepairImageDataUrl("");
+    setRepairImageForensics(null);
+    setRepairForensicsProcessing(false);
     setRepairImageLoading(true);
     setAudited(false);
     setRepairAuditResult(null);
@@ -182,11 +269,20 @@ export default function ContractorPage() {
     setActionMessage("Preparing repair proof image for public record...");
 
     try {
-      setRepairImageDataUrl(await readFileAsDataUrl(file));
-      setActionMessage(`${t("afterRepairProofAttached")}. ${t("runAiRepairAudit")} / submit proof for issuer approval.`);
+      const dataUrl = await readFileAsDataUrl(file);
+      setRepairImageDataUrl(dataUrl);
+      setRepairImageLoading(false);
+      await runRepairImageForensics({
+        report: selectedReport,
+        file,
+        imageName: file.name,
+        imageDataUrl: dataUrl,
+      });
     } catch {
       setRepairImage("");
+      setRepairImageFile(undefined);
       setRepairImageDataUrl("");
+      setRepairImageForensics(null);
       setActionMessage("Could not prepare this image. Please choose another repair proof photo.");
     } finally {
       setRepairImageLoading(false);
@@ -201,6 +297,16 @@ export default function ContractorPage() {
 
     if (repairImageLoading || !repairImageDataUrl) {
       setActionMessage("Repair proof image is still being prepared. Please wait a moment.");
+      return null;
+    }
+
+    if (repairForensicsProcessing) {
+      setActionMessage("ProofGuard AI is still checking this repair proof. Please wait a moment.");
+      return null;
+    }
+
+    if (repairImageForensics?.decision === "REJECT") {
+      setActionMessage("ProofGuard AI rejected this repair image. Upload a fresh proof before running repair audit.");
       return null;
     }
 
@@ -233,7 +339,7 @@ export default function ContractorPage() {
     void performRepairAudit();
   }
 
-  function submitRepairProof() {
+  async function submitRepairProof() {
     if (!selectedReport) {
       setActionMessage("Select a report first, then upload after-repair proof.");
       return;
@@ -254,19 +360,39 @@ export default function ContractorPage() {
       return;
     }
 
-    if (!audited) {
-      performRepairAudit(selectedReport).then((result) => {
-        if (result) {
-          void submitProofForApproval(selectedReport, result);
-        }
-      });
+    if (repairForensicsProcessing) {
+      setActionMessage("ProofGuard AI is still checking this repair proof. Please wait a moment.");
       return;
     }
 
-    void submitProofForApproval(selectedReport, repairAuditResult);
+    const proofGuard =
+      repairImageForensics ??
+      (await runRepairImageForensics({
+        report: selectedReport,
+      }));
+
+    if (proofGuard?.decision === "REJECT") {
+      setActionMessage("ProofGuard AI rejected this repair proof. Upload a fresh field photo before submitting.");
+      return;
+    }
+
+    if (!audited) {
+      const result = await performRepairAudit(selectedReport);
+
+      if (result) {
+        await submitProofForApproval(selectedReport, result, proofGuard ?? repairImageForensics);
+      }
+      return;
+    }
+
+    await submitProofForApproval(selectedReport, repairAuditResult, proofGuard ?? repairImageForensics);
   }
 
-  async function submitProofForApproval(report: CivicReport, auditResult = repairAuditResult) {
+  async function submitProofForApproval(
+    report: CivicReport,
+    auditResult = repairAuditResult,
+    proofGuard = repairImageForensics
+  ) {
     const now = new Date();
     const isPowerOutage = report.issueCategory === "POWER_OUTAGE";
     const reportCity = getCityByKey(report.cityKey ?? selectedCity.key);
@@ -316,7 +442,10 @@ export default function ContractorPage() {
           recommendation:
             "Repair proof was submitted, but AI audit details were unavailable. Ward Admin should manually verify before approval.",
         };
-    const updated = appendReportEvent(
+    const proofGuardFabricProof = proofGuard
+      ? await recordProofGuardFabricProof(report.id, proofGuard)
+      : undefined;
+    let updated = appendReportEvent(
       {
         ...report,
         cityKey: reportCity.key,
@@ -339,6 +468,11 @@ export default function ContractorPage() {
         proofBundleHash,
         repairTxHash: tx,
         txHash: report.txHash || tx,
+        repairImageForensics: proofGuard ?? report.repairImageForensics,
+        fabricProof: report.fabricProof ?? proofGuardFabricProof,
+        fabricProofs: proofGuardFabricProof
+          ? [...(report.fabricProofs ?? []), proofGuardFabricProof]
+          : report.fabricProofs,
         utilityRestoration: report.utilityRestoration
           ? {
               ...report.utilityRestoration,
@@ -360,16 +494,32 @@ export default function ContractorPage() {
       }
     );
 
+    if (proofGuard) {
+      updated = appendReportEvent(updated, {
+        label: "ProofGuard AI repair forensics",
+        detail: `Fraud score ${proofGuard.fraudScore}/100, ${proofGuard.riskLevel}, decision ${proofGuard.decision}. ${proofGuard.forensicSummary}`,
+        time: now.toLocaleString(),
+        tx: proofGuard.blockchainPayload.imageHash,
+      });
+    }
+
     void saveReportEverywhere(updated);
     setSubmittedId(report.id);
     setSubmittedTxUrl("");
-    setActionMessage(`${t("repairProof")} submitted with AI/RAG audit. Fabric anchoring is ready for teammate integration.`);
+    setActionMessage(
+      proofGuard?.decision === "MANUAL_REVIEW"
+        ? `${t("repairProof")} submitted with ProofGuard manual-review flag and AI/RAG audit. Ward Admin must verify before approval.`
+        : `${t("repairProof")} submitted with ProofGuard image forensics and AI/RAG audit. Fabric anchoring is ready for teammate integration.`
+    );
   }
 
   function chooseCity(cityKey: CityKey) {
     setSelectedCityKey(cityKey);
     setRepairImage("");
+    setRepairImageFile(undefined);
     setRepairImageDataUrl("");
+    setRepairImageForensics(null);
+    setRepairForensicsProcessing(false);
     setRepairImageLoading(false);
     setAudited(false);
     setSubmittedId("");
@@ -482,12 +632,15 @@ export default function ContractorPage() {
                       onClick={() => {
                         setSelectedReportId(report.id);
                         setRepairImage("");
-                          setRepairImageDataUrl("");
-                          setRepairImageLoading(false);
-                          setAudited(false);
-                          setSubmittedId("");
-                          setRepairNotes(report.repairNotes ?? "");
-                        }}
+                        setRepairImageFile(undefined);
+                        setRepairImageDataUrl("");
+                        setRepairImageForensics(null);
+                        setRepairForensicsProcessing(false);
+                        setRepairImageLoading(false);
+                        setAudited(false);
+                        setSubmittedId("");
+                        setRepairNotes(report.repairNotes ?? "");
+                      }}
                       className={`w-full rounded border p-4 text-left transition ${
                         selectedReport?.id === report.id
                           ? "border-[#ffc08d]/60 bg-[#ffc08d]/10"
@@ -628,7 +781,7 @@ export default function ContractorPage() {
                           repairImage
                             ? "border-[#00eb88]/50"
                             : "border-dashed border-[#00dbe9]/45"
-                        } ${auditProcessing ? "scan-active" : ""}`}
+                        } ${auditProcessing || repairForensicsProcessing ? "scan-active" : ""}`}
                       >
                         <input
                           type="file"
@@ -671,6 +824,14 @@ export default function ContractorPage() {
                       </label>
                     </div>
 
+                    {(repairForensicsProcessing || repairImageForensics) && (
+                      <ImageForensicsPanel
+                        title="ProofGuard AI repair proof forensics"
+                        loading={repairForensicsProcessing}
+                        result={repairImageForensics}
+                      />
+                    )}
+
                     <label className="mt-5 block">
                       <span className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#dbc2b0]/70">
                         Repair notes for Ward Admin
@@ -688,20 +849,51 @@ export default function ContractorPage() {
                       <button
                         type="button"
                         onClick={runRepairAudit}
-                        disabled={!repairImage || repairImageLoading || auditProcessing}
+                        disabled={
+                          !repairImage ||
+                          repairImageLoading ||
+                          repairForensicsProcessing ||
+                          auditProcessing ||
+                          repairImageForensics?.decision === "REJECT"
+                        }
                         className="flex flex-1 items-center justify-center gap-2 rounded border border-[#00dbe9] bg-[#00dbe9]/10 px-4 py-3 font-mono text-xs text-[#00dbe9] transition hover:bg-[#00dbe9]/15 disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        <Sparkles size={16} className={auditProcessing || repairImageLoading ? "animate-spin" : ""} />
-                        {repairImageLoading ? "Preparing image..." : auditProcessing ? `${t("aiRepairAudit")}...` : audited ? t("ready") : t("runAiRepairAudit")}
+                        <Sparkles
+                          size={16}
+                          className={auditProcessing || repairImageLoading || repairForensicsProcessing ? "animate-spin" : ""}
+                        />
+                        {repairImageLoading
+                          ? "Preparing image..."
+                          : repairForensicsProcessing
+                            ? "ProofGuard scanning..."
+                            : auditProcessing
+                              ? `${t("aiRepairAudit")}...`
+                              : audited
+                                ? t("ready")
+                                : t("runAiRepairAudit")}
                       </button>
                       <button
                         type="button"
-                        onClick={submitRepairProof}
-                        disabled={repairImageLoading || auditProcessing}
+                        onClick={() => void submitRepairProof()}
+                        disabled={
+                          repairImageLoading ||
+                          repairForensicsProcessing ||
+                          auditProcessing ||
+                          repairImageForensics?.decision === "REJECT"
+                        }
                         className="btn-primary-shimmer relative z-20 flex flex-1 items-center justify-center gap-2 rounded bg-[#00eb88] px-4 py-3 font-mono text-xs font-semibold text-[#00210e] transition disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        <ShieldCheck size={16} className={auditProcessing || repairImageLoading ? "animate-spin" : ""} />
-                        {repairImageLoading ? "Preparing image..." : auditProcessing ? `${t("aiRepairAudit")}...` : "Submit Proof for Approval"}
+                        <ShieldCheck
+                          size={16}
+                          className={auditProcessing || repairImageLoading || repairForensicsProcessing ? "animate-spin" : ""}
+                        />
+                        {repairImageLoading
+                          ? "Preparing image..."
+                          : repairForensicsProcessing
+                            ? "ProofGuard scanning..."
+                            : auditProcessing
+                              ? `${t("aiRepairAudit")}...`
+                              : "Submit Proof for Approval"}
                       </button>
                     </div>
 
