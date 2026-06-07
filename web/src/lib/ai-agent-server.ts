@@ -80,6 +80,28 @@ export async function runJsonAgent<T>({
   };
 }): Promise<AiAgentResult<T>> {
   const retrievedRules = retrieveCivicRules(ruleQuery);
+  const externalEndpoint = getExternalAiServiceEndpoint(agentName);
+  const externalUrl = process.env.AI_SERVICE_URL;
+
+  if (externalUrl && externalEndpoint) {
+    try {
+      const result = await callExternalAiService<T>(externalUrl, externalEndpoint, input);
+
+      return {
+        mode: "real-ai",
+        provider: "groq",
+        retrievedRules,
+        result,
+        agentTrace: buildAgentTrace(agentName, retrievedRules, "Groq via AI service"),
+      };
+    } catch (error) {
+      console.warn(
+        `CityPramaan AI service failed for ${agentName}; falling back to direct provider/local rules:`,
+        error
+      );
+    }
+  }
+
   const provider = getAiProviderConfig();
 
   if (!provider) {
@@ -121,6 +143,52 @@ export async function runJsonAgent<T>({
       agentTrace: buildAgentTrace(agentName, retrievedRules, provider.label),
     };
   }
+}
+
+async function callExternalAiService<T>(baseUrl: string, endpoint: string, input: unknown): Promise<T> {
+  const normalizedBase = baseUrl.replace(/\/$/, "");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20_000);
+
+  try {
+    const response = await fetch(`${normalizedBase}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ data: input }),
+      signal: controller.signal,
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(`AI service failed with ${response.status}: ${text.slice(0, 240)}`);
+    }
+
+    return (await response.json()) as T;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("AI service timed out after 20 seconds.");
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function getExternalAiServiceEndpoint(agentName: string) {
+  const normalized = agentName.toLowerCase();
+
+  if (normalized.includes("contractor")) return "contractor-match";
+  if (normalized.includes("repair audit")) return "repair-audit";
+  if (normalized.includes("public summary")) return "public-summary";
+  if (normalized.includes("warranty")) return "warranty-risk";
+  if (normalized.includes("duplicate")) return "duplicate-check";
+  if (normalized.includes("escalation")) return "escalation-risk";
+
+  return null;
 }
 
 async function callChatCompletion({

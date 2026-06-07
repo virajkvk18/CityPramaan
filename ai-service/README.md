@@ -1,95 +1,117 @@
-# CityPramaan — AI Agent Service
+# CityPramaan AI Agent Service
 
-LangGraph + ChromaDB agentic RAG service powering all 7 AI endpoints.
+FastAPI service for CityPramaan's AI + RAG backend.
 
-## Structure
+It uses:
 
+- Groq for real LLM responses
+- LangGraph for agent routing
+- ChromaDB for civic-rule RAG retrieval
+- SentenceTransformers embeddings for local vector search
+
+## Agents
+
+| Endpoint | Agent |
+| --- | --- |
+| `POST /analyze-issue` | Issue Analysis Agent |
+| `POST /repair-audit` | Repair Audit Agent |
+| `POST /contractor-match` | Contractor Matching Agent |
+| `POST /public-summary` | Civic Public Summary Agent |
+| `POST /warranty-risk` | Warranty Risk Agent |
+| `POST /duplicate-check` | Duplicate Complaint Agent |
+| `POST /escalation-risk` | Critical Escalation Agent |
+
+Each endpoint accepts either:
+
+```json
+{ "data": { "description": "large pothole near school", "city": "Bhopal" } }
 ```
-ai-service/
-├── main.py              # FastAPI — 7 POST endpoints
-├── graph.py             # LangGraph StateGraph — retrieval + routing
-├── agents/
-│   ├── analyze_issue.py
-│   ├── repair_audit.py
-│   ├── contractor_match.py
-│   ├── public_summary.py
-│   ├── warranty_risk.py
-│   ├── duplicate_check.py
-│   └── escalation_risk.py
-├── rag/
-│   ├── ingest.py        # Seed ChromaDB (run once)
-│   └── vectorstore.py   # Singleton Chroma client
-├── node_proxy.ts        # Drop into your ai-agent-server.ts
-├── requirements.txt
-└── .env.example
+
+or a direct JSON object:
+
+```json
+{ "description": "large pothole near school", "city": "Bhopal" }
 ```
 
-## Setup
+## Local Setup
 
-```bash
-# 1. Create virtualenv
-python -m venv venv
-source venv/bin/activate   # Windows: venv\Scripts\activate
+Run these commands from the repo root:
 
-# 2. Install dependencies
+```powershell
+cd C:\Users\Asus\OneDrive\Desktop\Projects\CityPramaan\ai-service
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-
-# 3. Copy and fill env
-cp .env.example .env
-# Edit .env and add your OPENAI_API_KEY
-
-# 4. Seed ChromaDB (once)
-#    First: paste your civic-rag-rules.ts and civic-rag-documents.ts
-#    content into CIVIC_DOCS in rag/ingest.py, then:
-python rag/ingest.py
-
-# 5. Start the service
-uvicorn main:app --reload --port 8000
+Copy-Item .env.example .env
 ```
 
-## Node.js Integration
+Open `.env` and add your Groq key:
 
-Add to your existing `.env` in `web/`:
-```
-AI_SERVICE_URL=http://localhost:8000
-```
-
-Copy `node_proxy.ts` into `web/src/lib/` and import:
-```ts
-import { analyzeIssue, contractorMatch, ... } from "./node_proxy";
+```env
+CITYPRAMAAN_GROQ_API_KEY=gsk_your_real_key
+CITYPRAMAAN_GROQ_MODEL=llama-3.3-70b-versatile
+CHROMA_DB_PATH=./chroma_db
+PORT=8000
 ```
 
-## Endpoints
+Seed the RAG knowledge base once:
 
-| Method | Path | Agent |
-|--------|------|-------|
-| POST | `/analyze-issue` | Issue classifier |
-| POST | `/repair-audit` | Quality auditor |
-| POST | `/contractor-match` | Contractor ranker |
-| POST | `/public-summary` | Citizen communicator |
-| POST | `/warranty-risk` | Warranty assessor |
-| POST | `/duplicate-check` | Duplicate detector |
-| POST | `/escalation-risk` | Escalation decider |
-
-All endpoints accept `{ "data": { ...your payload } }` and return structured JSON.
-
-## LangGraph Flow
-
-```
-Request → retrieve_docs (ChromaDB) → [route by endpoint] → agent node (GPT-4o) → JSON response
-```
-
-## Adding More Docs to ChromaDB
-
-Edit `CIVIC_DOCS` in `rag/ingest.py` and re-run:
-```bash
+```powershell
 python rag/ingest.py
 ```
 
-## Fine-tuning (future)
+Start the service:
 
-Log every `agent_output` to Firestore. After ~300 examples per agent, export as JSONL and run:
-```bash
-openai api fine_tunes.create -t data.jsonl -m gpt-4o-mini
+```powershell
+python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
-Then swap `model="gpt-4o"` in each agent file to your fine-tuned model ID.
+
+Test it:
+
+```powershell
+Invoke-RestMethod -Uri http://localhost:8000/health
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri http://localhost:8000/analyze-issue `
+  -ContentType "application/json" `
+  -Body '{"data":{"description":"large pothole near school gate","cityName":"Bhopal","location":"MP Nagar"}}'
+```
+
+## Deploy On Render
+
+Use Render for this folder if you want the Python LangGraph + ChromaDB service online.
+
+Render settings:
+
+- Service type: Web Service
+- Root directory: `ai-service`
+- Build command: `pip install -r requirements.txt`
+- Start command: `python rag/ingest.py && uvicorn main:app --host 0.0.0.0 --port $PORT`
+- Python runtime: `python-3.11.9` from `runtime.txt`
+
+Environment variables on Render:
+
+```env
+CITYPRAMAAN_GROQ_API_KEY=your_groq_key
+CITYPRAMAAN_GROQ_MODEL=llama-3.3-70b-versatile
+CHROMA_DB_PATH=./chroma_db
+CORS_ORIGINS=https://your-vercel-domain.vercel.app,http://localhost:3000
+```
+
+## Vercel Or Render?
+
+Your Next.js app already has AI routes under `web/app/api/ai/*`. Those can call Groq directly on Vercel if you add this Vercel env variable:
+
+```env
+CITYPRAMAAN_GROQ_API_KEY=your_groq_key
+```
+
+For the heavier Python RAG service in this folder, deploy on Render/Railway/Fly. Vercel is not the right host for a long-running Python FastAPI service with ChromaDB and model embeddings.
+
+Recommended demo setup:
+
+1. Vercel hosts the CityPramaan website.
+2. Render hosts `ai-service`.
+3. Vercel has `AI_SERVICE_URL=https://your-render-service.onrender.com` if the frontend is wired to call this service.
+4. Vercel still keeps `CITYPRAMAAN_GROQ_API_KEY` as direct fallback.

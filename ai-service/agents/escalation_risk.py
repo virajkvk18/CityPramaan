@@ -1,43 +1,35 @@
-import json
-import os
-from langchain_groq import ChatGroq
-from langchain.schema import SystemMessage, HumanMessage
+from agents.common import run_json_agent
 
-llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0, api_key=os.getenv("GROQ_API_KEY_AGENTS"))
+SYSTEM_PROMPT = """You are CityPramaan's Critical Escalation Agent.
+Decide whether a civic issue needs ward review, urgent escalation, or emergency action.
 
-SYSTEM_PROMPT = """You are an escalation risk assessor for an Indian municipal issue resolution system.
-Determine whether a civic issue requires escalation to higher authorities.
-
-Respond ONLY with valid JSON — no markdown, no explanation, no preamble.
-
-Output schema:
+Return only valid compact JSON with exactly these keys:
 {
-  "should_escalate": <boolean>,
-  "urgency_score": <float 0.0-1.0>,
-  "escalation_level": "ward_officer|zonal_engineer|municipal_commissioner|none",
-  "escalation_reasons": ["<reason>", ...],
-  "confidence": <float 0.0-1.0>,
-  "recommended_action": "<one sentence>"
-}"""
+  "escalationLevel": "NONE|WARD_REVIEW|URGENT|EMERGENCY",
+  "publicSafetyRisk": true/false,
+  "escalationReasons": ["short reasons"],
+  "notifyRoles": ["Ward Admin", "Contractor Lead", "Emergency Field Supervisor"],
+  "recommendedAction": "one action",
+  "humanReviewRequired": true/false
+}
+
+Consider public safety, health risk, traffic blockage, school/market proximity, exposed wires,
+open manholes, bridge/road collapse, sewage contamination, transformer/power risk, and SLA breach."""
+
+FALLBACK = {
+    "escalationLevel": "WARD_REVIEW",
+    "publicSafetyRisk": False,
+    "escalationReasons": ["AI escalation analysis is unavailable."],
+    "notifyRoles": ["Ward Admin"],
+    "recommendedAction": "Ask ward admin to review the issue manually before assignment.",
+    "humanReviewRequired": True,
+}
 
 
 def escalation_risk_node(state: dict) -> dict:
-    context = "\n".join(state["retrieved_docs"])
-    user_msg = f"""Issue status and history data:
-{json.dumps(state['input_data'], indent=2)}
-
-Escalation rules from knowledge base:
-{context}
-"""
-    response = llm.invoke([
-        SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=user_msg)
-    ])
-    try:
-        output = json.loads(response.content)
-    except json.JSONDecodeError:
-        output = {"error": "parse_failed", "raw": response.content}
-
-    state["agent_output"] = output
-    state["confidence"] = output.get("confidence", 0.0)
-    return state
+    return run_json_agent(
+        state=state,
+        system_prompt=SYSTEM_PROMPT,
+        input_label="Issue status and history data",
+        fallback=FALLBACK,
+    )

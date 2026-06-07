@@ -624,7 +624,24 @@ function throwSupabaseAuthError(error: { message?: string; status?: number; code
 }
 
 function throwSupabaseDataError(error: { message?: string; code?: string }): never {
-  throw new AuthApiError(500, error.message || "Supabase database operation failed.", error.code || "SUPABASE_DATA_ERROR");
+  const message = error.message || "Supabase database operation failed.";
+  const normalized = message.toLowerCase();
+
+  if (
+    normalized.includes("could not find the table") ||
+    normalized.includes("schema cache") ||
+    (normalized.includes("relation") && normalized.includes("does not exist")) ||
+    error.code === "42P01" ||
+    error.code === "PGRST205"
+  ) {
+    throw new AuthApiError(
+      500,
+      "Supabase database tables are missing. Run docs/database/supabase-schema.sql in the Supabase SQL Editor, then redeploy/retry.",
+      "SUPABASE_SCHEMA_MISSING"
+    );
+  }
+
+  throw new AuthApiError(500, message, error.code || "SUPABASE_DATA_ERROR");
 }
 
 function getErrorCode(error: unknown): string {

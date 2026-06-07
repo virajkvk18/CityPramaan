@@ -1,43 +1,57 @@
-import json
-import os
-from langchain_groq import ChatGroq
-from langchain.schema import SystemMessage, HumanMessage
+from agents.common import run_json_agent
 
-llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0, api_key=os.getenv("GROQ_API_KEY_AGENTS"))
+SYSTEM_PROMPT = """You are CityPramaan's Issue Analysis Agent for Indian municipal infrastructure.
+Use retrieved RAG rules as ground truth for category, severity, SLA, urgency, and department routing.
 
-SYSTEM_PROMPT = """You are a civic infrastructure analyst for Indian municipal corporations.
-Classify reported issues using the retrieved rules provided.
-
-Respond ONLY with valid JSON — no markdown, no explanation, no preamble.
-
-Output schema:
+Return only valid compact JSON with exactly these keys:
 {
-  "category": "pothole|drainage|streetlight|garbage|water|road|other",
-  "severity": "critical|high|medium|low",
-  "confidence": <float 0.0-1.0>,
-  "estimatedRepairDays": <integer>,
-  "routeTo": "<department name>",
-  "reasoning": "<one sentence>"
-}"""
+  "category": "ROAD_DAMAGE|DRAIN_BLOCKAGE|POWER_OUTAGE|DARK_ZONE|GARBAGE_BLACKSPOT|WATER_LEAKAGE|ACCESSIBILITY_BLOCK|GENERAL_INFRASTRUCTURE",
+  "issueType": "short issue label",
+  "assetType": "road|drainage|streetlight|garbage|water|power|footpath|general",
+  "severity": "Low|Medium|High|Critical",
+  "confidence": 0-100,
+  "slaHours": 1-168,
+  "warrantyRequired": true/false,
+  "duplicateRisk": "Low|Medium|High",
+  "publicSummary": "one citizen-friendly sentence",
+  "recommendedAction": "one action for ward admin",
+  "proofTag": "short proof category",
+  "evidenceSignals": ["3-6 short evidence signals"],
+  "aiPriorityScore": 0-100,
+  "imageEvidenceScore": 0-100,
+  "estimatedImpact": "short impact statement",
+  "humanReviewRequired": true/false,
+  "confidenceBand": "LOW|MEDIUM|HIGH"
+}
+
+If the evidence is unrelated to civic infrastructure, set category GENERAL_INFRASTRUCTURE,
+confidence below 55, imageEvidenceScore below 45, and humanReviewRequired true."""
+
+FALLBACK = {
+    "category": "GENERAL_INFRASTRUCTURE",
+    "issueType": "Unclear civic issue",
+    "assetType": "general",
+    "severity": "Medium",
+    "confidence": 45,
+    "slaHours": 72,
+    "warrantyRequired": False,
+    "duplicateRisk": "Low",
+    "publicSummary": "This report needs ward review before it can be classified confidently.",
+    "recommendedAction": "Ask ward admin to inspect the report evidence and classify manually.",
+    "proofTag": "MANUAL_REVIEW",
+    "evidenceSignals": ["Groq was unavailable", "Local fallback used", "Human review needed"],
+    "aiPriorityScore": 45,
+    "imageEvidenceScore": 35,
+    "estimatedImpact": "Impact cannot be confirmed without AI analysis.",
+    "humanReviewRequired": True,
+    "confidenceBand": "LOW",
+}
 
 
 def analyze_issue_node(state: dict) -> dict:
-    context = "\n".join(state["retrieved_docs"])
-    user_msg = f"""Issue data:
-{json.dumps(state['input_data'], indent=2)}
-
-Relevant rules from knowledge base:
-{context}
-"""
-    response = llm.invoke([
-        SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=user_msg)
-    ])
-    try:
-        output = json.loads(response.content)
-    except json.JSONDecodeError:
-        output = {"error": "parse_failed", "raw": response.content}
-
-    state["agent_output"] = output
-    state["confidence"] = output.get("confidence", 0.0)
-    return state
+    return run_json_agent(
+        state=state,
+        system_prompt=SYSTEM_PROMPT,
+        input_label="Citizen issue report data",
+        fallback=FALLBACK,
+    )

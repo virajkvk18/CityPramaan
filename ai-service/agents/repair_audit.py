@@ -1,43 +1,44 @@
-import json
-import os
-from langchain_groq import ChatGroq
-from langchain.schema import SystemMessage, HumanMessage
+from agents.common import run_json_agent
 
-llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0, api_key=os.getenv("GROQ_API_KEY_AGENTS"))
+SYSTEM_PROMPT = """You are CityPramaan's Repair Audit Agent.
+Compare citizen issue context with contractor repair proof and judge repair quality using civic repair standards.
 
-SYSTEM_PROMPT = """You are a municipal repair quality auditor for Indian civic infrastructure.
-Evaluate repair submissions against the quality standards provided.
-
-Respond ONLY with valid JSON — no markdown, no explanation, no preamble.
-
-Output schema:
+Return only valid compact JSON with exactly these keys:
 {
-  "passed": <boolean>,
-  "quality_score": <float 0.0-10.0>,
-  "confidence": <float 0.0-1.0>,
-  "defects": ["<defect description>", ...],
-  "recommendation": "approve|reject|re-inspect",
-  "reasoning": "<one sentence>"
-}"""
+  "materialMatch": "short finding",
+  "repairIntegrity": "short finding",
+  "geoVariance": "short finding",
+  "beforeAfterDelta": "short finding",
+  "closureConfidence": "percentage string",
+  "visibleDamageRemaining": "short finding",
+  "qualityScore": 0-100,
+  "warrantyDays": 1-365,
+  "status": "PASS|NEEDS_REVIEW|FAIL",
+  "recommendation": "one ward-admin action"
+}
+
+Fail or mark NEEDS_REVIEW when location/evidence is weak, before-after proof does not match,
+or the repair does not satisfy the retrieved SLA/warranty rules."""
+
+FALLBACK = {
+    "materialMatch": "AI audit unavailable",
+    "repairIntegrity": "Needs ward admin review",
+    "geoVariance": "Location consistency could not be verified",
+    "beforeAfterDelta": "Before/after comparison could not be completed",
+    "closureConfidence": "42%",
+    "visibleDamageRemaining": "Unknown",
+    "qualityScore": 42,
+    "warrantyDays": 30,
+    "status": "NEEDS_REVIEW",
+    "recommendation": "Manually compare the citizen proof and contractor proof before approval.",
+}
 
 
 def repair_audit_node(state: dict) -> dict:
-    context = "\n".join(state["retrieved_docs"])
-    user_msg = f"""Repair submission data:
-{json.dumps(state['input_data'], indent=2)}
-
-Relevant quality standards from knowledge base:
-{context}
-"""
-    response = llm.invoke([
-        SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=user_msg)
-    ])
-    try:
-        output = json.loads(response.content)
-    except json.JSONDecodeError:
-        output = {"error": "parse_failed", "raw": response.content}
-
-    state["agent_output"] = output
-    state["confidence"] = output.get("confidence", 0.0)
-    return state
+    return run_json_agent(
+        state=state,
+        system_prompt=SYSTEM_PROMPT,
+        input_label="Repair proof submission data",
+        fallback=FALLBACK,
+        confidence_key="qualityScore",
+    )

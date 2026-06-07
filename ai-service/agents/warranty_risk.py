@@ -1,44 +1,36 @@
-import json
-import os
-from langchain_groq import ChatGroq
-from langchain.schema import SystemMessage, HumanMessage
+from agents.common import run_json_agent
 
-llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0, api_key=os.getenv("GROQ_API_KEY_AGENTS"))
+SYSTEM_PROMPT = """You are CityPramaan's Warranty Risk Agent.
+Detect repeat failures, warranty breach risk, and same-location civic issue recurrence.
 
-SYSTEM_PROMPT = """You are a warranty risk assessor for a municipal infrastructure authority.
-Evaluate the warranty validity and risk for completed civic repairs.
-
-Respond ONLY with valid JSON — no markdown, no explanation, no preamble.
-
-Output schema:
+Return only valid compact JSON with exactly these keys:
 {
-  "warranty_valid": <boolean>,
-  "risk_level": "low|medium|high|critical",
-  "risk_score": <float 0.0-1.0>,
-  "risk_factors": ["<factor>", ...],
-  "warranty_expires_days": <integer or null>,
-  "confidence": <float 0.0-1.0>,
-  "reasoning": "<one sentence>"
-}"""
+  "riskLevel": "LOW|MEDIUM|HIGH|CRITICAL",
+  "repeatProbability": 0-100,
+  "warrantyBreachLikely": true/false,
+  "matchedReportIds": ["report ids"],
+  "reason": "one sentence",
+  "recommendedAction": "one action for ward admin"
+}
+
+Use current report, location, category, repair date, warranty period, and history reports.
+Flag high risk when the same category repeats at the same/nearby location during warranty."""
+
+FALLBACK = {
+    "riskLevel": "LOW",
+    "repeatProbability": 0,
+    "warrantyBreachLikely": False,
+    "matchedReportIds": [],
+    "reason": "AI warranty analysis is unavailable; no repeat pattern was confirmed.",
+    "recommendedAction": "Continue normal monitoring and run manual review if evidence suggests recurrence.",
+}
 
 
 def warranty_risk_node(state: dict) -> dict:
-    context = "\n".join(state["retrieved_docs"])
-    user_msg = f"""Repair and warranty data:
-{json.dumps(state['input_data'], indent=2)}
-
-Warranty rules from knowledge base:
-{context}
-"""
-    response = llm.invoke([
-        SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=user_msg)
-    ])
-    try:
-        output = json.loads(response.content)
-    except json.JSONDecodeError:
-        output = {"error": "parse_failed", "raw": response.content}
-
-    state["agent_output"] = output
-    state["confidence"] = output.get("confidence", 0.0)
-    return state
+    return run_json_agent(
+        state=state,
+        system_prompt=SYSTEM_PROMPT,
+        input_label="Repair and warranty data",
+        fallback=FALLBACK,
+        confidence_key="repeatProbability",
+    )
