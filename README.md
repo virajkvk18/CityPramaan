@@ -394,6 +394,7 @@ cd CityPramaan
 ```bash
 cd web
 npm install
+cp .env.example .env.local
 npm run dev
 ```
 
@@ -402,6 +403,10 @@ Open:
 ```text
 http://localhost:3000
 ```
+
+For Supabase-backed auth and report storage, add your Supabase URL, anon key,
+and service-role key to `web/.env.local`, then run the SQL files in
+`web/supabase/migrations` inside the Supabase SQL editor.
 
 ### Production Build
 

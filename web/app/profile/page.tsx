@@ -166,7 +166,7 @@ function ProfileEditor({ initialProfile, onLogout }: { initialProfile: PublicUse
         agencyName,
       });
       setProfile(updated);
-      setMessage("Profile saved locally. Use Anchor on blockchain when Tenderly/MetaMask is available.");
+      setMessage("Profile saved to Supabase. Use Anchor on blockchain when Tenderly/MetaMask is available.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not save profile.");
     } finally {

@@ -33,8 +33,10 @@ import {
 import { fetchBackendReports, mergeReportsById, saveReportEverywhere } from "@/src/lib/report-sync";
 import {
   attachReportToContractor,
+  fetchBackendContractors,
   findSuggestedContractors,
   getContractorsSnapshot,
+  mergeContractorLists,
   specializationLabels,
   subscribeContractors,
 } from "@/src/lib/contractor-storage";
@@ -88,6 +90,7 @@ export default function PendingApprovalPage() {
   const selectedCity = getCityByKey(citySnapshot);
   const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const [backendReports, setBackendReports] = useState<CivicReport[]>([]);
+  const [backendContractors, setBackendContractors] = useState<ContractorProfile[]>([]);
   const localReports = useMemo(
     () => JSON.parse(localReportsSnapshot) as CivicReport[],
     [localReportsSnapshot]
@@ -105,9 +108,22 @@ export default function PendingApprovalPage() {
       active = false;
     };
   }, [selectedCity.key]);
+  useEffect(() => {
+    let active = true;
+
+    fetchBackendContractors().then((items) => {
+      if (active) {
+        setBackendContractors(items);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
   const contractors = useMemo(
-    () => JSON.parse(contractorsSnapshot) as ContractorProfile[],
-    [contractorsSnapshot]
+    () => mergeContractorLists(JSON.parse(contractorsSnapshot) as ContractorProfile[], backendContractors),
+    [backendContractors, contractorsSnapshot]
   );
   const wallet = parseWalletSnapshot(walletSnapshot);
   const allReports = useMemo(() => {

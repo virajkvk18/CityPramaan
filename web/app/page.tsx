@@ -662,7 +662,7 @@ export default function Home() {
                         Contractor Panel
                       </Link>
                     </div>
-                  </FadeIn>
+                  </FadeIn>d
 
                   <div className="mt-7 grid gap-3 sm:grid-cols-3">
                     <HeroTrustChip tone="blue" label="Open Public Proof" />
@@ -1338,9 +1338,9 @@ function LandingEvidenceSections({
   locationIsDetected: boolean;
 }) {
   return (
-    <div className="relative z-10 bg-[#020304] text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(255,153,51,0.16),transparent_28%),radial-gradient(circle_at_86%_20%,rgba(0,219,233,0.14),transparent_28%),linear-gradient(to_right,rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:auto,auto,34px_34px,34px_34px]" />
-      <div className="cp-landing-aurora pointer-events-none absolute inset-0" />
+<div className="relative z-10 bg-[#f6f8fb] text-[#1a1c1c]">
+  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20px_20px,rgba(0,0,60,0.03)_1px,transparent_1.5px)] bg-[size:40px_40px]" />
+  <div className="cp-landing-aurora pointer-events-none absolute inset-0 opacity-20" />
 
       <section className="cp-landing-section relative mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-10 lg:py-20">
         <div className="cp-scroll-reveal cp-public-proof-spotlight overflow-hidden rounded-3xl border border-[#00dbe9]/24 bg-[radial-gradient(circle_at_16%_18%,rgba(0,219,233,0.2),transparent_30%),radial-gradient(circle_at_82%_18%,rgba(255,153,51,0.18),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.085),rgba(255,255,255,0.025))] p-5 shadow-[0_34px_90px_rgba(0,0,0,0.46)] backdrop-blur-xl sm:p-7 lg:p-9">
@@ -1406,9 +1406,9 @@ function LandingEvidenceSections({
           <p className="cp-kicker-glow font-mono text-xs font-black uppercase tracking-[0.22em] text-[#00dbe9]">
             India Civic Problem
           </p>
-          <h2 className="mt-3 max-w-3xl text-3xl font-black leading-tight text-white sm:text-5xl">
-            The issue is not reporting. The issue is proving what happened after reporting.
-          </h2>
+<h2 className="mt-3 max-w-4xl text-4xl font-black leading-tight text-[#00003c] sm:text-6xl">
+  The issue is not reporting. The issue is proving what happened after reporting.
+</h2>
           <p className="mt-5 max-w-2xl text-base leading-7 text-[#dbc2b0] sm:text-lg">
             Cities already have complaint apps, IDs, and status labels. CityPramaan focuses on the missing part:
             verified repair evidence, contractor accountability, public history, and warranty memory.
@@ -1538,9 +1538,9 @@ function LandingEvidenceSections({
           <p className="cp-kicker-glow font-mono text-xs font-black uppercase tracking-[0.22em] text-[#00eb88]">
             Why Existing Apps Are Not Enough
           </p>
-          <h2 className="mx-auto mt-3 max-w-4xl text-3xl font-black leading-tight text-white sm:text-5xl">
-            A complaint ID is not accountability.
-          </h2>
+          <h2 className="mx-auto mt-3 max-w-4xl text-3xl font-black leading-tight text-[#00003c] sm:text-5xl">
+  A complaint ID is not accountability.
+</h2>
         </div>
 
         <div className="mt-9 grid gap-5 lg:grid-cols-2">
