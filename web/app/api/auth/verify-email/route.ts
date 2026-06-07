@@ -1,14 +1,9 @@
-import { authErrorJson, authJson } from "@/src/server/auth/http";
-import { verifySupabaseEmail } from "@/src/server/auth/supabase-auth";
+// AFTER (fixed):
+import { proxyBackendRequest } from "@/src/server/auth/backend-proxy";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    return authJson(await verifySupabaseEmail(body));
-  } catch (error) {
-    return authErrorJson(error);
-  }
+  return proxyBackendRequest(request, "/api/auth/verify-email");
 }
