@@ -8,23 +8,7 @@ import { ArrowLeft, BadgeCheck, Building2, Eye, EyeOff, Mail, Phone, ShieldCheck
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { type AuthRole, loginUser, resendVerificationCode, roleLabels, signUpUser, verifyEmailCode } from "@/src/lib/auth-storage";
-
-const roleOptions: Array<{ value: AuthRole; icon: typeof User; detail: string }> = [
-  { value: "USER", icon: User, detail: "Report civic issues and track public proof." },
-  { value: "WARD_ADMIN", icon: Building2, detail: "Review ward reports, approvals, and warranty cases." },
-  { value: "CONTRACTOR", icon: Wrench, detail: "Register identity, area, category, and submit repair proof." },
-];
-
-const contractorSpecializations = [
-  { value: "ROAD_DAMAGE", label: "Road repair" },
-  { value: "DRAINAGE", label: "Drainage" },
-  { value: "STREETLIGHT", label: "Streetlight" },
-  { value: "GARBAGE", label: "Garbage cleanup" },
-  { value: "WATER_LEAKAGE", label: "Water leakage" },
-  { value: "FOOTPATH", label: "Footpath repair" },
-  { value: "POWER_OUTAGE", label: "Power outage" },
-  { value: "GENERAL", label: "General civic repair" },
-];
+import { useLanguage } from "@/src/lib/use-language";
 
 function getRoleLandingPath(role: AuthRole) {
   switch (role) {
@@ -40,6 +24,25 @@ function getRoleLandingPath(role: AuthRole) {
 
 export default function AuthPage() {
   const router = useRouter();
+  const { t } = useLanguage();
+
+  const roleOptions: Array<{ value: AuthRole; icon: typeof User; detail: string }> = [
+    { value: "USER", icon: User, detail: t("roleUserDetail") },
+    { value: "WARD_ADMIN", icon: Building2, detail: t("roleAdminDetail") },
+    { value: "CONTRACTOR", icon: Wrench, detail: t("roleContractorDetail") },
+  ];
+
+  const contractorSpecializations = [
+    { value: "ROAD_DAMAGE", label: t("roadRepair") },
+    { value: "DRAINAGE", label: t("drainage") },
+    { value: "STREETLIGHT", label: t("streetlight") },
+    { value: "GARBAGE", label: t("garbageCleanup") },
+    { value: "WATER_LEAKAGE", label: t("waterLeakage") },
+    { value: "FOOTPATH", label: t("footpathRepair") },
+    { value: "POWER_OUTAGE", label: t("powerOutage") },
+    { value: "GENERAL", label: t("generalCivicRepair") },
+  ];
+
   const [mode, setMode] = useState<"login" | "signup" | "verify">("signup");
   const [role, setRole] = useState<AuthRole>("USER");
   const [name, setName] = useState("");
@@ -89,7 +92,7 @@ export default function AuthPage() {
           setMessage(
             result.devVerificationCode
               ? `Development OTP: ${result.devVerificationCode}`
-              : "Verification email sent."
+              : t("verificationEmailSent")
           );
           return;
         }
@@ -100,7 +103,7 @@ export default function AuthPage() {
         router.push(getRoleLandingPath(user.role));
       }
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Authentication failed.");
+      setMessage(error instanceof Error ? error.message : t("authFailed"));
     } finally {
       setBusy(false);
     }
@@ -117,10 +120,10 @@ export default function AuthPage() {
         setDevVerificationCode(result.devVerificationCode);
         setMessage(`Development OTP: ${result.devVerificationCode}`);
       } else {
-        setMessage("Verification email sent again.");
+        setMessage(t("verificationEmailSentAgain"));
       }
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not resend verification code.");
+      setMessage(error instanceof Error ? error.message : t("couldNotResend"));
     } finally {
       setBusy(false);
     }
@@ -140,7 +143,7 @@ export default function AuthPage() {
             className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#ffdcc2] transition hover:border-[#00dbe9]/35 hover:text-[#7df4ff]"
           >
             <ArrowLeft size={15} />
-            Dashboard
+            {t("dashboard")}
           </Link>
         </div>
       </header>
@@ -149,14 +152,14 @@ export default function AuthPage() {
         <div className="space-y-6">
           <div className="inline-flex items-center gap-2 rounded-md border border-[#00eb88]/25 bg-[#00eb88]/10 px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.18em] text-[#8fffc1]">
             <ShieldCheck size={16} />
-            Role based access
+            {t("roleBasedAccess")}
           </div>
           <div>
             <h1 className="max-w-2xl text-5xl font-black leading-[0.95] tracking-normal text-white sm:text-6xl">
-              Verify the person before the proof.
+              {t("verifyPersonBeforeProof")}
             </h1>
             <p className="mt-5 max-w-xl text-base leading-7 text-[#dbc2b0]">
-              Citizens, contractors, and ward admins get different dashboards. Every profile receives a proof hash that can later be written to your CityPramaan smart contract.
+              {t("authPageSubtitle")}
             </p>
           </div>
 
@@ -195,7 +198,7 @@ export default function AuthPage() {
                 mode === "signup" || mode === "verify" ? "bg-[#ffc08d] text-[#4c2700]" : "text-[#dbc2b0] hover:text-white"
               }`}
             >
-              Sign up
+              {t("signUp")}
             </button>
             <button
               type="button"
@@ -204,20 +207,20 @@ export default function AuthPage() {
                 mode === "login" ? "bg-[#00dbe9] text-[#002c33]" : "text-[#dbc2b0] hover:text-white"
               }`}
             >
-              Login
+              {t("login")}
             </button>
           </div>
 
           <div className="mb-5">
             <h2 className="text-2xl font-black text-white">
-              {mode === "verify" ? "Enter email OTP" : mode === "signup" ? "Create CityPramaan profile" : "Welcome back"}
+              {mode === "verify" ? t("enterEmailOtp") : mode === "signup" ? t("createCityPraamanProfile") : t("welcomeBack")}
             </h2>
             <p className="mt-2 text-sm text-[#a38d7c]">
               {mode === "verify"
-                ? `Code sent to ${verificationEmail || email}.`
+                ? `${t("codeSentTo")} ${verificationEmail || email}.`
                 : mode === "signup"
-                  ? `Signing up as ${roleLabels[role]}.`
-                  : "Login with your registered email and password."}
+                  ? `${t("signingUpAs")} ${roleLabels[role]}.`
+                  : t("loginWithEmail")}
             </p>
           </div>
 
@@ -226,7 +229,6 @@ export default function AuthPage() {
               <div className="mb-4 grid gap-2 sm:grid-cols-3">
                 {roleOptions.map((option) => {
                   const Icon = option.icon;
-
                   return (
                     <button
                       key={option.value}
@@ -245,39 +247,39 @@ export default function AuthPage() {
                 })}
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field icon={<User size={17} />} label="Full name" value={name} onChange={setName} required />
-                <Field icon={<Phone size={17} />} label="Contact number" value={contactNumber} onChange={setContactNumber} required />
+                <Field icon={<User size={17} />} label={t("fullName")} value={name} onChange={setName} required />
+                <Field icon={<Phone size={17} />} label={t("contactNumber")} value={contactNumber} onChange={setContactNumber} required />
               </div>
               {role === "CONTRACTOR" && (
                 <div className="mt-4 rounded-md border border-[#00dbe9]/20 bg-[#00dbe9]/8 p-4">
                   <p className="mb-4 font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#7df4ff]">
-                    Contractor identity and service area
+                    {t("contractorIdentityArea")}
                   </p>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field
                       icon={<BadgeCheck size={17} />}
-                      label="Contractor ID / identity no."
+                      label={t("contractorIdNo")}
                       value={contractorIdentityNumber}
                       onChange={setContractorIdentityNumber}
                       required
                     />
                     <Field
                       icon={<Building2 size={17} />}
-                      label="Company / agency"
+                      label={t("companyAgency")}
                       value={agencyName}
                       onChange={setAgencyName}
                       required
                     />
                     <Field
                       icon={<MapPinIcon />}
-                      label="Assigned area / locality"
+                      label={t("assignedAreaLocality")}
                       value={contractorArea}
                       onChange={setContractorArea}
                       required
                     />
                     <Field
                       icon={<ShieldCheck size={17} />}
-                      label="Assigned ward / zone"
+                      label={t("assignedWardZone")}
                       value={contractorWard}
                       onChange={setContractorWard}
                       required
@@ -285,7 +287,7 @@ export default function AuthPage() {
                   </div>
                   <label className="mt-4 block">
                     <span className="mb-2 block font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#dbc2b0]">
-                      Work category / specialization
+                      {t("workCategorySpecialization")}
                     </span>
                     <span className="flex items-center gap-3 rounded-md border border-white/10 bg-black/35 px-3 transition focus-within:border-[#00dbe9]/55">
                       <Wrench size={17} className="text-[#00dbe9]" />
@@ -311,7 +313,7 @@ export default function AuthPage() {
             <div className="mt-4 space-y-4">
               <Field
                 icon={<Mail size={17} />}
-                label="Verification email"
+                label={t("verificationEmail")}
                 type="email"
                 value={verificationEmail || email}
                 onChange={(value) => {
@@ -322,7 +324,7 @@ export default function AuthPage() {
               />
               <Field
                 icon={<BadgeCheck size={17} />}
-                label="OTP code"
+                label={t("otpCode")}
                 value={verificationCode}
                 onChange={setVerificationCode}
                 inputMode="numeric"
@@ -341,30 +343,30 @@ export default function AuthPage() {
                 disabled={busy}
                 className="w-full rounded-md border border-white/10 bg-black/25 px-4 py-3 font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#dbc2b0] transition hover:border-[#00dbe9]/35 hover:text-white disabled:cursor-wait disabled:opacity-60"
               >
-                Resend code
+                {t("resendCode")}
               </button>
             </div>
           ) : (
             <div className="mt-4 space-y-4">
-            <Field icon={<Mail size={17} />} label="Email address" type="email" value={email} onChange={setEmail} required />
-            <label className="block">
-              <span className="mb-2 block font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#dbc2b0]">Password</span>
-              <span className="flex items-center gap-3 rounded-md border border-white/10 bg-black/35 px-3 transition focus-within:border-[#00dbe9]/55">
-                <BadgeCheck size={17} className="text-[#00dbe9]" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  required
-                  minLength={mode === "signup" ? 8 : undefined}
-                  className="min-h-12 flex-1 bg-transparent text-sm text-white outline-none"
-                />
-                <button type="button" onClick={() => setShowPassword((value) => !value)} className="text-[#dbc2b0] hover:text-white" aria-label="Toggle password visibility">
-                  {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-                </button>
-              </span>
-            </label>
-          </div>
+              <Field icon={<Mail size={17} />} label={t("emailAddress")} type="email" value={email} onChange={setEmail} required />
+              <label className="block">
+                <span className="mb-2 block font-mono text-xs font-bold uppercase tracking-[0.16em] text-[#dbc2b0]">{t("password")}</span>
+                <span className="flex items-center gap-3 rounded-md border border-white/10 bg-black/35 px-3 transition focus-within:border-[#00dbe9]/55">
+                  <BadgeCheck size={17} className="text-[#00dbe9]" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    required
+                    minLength={mode === "signup" ? 8 : undefined}
+                    className="min-h-12 flex-1 bg-transparent text-sm text-white outline-none"
+                  />
+                  <button type="button" onClick={() => setShowPassword((value) => !value)} className="text-[#dbc2b0] hover:text-white" aria-label="Toggle password visibility">
+                    {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                  </button>
+                </span>
+              </label>
+            </div>
           )}
 
           {message && <p className="mt-4 rounded-md border border-[#ffb4ab]/30 bg-[#ffb4ab]/10 px-4 py-3 text-sm text-[#ffcec7]">{message}</p>}
@@ -374,7 +376,7 @@ export default function AuthPage() {
             disabled={busy}
             className="mt-6 w-full rounded-md bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] px-5 py-4 font-mono text-xs font-black uppercase tracking-[0.18em] text-[#4c2700] shadow-[0_0_26px_rgba(255,153,51,0.18)] transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
           >
-            {busy ? "Processing..." : mode === "verify" ? "Verify email" : mode === "signup" ? "Create account" : "Login"}
+            {busy ? t("processing") : mode === "verify" ? t("verifyEmail") : mode === "signup" ? t("createAccount") : t("login")}
           </button>
         </form>
       </section>
