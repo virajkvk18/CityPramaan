@@ -136,7 +136,6 @@ def build_vectorstore():
         metadatas=metadatas,
         persist_directory=os.getenv("CHROMA_DB_PATH", "./chroma_db")
     )
-    vectorstore.persist()
     print(f"Done. ChromaDB seeded at {os.getenv('CHROMA_DB_PATH', './chroma_db')}")
 
 
