@@ -27,7 +27,6 @@ import {
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { LocationDetectButton } from "@/src/components/layout/LocationDetectButton";
-import { NotificationBell } from "@/src/components/layout/NotificationBell";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { AnimatedCityMap } from "@/src/components/map/AnimatedCityMap";
 import { ChainProofCard } from "@/src/components/proof/ChainProofCard";
@@ -44,14 +43,6 @@ import {
   getLocalReportsSnapshot,
   subscribeLocalReports,
 } from "@/src/lib/report-storage";
-import {
-  connectWallet,
-  disconnectWallet,
-  getWalletSnapshot,
-  parseWalletSnapshot,
-  shortWalletAddress,
-  subscribeWallet,
-} from "@/src/lib/wallet-storage";
 import { useLanguage } from "@/src/lib/use-language";
 import { useDetectedLocationDisplay } from "@/src/lib/use-detected-location";
 import type { TranslationKey } from "@/src/lib/language-context";
@@ -413,15 +404,11 @@ export default function Home() {
     getCitySelectionSourceSnapshot,
     () => "default"
   );
-  const walletSnapshot = useSyncExternalStore(subscribeWallet, getWalletSnapshot, () => "false");
   const authSnapshot = useSyncExternalStore(subscribeAuth, getAuthSnapshot, () => "");
   const selectedCity = getCityByKey(citySnapshot);
   const cityDisplay = useDetectedLocationDisplay(selectedCity);
   const waitingForAutoCity = !cityDisplay.detectedLocation && citySourceSnapshot !== "manual";
   const dashboardCityName = waitingForAutoCity ? "Current City" : cityDisplay.cityName;
-  const wallet = useMemo(() => parseWalletSnapshot(walletSnapshot), [walletSnapshot]);
-  const walletConnected = wallet.connected;
-  const [walletMessage, setWalletMessage] = useState("");
   const currentUser = useMemo(() => getCurrentUser(authSnapshot), [authSnapshot]);
   const profileComplete = currentUser ? isProfileComplete(currentUser) : false;
   const roleDashboard = getRoleDashboard(currentUser?.role);
@@ -540,21 +527,6 @@ export default function Home() {
 
     setShowSafetyIntro(false);
   };
-
-  async function handleWalletClick() {
-    setWalletMessage("");
-
-    if (walletConnected) {
-      disconnectWallet();
-      return;
-    }
-
-    try {
-      await connectWallet(wallet.chainKey);
-    } catch (error) {
-      setWalletMessage(error instanceof Error ? error.message : "Could not connect wallet.");
-    }
-  }
 
   if (!currentUser) {
     return (
@@ -741,7 +713,6 @@ export default function Home() {
           >
             {t("about")}
           </Link>
-          <NotificationBell />
           <ThemeToggle />
           <LanguageSelector compact />
           {currentUser ? (
@@ -770,24 +741,8 @@ export default function Home() {
               Login
             </Link>
           )}
-          <button
-            onClick={handleWalletClick}
-            className={`relative min-h-9 max-w-[136px] overflow-hidden truncate rounded-sm border px-3 py-2 text-center font-mono text-[10px] font-bold uppercase tracking-[0.08em] transition sm:min-h-0 sm:max-w-none sm:px-5 sm:py-3 sm:text-xs sm:tracking-[0.2em] ${
-              walletConnected
-                ? "border-[#00eb88]/45 bg-[#00eb88]/12 text-[#5bffa1] shadow-[0_0_24px_rgba(0,235,136,0.14)]"
-                : "border-[#ffc08d]/60 bg-[linear-gradient(135deg,#ffdcc2,#ff9933)] text-[#4c2700] shadow-[0_0_26px_rgba(255,153,51,0.2)]"
-            }`}
-          >
-            <span className="stitch-shimmer" />
-            {walletConnected ? shortWalletAddress(wallet.address) : t("connectWallet")}
-          </button>
         </div>
       </header>
-      {walletMessage && (
-        <div className="fixed right-3 top-24 z-[60] max-w-sm rounded-md border border-[#ffb4ab]/35 bg-[#120706]/95 px-4 py-3 text-sm text-[#ffcec7] shadow-[0_18px_60px_rgba(0,0,0,0.35)]">
-          {walletMessage}
-        </div>
-      )}
 
       <section className="grid min-h-screen grid-cols-1 pb-24 pt-36 sm:pb-0 sm:pt-20 xl:grid-cols-[320px_1fr_400px]">
         <aside className="hidden border-r border-[#ff9933]/15 bg-[linear-gradient(180deg,rgba(255,153,51,0.08),rgba(0,0,0,0.5)_22%,rgba(0,219,233,0.045))] p-5 shadow-[8px_0_40px_rgba(0,0,0,0.35)] backdrop-blur-xl xl:flex xl:flex-col">
@@ -839,14 +794,6 @@ export default function Home() {
               {t("notJustReportingText")}
             </p>
           </div>
-
-          {walletConnected && (
-            <div className="mt-5 rounded-md border border-[#00eb88]/30 bg-[linear-gradient(135deg,rgba(0,235,136,0.13),rgba(0,219,233,0.06))] p-5 shadow-[0_0_22px_rgba(0,235,136,0.08)]">
-              <p className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-[#5bffa1]">{t("citizenWallet")}</p>
-              <p className="mt-2 break-all font-mono text-sm text-[#e5e2e3]">{wallet.address}</p>
-              <p className="mt-1 text-xs text-[#dbc2b0]">Ready on {wallet.chainKey.replace("-", " ")} for real proof transactions.</p>
-            </div>
-          )}
 
           {activeLocalReports.length > 0 && (
             <div className="mt-5 rounded-md border border-[#00dbe9]/30 bg-[linear-gradient(135deg,rgba(0,219,233,0.12),rgba(0,0,0,0.18))] p-5">
@@ -1042,7 +989,7 @@ export default function Home() {
                 <TrustSignal
                   icon={<Wallet size={17} />}
                   label={t("citizenNode")}
-                  value={walletConnected ? t("walletReady") : t("demoMode")}
+                  value={t("demoMode")}
                   tone="violet"
                 />
               </div>

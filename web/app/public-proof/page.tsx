@@ -21,7 +21,6 @@ import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { FabricProofCard } from "@/src/components/proof/FabricProofCard";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
 import { LocationDetectButton } from "@/src/components/layout/LocationDetectButton";
-import { NotificationBell } from "@/src/components/layout/NotificationBell";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { DEFAULT_CITY_KEY, demoCities, getCityByKey, type CityKey } from "@/src/lib/city-context";
 import { getCitySnapshot, subscribeCity } from "@/src/lib/city-storage";
@@ -159,7 +158,6 @@ export default function PublicProofPage() {
           <BrandLogo size="sm" subtitle="Public Proof Board" />
         </div>
         <div className="flex min-w-0 items-center gap-2 md:gap-3">
-          <NotificationBell />
           <LanguageSelector compact />
           <ThemeToggle />
         </div>

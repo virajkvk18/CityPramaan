@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
-import { NotificationBell } from "@/src/components/layout/NotificationBell";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { DEFAULT_CITY_KEY, demoCities, getCityByKey, type CityKey } from "@/src/lib/city-context";
 import { getCitySnapshot, setSelectedCityKey, subscribeCity } from "@/src/lib/city-storage";
@@ -339,7 +338,6 @@ export default function PendingApprovalPage() {
           <BrandLogo size="sm" subtitle="Ward Admin" />
         </div>
         <div className="flex min-w-0 items-center gap-2 md:gap-3">
-          <NotificationBell />
           <button className="hidden h-9 w-9 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0]/70 transition hover:text-[#00eb88] sm:grid">
             <Settings size={16} />
           </button>

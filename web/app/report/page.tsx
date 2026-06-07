@@ -33,7 +33,6 @@ import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { FabricProofCard } from "@/src/components/proof/FabricProofCard";
 import { ImageForensicsPanel } from "@/src/components/proof/ImageForensicsPanel";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
-import { NotificationBell } from "@/src/components/layout/NotificationBell";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import {
   DEFAULT_CITY_KEY,
@@ -758,15 +757,11 @@ export default function ReportIssuePage() {
               placeholder={tr("publicIssueHistory")}
             />
           </div>
-          <NotificationBell />
           <button className="grid h-9 w-9 place-items-center rounded border border-white/10 bg-white/[0.04] text-[#dbc2b0]/70 transition hover:text-[#00eb88]">
             <Settings size={16} />
           </button>
           <LanguageSelector compact />
           <ThemeToggle />
-          <span className="rounded border border-[#00dbe9]/35 bg-[#00dbe9]/10 px-4 py-2 font-mono text-xs text-[#00dbe9]">
-            AI/RAG active
-          </span>
         </div>
       </header>
 

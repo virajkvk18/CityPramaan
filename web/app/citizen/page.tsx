@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { BrandLogo } from "@/src/components/layout/BrandLogo";
 import { LanguageSelector } from "@/src/components/layout/LanguageSelector";
-import { NotificationBell } from "@/src/components/layout/NotificationBell";
 import { ThemeToggle } from "@/src/components/layout/ThemeToggle";
 import { DEFAULT_CITY_KEY, getCityByKey } from "@/src/lib/city-context";
 import { getCitySnapshot, subscribeCity } from "@/src/lib/city-storage";
@@ -207,7 +206,6 @@ export default function CitizenDashboardPage() {
           <BrandLogo size="sm" subtitle="Citizen Console" />
         </div>
         <div className="flex min-w-0 items-center gap-2 md:gap-3">
-          <NotificationBell />
           <LanguageSelector compact />
           <ThemeToggle />
         </div>
