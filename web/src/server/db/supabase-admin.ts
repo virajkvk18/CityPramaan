@@ -2,7 +2,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 let cachedAdminClient: SupabaseClient | null = null;
-let cachedAuthClient: SupabaseClient | null = null;
 
 function getSupabaseUrl() {
   return process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -28,24 +27,6 @@ export function getSupabaseAdminClient() {
   });
 
   return cachedAdminClient;
-}
-
-export function getSupabaseAuthClient() {
-  const supabaseUrl = getSupabaseUrl();
-  const anonKey = getSupabaseAnonKey();
-
-  if (!supabaseUrl || !anonKey) {
-    return null;
-  }
-
-  cachedAuthClient ??= createClient(supabaseUrl, anonKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-
-  return cachedAuthClient;
 }
 
 export function hasSupabaseServerConfig() {

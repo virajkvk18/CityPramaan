@@ -62,7 +62,7 @@ type BackendAuthPayload = {
   refreshToken?: string;
   emailVerificationRequired?: boolean;
   verificationExpiresAt?: string;
-  delivery?: "supabase" | "brevo" | "resend" | "smtp" | "console";
+  delivery?: "brevo" | "resend" | "smtp" | "console";
   devVerificationCode?: string;
   error?: string;
 };
@@ -73,7 +73,7 @@ export type SignUpResult =
       user: PublicUserProfile;
       email: string;
       verificationExpiresAt?: string;
-      delivery?: "supabase" | "brevo" | "resend" | "smtp" | "console";
+      delivery?: "brevo" | "resend" | "smtp" | "console";
       devVerificationCode?: string;
     }
   | {
@@ -268,7 +268,7 @@ export function updateCurrentProfileChainProof(profileChainTxHash: string, walle
       savePublicUser(synced);
     })
     .catch((error) => {
-      console.warn("Profile chain proof Supabase sync failed:", error);
+      console.warn("Profile chain proof backend sync failed:", error);
     });
   syncContractorProfile(updated);
   setSession(updated.id);
